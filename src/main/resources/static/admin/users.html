@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Box - 用户管理</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/css/theme.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-right: 1px solid #334155;
+        }
+        .nav-item {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .nav-item:hover {
+            background: rgba(14, 165, 233, 0.1);
+            border-left-color: #0ea5e9;
+        }
+        .nav-item.active {
+            background: rgba(14, 165, 233, 0.15);
+            border-left-color: #0ea5e9;
+        }
+        .btn {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        .btn-secondary {
+            background: #334155;
+            border: 1px solid #475569;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+        }
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .input-field {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 0.625rem 0.875rem;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        .input-field::placeholder {
+            color: #64748b;
+        }
+        .input-field option {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 550px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+        .table-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .table-header {
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+        .table-row {
+            border-bottom: 1px solid #334155;
+            transition: background 0.2s ease;
+        }
+        .table-row:last-child {
+            border-bottom: none;
+        }
+        .table-row:hover {
+            background: rgba(14, 165, 233, 0.05);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .badge-admin {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+        .badge-manager {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+        .badge-user {
+            background: rgba(14, 165, 233, 0.2);
+            color: #38bdf8;
+        }
+        .section-title {
+            color: #e2e8f0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .checkbox-item:hover {
+            border-color: #0ea5e9;
+        }
+        .checkbox-item input {
+            margin-right: 0.5rem;
+            accent-color: #0ea5e9;
+        }
+        .checkbox-item label {
+            color: #e2e8f0;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="flex">
+    <!-- Sidebar -->
+    <div class="sidebar w-64 min-h-screen text-white flex flex-col">
+        <div class="p-6 border-b border-gray-700">
+            <h1 class="text-xl font-bold text-gradient">File Box</h1>
+            <p class="text-sm text-gray-400 mt-1">管理后台</p>
+        </div>
+        <nav class="mt-6 flex-1">
+            <a href="/admin/dashboard.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">📊</span>
+                <span>仪表盘</span>
+            </a>
+            <a href="/admin/storage.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">💾</span>
+                <span>存储管理</span>
+            </a>
+            <a href="/admin/users.html" class="nav-item active flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">👥</span>
+                <span>用户管理</span>
+            </a>
+        </nav>
+        <div class="p-6 border-t border-gray-700">
+            <div class="flex items-center text-gray-400 text-sm mb-4">
+                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                <span id="currentUser">admin</span>
+            </div>
+            <a href="/logout" class="btn btn-secondary w-full text-center block">退出登录</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 p-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-white mb-2">用户管理</h2>
+                <p class="text-gray-400">管理用户账号和权限</p>
+            </div>
+            <button onclick="openAddModal()" class="btn">
+                <span class="mr-2">+</span> 新增用户
+            </button>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+            <div class="table-header px-6 py-4">
+                <div class="grid grid-cols-5 gap-4 text-sm font-medium text-gray-400">
+                    <div>用户名</div>
+                    <div>角色</div>
+                    <div>存储空间</div>
+                    <div>创建时间</div>
+                    <div>操作</div>
+                </div>
+            </div>
+            <div id="userList">
+                <!-- User items will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-white mb-6" id="modalTitle">新增用户</h3>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <input type="hidden" id="editUsername">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">用户名</label>
+                        <input type="text" id="username" class="input-field" placeholder="请输入用户名" required>
+                    </div>
+                    <div id="passwordField">
+                        <label class="block text-gray-400 text-sm mb-2">密码</label>
+                        <input type="password" id="password" class="input-field" placeholder="请输入密码" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">确认密码</label>
+                        <input type="password" id="confirmPassword" class="input-field" placeholder="请再次输入密码">
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">角色</label>
+                        <select id="role" class="input-field" required onchange="onRoleChange()">
+                            <option value="USER">普通用户 (User)</option>
+                            <option value="MANAGER">管理员 (Manager)</option>
+                            <option value="ADMIN">超级管理员 (Admin)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">存储空间权限</label>
+                        <div id="storageCheckboxes" class="checkbox-group">
+                            <!-- Storage checkboxes will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-8">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary flex-1">取消</button>
+                    <button type="submit" class="btn flex-1">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let isEditing = false;
+        let availableStorages = [];
+
+        // Get current user info
+        async function getUserInfo() {
+            try {
+                const response = await fetch('/api/auth/user');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('currentUser').textContent = data.username;
+                    if (data.role !== 'ADMIN') {
+                        window.location.href = '/index.html';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to get user info:', error);
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderUserList(data);
+                }
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        // Load storage spaces for checkboxes
+        async function loadStorages() {
+            try {
+                const response = await fetch('/api/admin/storage');
+                if (response.ok) {
+                    availableStorages = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to load storages:', error);
+            }
+        }
+
+        function renderUserList(userList) {
+            const container = document.getElementById('userList');
+            if (userList.length === 0) {
+                container.innerHTML = '<div class="px-6 py-8 text-center text-gray-400">暂无用户</div>';
+                return;
+            }
+
+            container.innerHTML = userList.map(user => `
+                <div class="table-row px-6 py-4">
+                    <div class="grid grid-cols-5 gap-4 items-center">
+                        <div class="text-white font-medium">${user.username}</div>
+                        <div>
+                            <span class="badge badge-${user.role.toLowerCase()}">${getRoleName(user.role)}</span>
+                        </div>
+                        <div class="text-gray-400 text-sm">${user.storageSpaces?.join(', ') || '-'}</div>
+                        <div class="text-gray-400 text-sm">${formatDate(user.createdAt)}</div>
+                        <div class="flex gap-2">
+                            <button onclick="editUser('${user.username}')" class="btn btn-sm btn-secondary">编辑</button>
+                            <button onclick="deleteUser('${user.username}')" class="btn btn-sm btn-danger">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getRoleName(role) {
+            const names = { 'ADMIN': '超级管理员', 'MANAGER': '管理员', 'USER': '普通用户' };
+            return names[role] || role;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function openAddModal() {
+            isEditing = false;
+            document.getElementById('modalTitle').textContent = '新增用户';
+            document.getElementById('userForm').reset();
+            document.getElementById('editUsername').value = '';
+            document.getElementById('passwordField').style.display = 'block';
+            document.getElementById('password').required = true;
+            document.getElementById('confirmPassword').required = true;
+            renderStorageCheckboxes([]);
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function editUser(username) {
+            isEditing = true;
+            document.getElementById('modalTitle').textContent = '编辑用户';
+            document.getElementById('editUsername').value = username;
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('password').required = false;
+            document.getElementById('confirmPassword').required = false;
+            document.getElementById('passwordField').style.display = 'none';
+            
+            // Load user details
+            fetch(`/api/admin/users/${username}`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('role').value = data.role;
+                    renderStorageCheckboxes(data.storageSpaces || []);
+                });
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function onRoleChange() {
+            // Could add role-specific logic here
+        }
+
+        function renderStorageCheckboxes(selectedStorages) {
+            const container = document.getElementById('storageCheckboxes');
+            if (availableStorages.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">暂无可用存储空间</p>';
+                return;
+            }
+
+            container.innerHTML = availableStorages.map(space => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="storage_${space.name}" value="${space.name}" ${selectedStorages.includes(space.name) ? 'checked' : ''}>
+                    <label for="storage_${space.name}">${space.name}</label>
+                </div>
+            `).join('');
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        async function saveUser(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const role = document.getElementById('role').value;
+            
+            // Get selected storage spaces
+            const storageSpaces = [];
+            availableStorages.forEach(space => {
+                const checkbox = document.getElementById(`storage_${space.name}`);
+                if (checkbox && checkbox.checked) {
+                    storageSpaces.push(space.name);
+                }
+            });
+
+            // Validate password
+            if (!isEditing && password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+
+            const data = {
+                username,
+                role,
+                storageSpaces
+            };
+            
+            if (!isEditing || password) {
+                data.password = password;
+            }
+
+            try {
+                const url = isEditing ? `/api/admin/users/${document.getElementById('editUsername').value}` : '/api/admin/users';
+                const method = isEditing ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    loadUsers();
+                } else {
+                    const error = await response.text();
+                    alert('保存失败：' + error);
+                }
+            } catch (error) {
+                alert('保存失败：' + error.message);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (username === 'admin') {
+                alert('不能删除默认管理员账号');
+                return;
+            }
+            
+            if (!confirm(`确定要删除用户 "${username}" 吗？`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${username}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadUsers();
+                } else {
+                    const error = await response.text();
+                    alert('删除失败：' + error);
+                }
+            } catch (error) {
+                alert('删除失败：' + error.message);
+            }
+        }
+
+        // Initialize
+        getUserInfo();
+        loadUsers();
+        loadStorages();
+    </script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

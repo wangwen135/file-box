@@ -6,24 +6,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="images/favicon.png" type="image/png">
     <title>登录 - 文件盒子</title>
+    <link rel="stylesheet" href="css/theme.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* 浅色模式 (默认) */
+        body {
+            background: linear-gradient(180deg, #f8f9fa 0%, #d9dde3 100%);
+        }
+        .login-container {
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            border: 1px solid #e9ecef;
+        }
+        h1 {
+            color: #212529;
+        }
+        label {
+            color: #495057;
+        }
+        input[type="password"],
+        input[type="text"] {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            color: #212529;
+        }
+        input[type="password"]:focus,
+        input[type="text"]:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+        .error-message {
+            color: #dc3545;
+        }
+        .login-footer-text {
+            color: #6c757d;
+        }
+        .footer-credit {
+            color: #6c757d;
+        }
+        .anonymous-access-btn {
+            background: transparent;
+            border: 1px solid #dee2e6;
+            color: #495057;
+        }
+        .anonymous-access-btn:hover {
+            background: rgba(74, 144, 226, 0.08);
+            border-color: #4a90e2;
+            color: #4a90e2;
+        }
+
+        /* 深色模式 */
+        [data-theme="dark"] body {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        }
+        [data-theme="dark"] .login-container {
+            background: #1e293b;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
+        }
+        [data-theme="dark"] h1 {
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] label {
+            color: #cbd5e1;
+        }
+        [data-theme="dark"] input[type="password"],
+        [data-theme="dark"] input[type="text"] {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] input[type="password"]:focus,
+        [data-theme="dark"] input[type="text"]:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        [data-theme="dark"] .error-message {
+            color: #ef4444;
+        }
+        [data-theme="dark"] .login-footer-text {
+            color: #94a3b8;
+        }
+        [data-theme="dark"] .footer-credit {
+            color: #94a3b8;
+        }
+        [data-theme="dark"] .anonymous-access-btn {
+            background: transparent;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+        }
+        [data-theme="dark"] .anonymous-access-btn:hover {
+            background: rgba(14, 165, 233, 0.1);
+            border-color: #0ea5e9;
+            color: #0ea5e9;
         }
 
         .logo-container {
             position: absolute;
-            /*top: -20px;*/
-            /*left: 20px;*/
             top: 16px;
             left: 24px;
-            background: white;
+            background: var(--bg-card, #ffffff);
             padding: 5px;
             border-radius: 10px;
-            /*box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);*/
+            box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.05));
         }
 
         .logo {
@@ -34,19 +118,15 @@
         }
 
         body {
-            background: linear-gradient(180deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .login-container {
-            background: white;
             padding: 2.5rem 2.5rem 1.5rem 2.5rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
             position: relative;
@@ -54,10 +134,9 @@
         }
 
         h1 {
-            color: #333;
             text-align: center;
-            /*margin-bottom: 1.5rem;*/
             font-weight: 600;
+            margin-bottom: 1.5rem;
         }
 
         .form-group {
@@ -67,71 +146,57 @@
         label {
             display: block;
             margin-bottom: 0.5rem;
-            color: #555;
             font-size: 0.9rem;
         }
 
-        input[type="password"] {
-            width: 100%;
-            padding: 0.9rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
+        input[type="password"],
         input[type="text"] {
             width: 100%;
             padding: 0.9rem;
-            border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 1rem;
             transition: all 0.3s ease;
         }
 
-        input[type="password"]:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
-        }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
-        }
-
-        button {
+        button[type="submit"] {
             width: 100%;
             padding: 0.9rem;
-            background-color: #4a90e2;
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
         }
 
-        button:hover {
-            background-color: #357abd;
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        }
+
+        [data-theme="dark"] button[type="submit"] {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        }
+
+        [data-theme="dark"] button[type="submit"]:hover {
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
         }
 
         .error-message-container {
             min-height: 1.5rem;
         }
+
         .error-message {
-            color: #e74c3c;
             text-align: center;
-            /*margin-top: 1rem;*/
             font-size: 0.9rem;
+            display: none;
         }
 
         .login-footer-text {
             text-align: center;
             margin-top: 1.5rem;
-            color: #777;
             font-size: 0.85rem;
         }
 
@@ -139,77 +204,100 @@
             position: fixed;
             bottom: 10px;
             font-size: 0.9rem;
-            color: #999;
             text-align: center;
         }
 
-        /* 匿名访问按钮样式 */
         .anonymous-access-container {
             margin: 15px 0;
             display: none;
-            /* 默认隐藏 */
+            text-align: center;
         }
 
         .anonymous-access-btn {
-            background-color: #f0f0f0;
-            color: #333;
-            margin-top: 10px;
-            width: 100%;
-            padding: 0.9rem;
-            border: none;
+            padding: 0.75rem 1.5rem;
             border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
         }
 
-        .anonymous-access-btn:hover {
-            background-color: #e0e0e0;
+        /* 主题切换按钮 */
+        .theme-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            z-index: 9999;
+        }
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+        [data-theme="dark"] .theme-toggle {
+            background: #1e293b;
+            border-color: #334155;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
 
 <body>
+    <div class="logo-container">
+        <img src="images/logo.png" alt="文件盒子 Logo" class="logo" onerror="this.style.display='none'">
+    </div>
+
     <div class="login-container">
-        <div class="logo-container">
-            <img src="images/logo.png" alt="文件盒子Logo" class="logo">
-        </div>
         <h1>文件盒子</h1>
-        <div class="error-message-container">
-            <span id="errorMessage" class="error-message" style="display: none;"></span>
-        </div>
+
         <form id="loginForm">
             <div class="form-group">
                 <label for="username">用户名</label>
                 <input type="text" id="username" name="username" placeholder="请输入用户名" required>
             </div>
+
             <div class="form-group">
                 <label for="password">密码</label>
                 <input type="password" id="password" name="password" placeholder="请输入密码" required>
             </div>
-            <button type="submit">登录</button>
-        </form>
-        <div class="anonymous-access-container">
-            <button id="anonymousAccessBtn" class="anonymous-access-btn" type="button">匿名访问</button>
-        </div>
 
-        <div class="login-footer-text">请输入密码以访问文件盒子服务</div>
+            <button type="submit">登录</button>
+
+            <div class="error-message-container">
+                <p id="errorMessage" class="error-message"></p>
+            </div>
+
+            <div class="anonymous-access-container" id="anonymousAccessDiv">
+                <button type="button" id="anonymousAccessBtn" class="anonymous-access-btn">匿名访问</button>
+            </div>
+        </form>
+
+        <p class="login-footer-text">请输入密码以访问文件盒子服务</p>
     </div>
+
     <div class="footer-credit">Core: XD | Implementation: WWH</div>
+
+    <button class="theme-toggle" title="切换主题">🌙</button>
+
+    <script src="js/theme.js"></script>
     <script>
         document.getElementById('loginForm').addEventListener('submit', async function (event) {
-            // 阻止表单默认提交行为
             event.preventDefault();
-
-            // 隐藏之前的错误信息
             document.getElementById('errorMessage').style.display = 'none';
 
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
             try {
-                // 发送异步请求到登录接口
                 const formData = new URLSearchParams();
                 formData.append('username', username);
                 formData.append('password', password);
@@ -223,32 +311,24 @@
                 });
 
                 if (response.redirected) {
-                    // 登录成功，跟随重定向
                     window.location.href = response.url;
                 } else if (response.ok) {
-                    // 其他2xx成功状态码，跳转到主页
                     window.location.href = '/';
                 } else {
-                    // 登录失败，显示错误信息
-                    // 后端返回的是纯文本错误信息，直接获取
                     const errorMessage = await response.text().catch(() => '用户名或密码错误');
                     document.getElementById('errorMessage').textContent = errorMessage;
                     document.getElementById('errorMessage').style.display = 'block';
                 }
             } catch (error) {
-                // 处理网络错误等异常情况
                 document.getElementById('errorMessage').textContent = '登录过程中发生错误，请稍后重试';
                 document.getElementById('errorMessage').style.display = 'block';
             }
         });
 
-        // 匿名访问按钮点击事件
         document.getElementById('anonymousAccessBtn').addEventListener('click', function () {
-            // 直接跳转到主页，让后端拦截器处理匿名访问
             window.location.href = '/';
         });
 
-        // 页面加载时检查匿名访问是否启用
         window.addEventListener('DOMContentLoaded', async function () {
             try {
                 const response = await fetch('/api/anonymous-config');
@@ -258,7 +338,6 @@
                     const loginFooterText = document.querySelector('.login-footer-text');
 
                     if (config.enabled) {
-                        // 启用匿名访问，显示按钮和相关文本
                         anonymousAccessDiv.style.display = 'block';
                         loginFooterText.textContent = '请输入密码以访问文件盒子服务，或选择匿名访问';
                     }
