@@ -61,3 +61,5 @@ node_modules/
 
 # Ignore generated sources (if any)
 target/
+# AI dev script (local only)
+dev-restart.sh
