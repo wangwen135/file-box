@@ -82,6 +82,20 @@ public final class AppConstants {
         /** 文件内容预览最大长度（文本文件） */
         public static final int TEXT_PREVIEW_MAX_LENGTH = 300;
 
+        /** Multipart 临时目录（与存储目录同文件系统，确保 transferTo 走 rename 而非拷贝）
+         *  Multipart temp dir; MUST be on the same filesystem as the storage dir
+         *  so MultipartFile.transferTo(File) performs a rename, not a copy. */
+        public static final String MULTIPART_TEMP_DIR = "./.multipart-tmp";
+
+        /** 下载流式拷贝缓冲区大小（64KB：16 页，syscall 与小堆内存的折中）
+         *  Download stream-copy buffer (64KB: 16 pages; balances syscall overhead
+         *  against heap on a small -Xmx384m JVM). */
+        public static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024;
+
+        /** 单文件大小上限（字节），与 yml 的 spring.servlet.multipart.max-file-size 对齐
+         *  Max single-file size in bytes, mirrored from application.yml. */
+        public static final long MAX_FILE_SIZE_BYTES = 2L * 1024 * 1024 * 1024;
+
         private FileUpload() {}
     }
 

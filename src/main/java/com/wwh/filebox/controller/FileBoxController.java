@@ -11,7 +11,6 @@ import com.wwh.filebox.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.PathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +20,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -142,7 +145,15 @@ public class FileBoxController {
                 savePath = uploadDir.resolve(newFilename);
                 counter++;
             }
-            Files.copy(f.getInputStream(), savePath);
+            // 用 transferTo(File) 走 Part.write → rename（同文件系统下原子移动，消除二次拷贝）
+            // transferTo(File) delegates to Part.write → atomic rename on the same filesystem.
+            // 注意 1：必须用 File 重载 —— transferTo(Path) 恒为流式拷贝。
+            // 注意 2：必须传【绝对路径】。Part.write 会把相对路径解析到 multipart 的 location
+            //         （Tomcat 工作目录下的临时目录），而非进程 CWD，导致找不到目标父目录。
+            // Note 1: use the File overload; transferTo(Path) always copies.
+            // Note 2: pass an ABSOLUTE path. Part.write resolves a relative path against the
+            //         multipart location (Tomcat work dir), not the process CWD.
+            f.transferTo(savePath.toAbsolutePath().normalize().toFile());
             logger.info("User {} uploaded file: {}", username, savePath.getFileName());
         }
 
@@ -363,26 +374,30 @@ public class FileBoxController {
     }
 
     @GetMapping("/uploads/{year}/{month}/{filename:.+}")
-    public ResponseEntity<?> serveFile(HttpServletRequest request,
-                                       @PathVariable String year,
-                                       @PathVariable String month,
-                                       @PathVariable String filename) {
+    public void serveFile(HttpServletRequest request,
+                          HttpServletResponse response,
+                          @PathVariable String year,
+                          @PathVariable String month,
+                          @PathVariable String filename) throws IOException {
 
         // 验证filename不为空
         if (filename == null || filename.trim().isEmpty()) {
             logger.warn("Invalid file path request: filename is null or empty");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的文件路径");
+            writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
+            return;
         }
 
         // 使用统一的存储空间验证方法（文件服务不需要检查用户权限）
         String storageSpaceName = getCurrentStorageSpace(request);
         if (storageSpaceName == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("未选择存储空间");
+            writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "未选择存储空间");
+            return;
         }
 
         StorageSpace storageSpace = storageService.getStorageSpace(storageSpaceName);
         if (storageSpace == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("存储空间未找到");
+            writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "存储空间未找到");
+            return;
         }
 
         String storageDir = storageSpace.getPath();
@@ -394,31 +409,144 @@ public class FileBoxController {
             target = basePath.resolve(rel).toAbsolutePath().normalize();
         } catch (InvalidPathException e) {
             logger.warn("Invalid file path request: {}/{}/{} - {}", year, month, filename, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的文件路径");
+            writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
+            return;
         }
 
         // 安全检查：确保目标路径在存储目录内
         if (!target.startsWith(basePath)) {
             logger.warn("Path traversal attempt: {}", target);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的文件路径");
+            writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
+            return;
         }
 
         if (!Files.exists(target) || !Files.isRegularFile(target)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("文件不存在");
+            writeError(response, HttpStatus.NOT_FOUND.value(), "文件不存在");
+            return;
         }
 
+        long fileSize = Files.size(target);
+
+        // 解析 Range 头（仅支持单段；多段或无法解析时回退为全量 200）
+        // Parse the Range header (single range only; fall back to full 200 otherwise)
+        long start = 0;
+        long end = fileSize - 1;
+        boolean partial = false;
+        String rangeHeader = request.getHeader("Range");
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            String spec = rangeHeader.substring("bytes=".length()).trim();
+            int comma = spec.indexOf(',');
+            if (comma < 0) {
+                int dash = spec.indexOf('-');
+                if (dash >= 0) {
+                    try {
+                        String s = spec.substring(0, dash).trim();
+                        String e = spec.substring(dash + 1).trim();
+                        long parsedStart;
+                        if (s.isEmpty()) {
+                            // 后缀形式 "-N"：取文件末尾 N 字节
+                            long suffix = Long.parseLong(e);
+                            if (suffix <= 0) {
+                                throw new NumberFormatException();
+                            }
+                            parsedStart = Math.max(0, fileSize - suffix);
+                        } else {
+                            parsedStart = Long.parseLong(s);
+                            if (parsedStart >= fileSize) {
+                                // 起始超出文件大小 → 416
+                                response.setStatus(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value());
+                                response.setHeader("Content-Range", "bytes */" + fileSize);
+                                return;
+                            }
+                            if (!e.isEmpty()) {
+                                long parsedEnd = Long.parseLong(e);
+                                if (parsedEnd < parsedStart) {
+                                    throw new NumberFormatException();
+                                }
+                                end = Math.min(parsedEnd, fileSize - 1);
+                            }
+                        }
+                        start = parsedStart;
+                        partial = true;
+                    } catch (NumberFormatException ex) {
+                        // 解析失败：回退为全量响应（partial 保持 false）
+                    }
+                }
+            }
+            // 多段请求（含逗号）：回退为全量响应（partial 保持 false）
+        }
+
+        // 设置公共响应头（必须在写出第一个字节之前完成）
+        // Set common headers before writing the first byte
         String contentType = FileUtils.getContentTypeByExtension(filename);
-        PathResource resource = new PathResource(target.toAbsolutePath().toString());
-        MediaType mt = MediaType.APPLICATION_OCTET_STREAM;
         try {
-            mt = MediaType.parseMediaType(contentType);
+            response.setContentType(MediaType.parseMediaType(contentType).toString());
         } catch (org.springframework.http.InvalidMediaTypeException e) {
             logger.debug("Failed to parse media type: {}, using default", contentType);
+            response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
         }
-        return ResponseEntity.ok()
-                .contentType(mt)
-                .header("Content-Disposition", "inline; filename=" + FileUtils.encodeFilenameForHttpHeader(filename))
-                .body(resource);
+        response.setHeader("Content-Disposition", "inline; filename=" + FileUtils.encodeFilenameForHttpHeader(filename));
+        response.setHeader("Accept-Ranges", "bytes");
+
+        long contentLength = end - start + 1;
+
+        // 打开文件通道后再设置状态/长度，这样通道打开失败时仍能返回干净的错误响应
+        // Open the channel before committing status/length so a failure still
+        // produces a clean error (not a redirect via CustomErrorController).
+        try (FileChannel channel = FileChannel.open(target, StandardOpenOption.READ)) {
+            if (start > 0) {
+                channel.position(start);
+            }
+
+            if (partial) {
+                response.setStatus(HttpStatus.PARTIAL_CONTENT.value());
+                response.setHeader("Content-Range", "bytes " + start + "-" + end + "/" + fileSize);
+            } else {
+                response.setStatus(HttpStatus.OK.value());
+            }
+            response.setContentLengthLong(contentLength);
+
+            // 用 64KB 缓冲流式写出（FileChannel 已定位到 start，O(1) seek）
+            // Stream with a 64KB buffer; FileChannel is already positioned at start
+            ByteBuffer buffer = ByteBuffer.allocate(AppConstants.FileUpload.DOWNLOAD_BUFFER_SIZE);
+            OutputStream out = response.getOutputStream();
+            long remaining = contentLength;
+            while (remaining > 0) {
+                buffer.clear();
+                if (buffer.limit() > remaining) {
+                    buffer.limit((int) remaining);
+                }
+                int read = channel.read(buffer);
+                if (read < 0) {
+                    break;
+                }
+                out.write(buffer.array(), buffer.arrayOffset(), read);
+                remaining -= read;
+            }
+            out.flush();
+        } catch (IOException e) {
+            logger.warn("Failed to stream file {}: {}", target, e.getMessage());
+            // 响应未提交时返回干净错误；已提交则只能记录（客户端会收到截断的响应）
+            // If uncommitted, return a clean error; if committed, just log (truncated response)
+            if (!response.isCommitted()) {
+                response.reset();
+                writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败");
+            }
+        }
+    }
+
+    /**
+     * 直接写入错误响应（状态码 + 中文消息）
+     * 注意：不能用 response.sendError()，因为 CustomErrorController 会把 /error 重定向到首页。
+     * Write an error response directly (status + message). Do NOT use response.sendError():
+     * CustomErrorController redirects /error to /index.html, which would turn errors into 302s.
+     */
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("text/plain; charset=UTF-8");
+        byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
+        response.setContentLengthLong(bytes.length);
+        response.getOutputStream().write(bytes);
     }
 
     private Map<String, Object> buildRecord(Path fullPath, String y, String m) {
