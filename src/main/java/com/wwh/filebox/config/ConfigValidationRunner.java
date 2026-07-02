@@ -1,5 +1,6 @@
 package com.wwh.filebox.config;
 
+import com.wwh.filebox.constants.AppConstants;
 import com.wwh.filebox.service.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +9,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Component
 public class ConfigValidationRunner implements CommandLineRunner {
@@ -28,6 +33,19 @@ public class ConfigValidationRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        // 创建 multipart 临时目录（Tomcat 不会自动创建，缺失会导致上传失败）
+        // Create the multipart temp dir at startup; Tomcat does NOT auto-create it
+        // and will throw "The temporary upload location is not valid" if absent.
+        try {
+            Path multipartTmp = Paths.get(AppConstants.FileUpload.MULTIPART_TEMP_DIR);
+            Files.createDirectories(multipartTmp);
+            logger.info("Multipart temp dir ready: {}", multipartTmp.toAbsolutePath());
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "无法创建 multipart 临时目录 / Failed to create multipart temp dir: "
+                            + AppConstants.FileUpload.MULTIPART_TEMP_DIR, e);
+        }
+
         logger.info("开始配置验证...");
 
         // Check if new config file exists

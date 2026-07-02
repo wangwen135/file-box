@@ -4,6 +4,15 @@ server:
 spring:
   servlet:
     multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+      # 单文件 / 单请求上限（支持最大约 2GB 文件）
+      # Per-file / per-request size limit (supports files up to ~2GB)
+      max-file-size: 2GB
+      max-request-size: 2GB
+      # multipart 临时目录：必须与存储目录在同一文件系统，
+      # 这样 MultipartFile.transferTo(File) 才会走 rename 而非拷贝。
+      # 若日后 ./uploads 迁到独立挂载点，请把此项改到同一挂载点。
+      # Temp dir for multipart; MUST be on the same filesystem as the storage dir
+      # so transferTo performs a rename. If ./uploads moves to a separate mount,
+      # point this at a dir on that same mount.
+      location: ./.multipart-tmp
 
