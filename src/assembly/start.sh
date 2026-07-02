@@ -16,8 +16,11 @@ if [ ! -f "$JAR_NAME" ]; then
     exit 1
 fi
 
+# JVM 内存限制（防止多服务同跑时 OOM）
+JAVA_OPTS="-Xmx384m -Xms128m"
+
 # 启动应用
-nohup java -jar "$JAR_NAME" > "$LOG_FILE" 2>&1 &
+nohup java $JAVA_OPTS -jar "$JAR_NAME" > "$LOG_FILE" 2>&1 &
 
 echo "应用已启动，日志输出到$LOG_FILE"
 echo "进程ID：$!"

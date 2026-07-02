@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Box - 管理后台</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/css/theme.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-right: 1px solid #334155;
+        }
+        .nav-item {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .nav-item:hover {
+            background: rgba(14, 165, 233, 0.1);
+            border-left-color: #0ea5e9;
+        }
+        .nav-item.active {
+            background: rgba(14, 165, 233, 0.15);
+            border-left-color: #0ea5e9;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #475569;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 40px rgba(14, 165, 233, 0.15);
+            border-color: #0ea5e9;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .stat-icon.blue { background: rgba(14, 165, 233, 0.2); color: #0ea5e9; }
+        .stat-icon.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+        .stat-icon.orange { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+        .progress-bar {
+            background: #334155;
+            border-radius: 9999px;
+            overflow: hidden;
+            height: 8px;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%);
+            transition: width 0.5s ease;
+        }
+        .btn {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        .btn-secondary {
+            background: #334155;
+            border: 1px solid #475569;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .input-field {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 0.625rem 0.875rem;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+        .input-field::placeholder {
+            color: #64748b;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+        .table-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .table-header {
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+        .table-row {
+            border-bottom: 1px solid #334155;
+            transition: background 0.2s ease;
+        }
+        .table-row:last-child {
+            border-bottom: none;
+        }
+        .table-row:hover {
+            background: rgba(14, 165, 233, 0.05);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-admin {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+        .badge-manager {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+        .badge-user {
+            background: rgba(14, 165, 233, 0.2);
+            color: #38bdf8;
+        }
+        .section-title {
+            color: #e2e8f0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="flex">
+    <!-- Sidebar -->
+    <div class="sidebar w-64 min-h-screen text-white flex flex-col">
+        <div class="p-6 border-b border-gray-700">
+            <h1 class="text-xl font-bold text-gradient">File Box</h1>
+            <p class="text-sm text-gray-400 mt-1">管理后台</p>
+        </div>
+        <nav class="mt-6 flex-1">
+            <a href="/admin/dashboard.html" class="nav-item active flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">📊</span>
+                <span>仪表盘</span>
+            </a>
+            <a href="/admin/storage.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">💾</span>
+                <span>存储管理</span>
+            </a>
+            <a href="/admin/users.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
+                <span class="mr-3">👥</span>
+                <span>用户管理</span>
+            </a>
+        </nav>
+        <div class="p-6 border-t border-gray-700">
+            <div class="flex items-center text-gray-400 text-sm mb-4">
+                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                <span id="currentUser">admin</span>
+            </div>
+            <a href="/logout" class="btn btn-secondary w-full text-center block">退出登录</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 p-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">仪表盘</h2>
+            <p class="text-gray-400">系统概览和统计信息</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="stat-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="stat-icon blue">💾</div>
+                    <span class="text-gray-400 text-sm">存储空间</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white mb-2" id="storageCount">0</h3>
+                <p class="text-gray-400 text-sm">已配置</p>
+            </div>
+            <div class="stat-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="stat-icon green">👥</div>
+                    <span class="text-gray-400 text-sm">用户数量</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white mb-2" id="userCount">0</h3>
+                <p class="text-gray-400 text-sm">已注册</p>
+            </div>
+            <div class="stat-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="stat-icon purple">📁</div>
+                    <span class="text-gray-400 text-sm">文件总数</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white mb-2" id="fileCount">0</h3>
+                <p class="text-gray-400 text-sm">已上传</p>
+            </div>
+            <div class="stat-card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="stat-icon orange">📊</div>
+                    <span class="text-gray-400 text-sm">总容量</span>
+                </div>
+                <h3 class="text-2xl font-bold text-white mb-2" id="totalCapacity">0 GB</h3>
+                <p class="text-gray-400 text-sm">已使用</p>
+            </div>
+        </div>
+
+        <!-- Storage Usage -->
+        <div class="card mb-8">
+            <h3 class="section-title">存储空间使用情况</h3>
+            <div id="storageUsageList">
+                <!-- Storage usage items will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <h3 class="section-title">系统信息</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between py-2 border-b border-gray-700">
+                    <span class="text-gray-400">系统名称</span>
+                    <span class="text-white" id="systemName">File Box</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-700">
+                    <span class="text-gray-400">版本</span>
+                    <span class="text-white">v0.2.0</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-700">
+                    <span class="text-gray-400">运行时间</span>
+                    <span class="text-white" id="uptime">-</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-400">Java 版本</span>
+                    <span class="text-white" id="javaVersion">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get current user info
+        async function getUserInfo() {
+            try {
+                const response = await fetch('/api/auth/user');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('currentUser').textContent = data.username;
+                    if (data.role !== 'ADMIN') {
+                        window.location.href = '/index.html';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to get user info:', error);
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // Load storage spaces
+                const storageResponse = await fetch('/api/admin/storage');
+                if (storageResponse.ok) {
+                    const storageData = await storageResponse.json();
+                    document.getElementById('storageCount').textContent = storageData.length;
+                    
+                    let totalUsed = 0;
+                    let totalCapacity = 0;
+                    let totalFiles = 0;
+                    
+                    const usageList = document.getElementById('storageUsageList');
+                    usageList.innerHTML = '';
+                    
+                    for (const space of storageData) {
+                        const statsResponse = await fetch(`/api/admin/storage/${space.name}/stats`);
+                        if (statsResponse.ok) {
+                            const stats = await statsResponse.json();
+                            totalUsed += stats.usedBytes || 0;
+                            totalFiles += stats.fileCount || 0;
+                            
+                            const maxBytes = parseSize(space.maxSize);
+                            totalCapacity += maxBytes;
+                            
+                            const percentage = maxBytes > 0 ? ((stats.usedBytes || 0) / maxBytes * 100).toFixed(1) : 0;
+                            
+                            usageList.innerHTML += `
+                                <div class="mb-4 last:mb-0">
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-white font-medium">${space.name}</span>
+                                        <span class="text-gray-400 text-sm">${formatBytes(stats.usedBytes || 0)} / ${space.maxSize}</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <p class="text-gray-500 text-xs mt-1">${stats.fileCount || 0} 个文件</p>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    document.getElementById('fileCount').textContent = totalFiles.toLocaleString();
+                    document.getElementById('totalCapacity').textContent = formatBytes(totalUsed);
+                }
+                
+                // Load users
+                const usersResponse = await fetch('/api/admin/users');
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    document.getElementById('userCount').textContent = usersData.length;
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function parseSize(sizeStr) {
+            const match = sizeStr.match(/(\d+(?:\.\d+)?)\s*(KB|MB|GB|TB)?/i);
+            if (!match) return 0;
+            const value = parseFloat(match[1]);
+            const unit = (match[2] || 'B').toUpperCase();
+            const multipliers = { 'B': 1, 'KB': 1024, 'MB': 1024 * 1024, 'GB': 1024 * 1024 * 1024, 'TB': 1024 * 1024 * 1024 * 1024 };
+            return value * (multipliers[unit] || 1);
+        }
+
+        // Initialize
+        getUserInfo();
+        loadDashboard();
+    </script>
+    <script src="/js/theme.js"></script>
+</body>
+</html>

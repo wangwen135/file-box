@@ -1,0 +1,396 @@
+package com.wwh.filebox.controller;
+
+import com.wwh.filebox.model.Role;
+import com.wwh.filebox.model.StorageSpace;
+import com.wwh.filebox.model.StorageStats;
+import com.wwh.filebox.model.SystemConfig;
+import com.wwh.filebox.model.User;
+import com.wwh.filebox.service.AuthService;
+import com.wwh.filebox.service.ConfigService;
+import com.wwh.filebox.service.StorageService;
+import com.wwh.filebox.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Admin controller
+ * 管理员控制器
+ */
+@RestController
+@RequestMapping("/api/admin")
+public class AdminController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
+
+    @Autowired
+    private StorageService storageService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private ConfigService configService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    /**
+     * Generate password hash (for testing/admin use)
+     * 只返回哈希值，不返回明文密码，避免敏感信息泄露
+     *
+     * @param password 要哈希的密码
+     * @return 包含哈希值的响应
+     */
+    @GetMapping("/gen-password")
+    public ResponseEntity<Map<String, String>> generatePassword(@RequestParam String password) {
+        String hash = passwordEncoder.encode(password);
+        Map<String, String> result = new HashMap<>();
+        // 只返回哈希值，不返回明文密码
+        result.put("hash", hash);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Dashboard statistics
+     */
+    @GetMapping("/dashboard")
+    public ResponseEntity<Map<String, Object>> getDashboard() {
+        Map<String, Object> dashboard = new HashMap<>();
+
+        // Storage stats
+        List<StorageStats> storageStats = storageService.getAllStorageStats();
+        dashboard.put("storageStats", storageStats);
+
+        // Total files count
+        int totalFiles = storageStats.stream().mapToInt(StorageStats::getFileCount).sum();
+        dashboard.put("totalFiles", totalFiles);
+
+        // Total used space
+        long totalUsed = storageStats.stream().mapToLong(StorageStats::getUsedSize).sum();
+        dashboard.put("totalUsed", totalUsed);
+
+        // Total space
+        long totalSpace = storageStats.stream().mapToLong(StorageStats::getTotalSize).sum();
+        dashboard.put("totalSpace", totalSpace);
+
+        // Active sessions
+        int activeSessions = authService.getActiveSessionCount();
+        dashboard.put("activeSessions", activeSessions);
+
+        // System config
+        SystemConfig config = configService.getConfig();
+        dashboard.put("systemName", config != null ? config.getName() : "File Box");
+        dashboard.put("systemDescription", config != null ? config.getDescription() : "");
+
+        return ResponseEntity.ok(dashboard);
+    }
+
+    /**
+     * Get storage spaces (alias: /storage)
+     */
+    @GetMapping({"/storages", "/storage"})
+    public ResponseEntity<List<Map<String, Object>>> getStorages() {
+        List<StorageSpace> spaces = storageService.getAllStorageSpaces();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (StorageSpace space : spaces) {
+            Map<String, Object> spaceMap = new HashMap<>();
+            spaceMap.put("name", space.getName());
+            spaceMap.put("path", space.getPath());
+            spaceMap.put("maxSize", space.getFormattedMaxSize());
+            spaceMap.put("urlPrefix", space.getUrlPrefix());
+            spaceMap.put("maxSizeBytes", space.getMaxSizeInBytes());
+            spaceMap.put("allowAnonymous", space.isAllowAnonymous());
+
+            StorageStats stats = storageService.getStorageStats(space.getName());
+            if (stats != null) {
+                spaceMap.put("usedSize", stats.getFormattedUsedSize());
+                spaceMap.put("freeSize", stats.getFormattedFreeSize());
+                spaceMap.put("fileCount", stats.getFileCount());
+                spaceMap.put("directoryCount", stats.getDirectoryCount());
+                spaceMap.put("usagePercentage", stats.getUsagePercentage());
+            }
+
+            result.add(spaceMap);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Create storage space
+     */
+    @PostMapping({"/storages", "/storage"})
+    public ResponseEntity<Map<String, Object>> createStorage(@RequestBody Map<String, Object> request) {
+        String name = (String) request.get("name");
+        String path = (String) request.get("path");
+        String maxSize = (String) request.get("maxSize");
+        String urlPrefix = (String) request.get("urlPrefix");
+        Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
+
+        boolean success = storageService.createStorageSpace(name, path, maxSize, urlPrefix, allowAnonymous);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to create storage space");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update storage space
+     */
+    @PutMapping({"/storages/{name}", "/storage/{name}"})
+    public ResponseEntity<Map<String, Object>> updateStorage(
+            @PathVariable String name,
+            @RequestBody Map<String, Object> request) {
+        String path = (String) request.get("path");
+        String maxSize = (String) request.get("maxSize");
+        String urlPrefix = (String) request.get("urlPrefix");
+        Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
+
+        boolean success = storageService.updateStorageSpace(name, path, maxSize, urlPrefix, allowAnonymous);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to update storage space");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete storage space
+     */
+    @DeleteMapping({"/storages/{name}", "/storage/{name}"})
+    public ResponseEntity<Map<String, Object>> deleteStorage(@PathVariable String name) {
+        boolean success = storageService.deleteStorageSpace(name);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to delete storage space");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get users
+     */
+    @GetMapping({"/users", "/user"})
+    public ResponseEntity<List<User>> getUsers() {
+        List<User> users = userService.getAllUsers();
+
+        // Remove passwords from response
+        List<User> safeUsers = users.stream()
+                .map(user -> {
+                    User safeUser = new User();
+                    safeUser.setUsername(user.getUsername());
+                    safeUser.setRole(user.getRole());
+                    safeUser.setStorageSpaces(user.getStorageSpaces());
+                    return safeUser;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(safeUsers);
+    }
+
+    /**
+     * Create user
+     */
+    @PostMapping("/users")
+    public ResponseEntity<Map<String, Object>> createUser(@RequestBody Map<String, Object> request) {
+        String username = (String) request.get("username");
+        String password = (String) request.get("password");
+        String roleStr = (String) request.get("role");
+        @SuppressWarnings("unchecked")
+        List<String> storageSpacesList = (List<String>) request.get("storageSpaces");
+
+        Role role = Role.fromString(roleStr);
+        String[] storageSpaces = storageSpacesList != null ? storageSpacesList.toArray(new String[0]) : new String[0];
+
+        boolean success = userService.createUser(username, password, role, storageSpaces);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to create user");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update user
+     */
+    @PutMapping("/users/{username}")
+    public ResponseEntity<Map<String, Object>> updateUser(
+            @PathVariable String username,
+            @RequestBody Map<String, Object> request) {
+        String password = (String) request.get("password");
+        String roleStr = (String) request.get("role");
+        @SuppressWarnings("unchecked")
+        List<String> storageSpacesList = (List<String>) request.get("storageSpaces");
+
+        Role role = Role.fromString(roleStr);
+        String[] storageSpaces = storageSpacesList != null ? storageSpacesList.toArray(new String[0]) : new String[0];
+
+        boolean success = userService.updateUser(username, password, role, storageSpaces);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to update user");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete user
+     */
+    @DeleteMapping("/users/{username}")
+    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable String username) {
+        boolean success = userService.deleteUser(username);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", success);
+
+        if (!success) {
+            response.put("error", "Failed to delete user");
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get system config
+     */
+    @GetMapping("/config")
+    public ResponseEntity<Map<String, Object>> getConfig() {
+        SystemConfig config = configService.getConfig();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("config", config);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update system config
+     */
+    @PutMapping("/config")
+    public ResponseEntity<Map<String, Object>> updateConfig(@RequestBody SystemConfig config) {
+        configService.saveConfig(config);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get active sessions
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<List<Map<String, Object>>> getSessions() {
+        List<Map<String, Object>> sessions = authService.getActiveSessions();
+        return ResponseEntity.ok(sessions);
+    }
+
+    /**
+     * Get single storage space
+     */
+    @GetMapping("/storage/{name}")
+    public ResponseEntity<Map<String, Object>> getStorage(@PathVariable String name) {
+        StorageSpace space = storageService.getStorageSpace(name);
+        if (space == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("name", space.getName());
+        response.put("path", space.getPath());
+        response.put("maxSize", space.getFormattedMaxSize());
+        response.put("urlPrefix", space.getUrlPrefix());
+        response.put("allowAnonymous", space.isAllowAnonymous());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get storage stats
+     */
+    @GetMapping("/storage/{name}/stats")
+    public ResponseEntity<StorageStats> getStorageStats(@PathVariable String name) {
+        StorageStats stats = storageService.getStorageStats(name);
+        if (stats == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Get single user
+     */
+    @GetMapping("/users/{username}")
+    public ResponseEntity<User> getUser(@PathVariable String username) {
+        User user = userService.getUser(username);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // Remove password from response
+        user.setPassword(null);
+        return ResponseEntity.ok(user);
+    }
+
+    /**
+     * Update anonymous config
+     */
+    @PutMapping("/anonymous")
+    public ResponseEntity<Map<String, Object>> updateAnonymous(@RequestBody Map<String, Object> request) {
+        Boolean enabled = (Boolean) request.get("enabled");
+        Boolean anonymousUploadEnabled = (Boolean) request.get("anonymous-upload-enabled");
+
+        SystemConfig config = configService.getConfig();
+        if (config == null) {
+            config = new SystemConfig();
+        }
+
+        if (enabled != null) {
+            config.setAnonymousUploadEnabled(enabled);
+        }
+        if (anonymousUploadEnabled != null) {
+            config.setAnonymousUploadEnabled(anonymousUploadEnabled);
+        }
+
+        configService.saveConfig(config);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+
+        return ResponseEntity.ok(response);
+    }
+}

@@ -1,51 +1,9 @@
-# 服务器配置
 server:
-  port: 8080
-  servlet:
-    session:
-      timeout: 1h  # session超时时间：1小时
+  port: 8888
 
-# 文件上传配置
 spring:
   servlet:
     multipart:
-      # 设置单个文件的最大大小为 3GB
-      max-file-size: 3GB
-      # 设置整个请求的最大大小为 3GB
-      max-request-size: 3GB
+      max-file-size: 500MB
+      max-request-size: 500MB
 
-# 文件存储目录与用户配置
-file-box:
-  # 匿名访问配置
-  # 启用后，用户可以无需登录直接访问系统
-  # 匿名用户拥有独立的存储目录，与普通用户组隔离
-  # 支持在使用过程中随时登录切换到非匿名状态
-  anonymous:
-    # 是否启用匿名访问，true为启用，false为禁用
-    enabled: true
-    # 匿名用户组的显示名称，将在界面上展示
-    name: 匿名用户组
-    # 匿名用户的文件存储目录，需确保系统有读写权限
-    directory: /opt/file-box/anonymous
-    # 匿名用户的角色，支持user（普通用户）或admin（管理员），建议设置为user以保证安全性
-    role: user
-  # 用户组配置
-  # 每个用户组可以配置一个文件存储目录与多个用户
-  # 每个用户可以配置用户名、密码与角色（user或admin）
-  # 管理员角色可删除当前组内任意用户上传的文件  
-  groups:
-    - name: 对外共享组
-      directory: /opt/file-box/shared
-      users:
-        - username: user
-          password: pass
-          role: user
-        - username: sadmin
-          password: sadmin123
-          role: admin
-    - name: 内部用户组
-      directory: /opt/file-box/data
-      users:
-        - username: admin
-          password: admin123
-          role: admin

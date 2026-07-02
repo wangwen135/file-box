@@ -1,13 +1,14 @@
 package com.wwh.filebox.config;
 
+import com.wwh.filebox.service.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.File;
+import java.net.InetAddress;
 
 @Component
 public class ConfigValidationRunner implements CommandLineRunner {
@@ -15,41 +16,50 @@ public class ConfigValidationRunner implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(ConfigValidationRunner.class);
 
     private final GroupConfig groupConfig;
+    private final Environment environment;
+    private final ConfigService configService;
 
     @Autowired
-    public ConfigValidationRunner(GroupConfig groupConfig) {
+    public ConfigValidationRunner(GroupConfig groupConfig, Environment environment, ConfigService configService) {
         this.groupConfig = groupConfig;
+        this.environment = environment;
+        this.configService = configService;
     }
 
     @Override
     public void run(String... args) throws Exception {
         logger.info("开始配置验证...");
 
+        // Check if new config file exists
+        File configFile = configService.getConfigFile();
+        if (configFile.exists()) {
+            logger.info("发现新的配置文件格式，使用新配置系统");
+            logger.info("配置文件路径: {}", configFile.getAbsolutePath());
+
+            // Load and validate config
+            if (configService.getConfig() != null) {
+                logger.info("配置加载成功");
+
+                // Print startup info
+                printStartupInfoNew();
+            } else {
+                logger.warn("配置文件存在但加载失败");
+            }
+            return;
+        }
+
+        // Fall back to old config validation for backward compatibility
         boolean hasValidGroups = false;
 
         // 验证普通用户组配置（如果有配置）
         if (groupConfig.getGroups() != null && !groupConfig.getGroups().isEmpty()) {
             hasValidGroups = true;
             for (GroupConfig.Group group : groupConfig.getGroups()) {
-                // 输出组信息（不含密码）
                 logger.info("正在验证组: {}", group.getName());
                 logger.info("  目录: {}", group.getDirectory());
                 logger.info("  用户数量: {}", group.getUsers() != null ? group.getUsers().size() : 0);
                 if (group.getUsers() != null) {
                     group.getUsers().forEach(user -> logger.info("    用户: {}", user.getUsername()));
-                }
-
-                // 验证目录
-                if (group.getDirectory() == null || group.getDirectory().trim().isEmpty()) {
-                    throw new IllegalArgumentException("组未配置目录: " + group.getName());
-                }
-
-                Path directoryPath = Paths.get(group.getDirectory());
-                if (!Files.exists(directoryPath)) {
-                    logger.info("正在创建目录: {}", directoryPath);
-                    Files.createDirectories(directoryPath);
-                } else if (!Files.isDirectory(directoryPath)) {
-                    throw new IllegalArgumentException("路径不是目录: " + directoryPath);
                 }
             }
         }
@@ -62,39 +72,66 @@ public class ConfigValidationRunner implements CommandLineRunner {
             logger.info("  名称: {}", anonymous.getName());
             logger.info("  目录: {}", anonymous.getDirectory());
             logger.info("  角色: {}", anonymous.getRole());
-
-            // 验证匿名用户组的必要配置
-            if (anonymous.getName() == null || anonymous.getName().trim().isEmpty()) {
-                throw new IllegalArgumentException("匿名用户组未配置名称");
-            }
-
-            if (anonymous.getDirectory() == null || anonymous.getDirectory().trim().isEmpty()) {
-                throw new IllegalArgumentException("匿名用户组未配置目录");
-            }
-
-            if (anonymous.getRole() == null || anonymous.getRole().trim().isEmpty()) {
-                throw new IllegalArgumentException("匿名用户组未配置角色");
-            }
-
-            // 验证并创建匿名用户目录
-            Path anonymousDirectoryPath = Paths.get(anonymous.getDirectory());
-            if (!Files.exists(anonymousDirectoryPath)) {
-                logger.info("正在创建匿名用户目录: {}", anonymousDirectoryPath);
-                Files.createDirectories(anonymousDirectoryPath);
-            } else if (!Files.isDirectory(anonymousDirectoryPath)) {
-                throw new IllegalArgumentException("匿名用户组路径不是目录: " + anonymousDirectoryPath);
-            }
         } else if (anonymous != null) {
             logger.info("匿名用户组已配置但未启用");
         } else {
             logger.info("未配置匿名用户组");
         }
 
-        // 检查是否至少有一个有效配置
+        // If no valid groups found, this is first time setup - allow startup
         if (!hasValidGroups) {
-            throw new IllegalArgumentException("application.yml中未配置任何有效组（普通用户组或匿名用户组）");
+            logger.info("首次启动 - 未检测到配置文件");
+            logger.info("请使用默认管理员账号登录 (admin/admin123) 以自动生成配置");
+        } else {
+            logger.info("配置验证成功完成");
         }
 
-        logger.info("配置验证成功完成");
+        printStartupInfo();
+    }
+
+    /**
+     * 打印应用启动信息（统一的启动信息打印方法）
+     */
+    private void printStartupInfo() {
+        String port = environment.getProperty("server.port", "8080");
+        String contextPath = environment.getProperty("server.servlet.context-path", "");
+        String address = "localhost";
+
+        try {
+            address = InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            logger.debug("无法获取本地主机地址，使用 localhost");
+        }
+
+        logger.info("========================================");
+        logger.info("  File Box 应用启动成功！");
+        logger.info("========================================");
+        logger.info("访问地址:");
+        logger.info("  本地访问: http://localhost:{}{}", port, contextPath);
+        logger.info("  局域网访问: http://{}:{}{}", address, port, contextPath);
+        logger.info("========================================");
+
+        // 打印额外的配置信息（仅针对旧配置系统）
+        if (groupConfig != null) {
+            if (groupConfig.getAnonymous() != null && groupConfig.getAnonymous().isEnabled()) {
+                logger.info("  匿名访问: 已启用");
+            } else {
+                logger.info("  匿名访问: 已禁用");
+            }
+
+            if (groupConfig.getGroups() != null && !groupConfig.getGroups().isEmpty()) {
+                logger.info("  用户组数量: {}", groupConfig.getGroups().size());
+            }
+        }
+
+        logger.info("========================================");
+    }
+
+    /**
+     * 打印应用启动信息（新配置系统专用）
+     * 内部调用统一的printStartupInfo方法
+     */
+    private void printStartupInfoNew() {
+        printStartupInfo();
     }
 }

@@ -1,0 +1,382 @@
+package com.wwh.filebox.service;
+
+import com.wwh.filebox.constants.AppConstants;
+import com.wwh.filebox.model.StorageSpace;
+import com.wwh.filebox.model.StorageStats;
+import com.wwh.filebox.model.SystemConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.File;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Storage service
+ * 存储服务
+ *
+ * <p>提供存储空间的管理功能，包括：</p>
+ * <ul>
+ *   <li>存储空间的增删改查</li>
+ *   <li>存储空间统计信息（使用量、文件数等）</li>
+ *   <li>统计信息缓存（5分钟TTL）</li>
+ *   <li>存储空间名称和URL前缀验证</li>
+ * </ul>
+ *
+ * <p>缓存策略：</p>
+ * <ul>
+ *   <li>统计信息缓存5分钟，减少磁盘IO</li>
+ *   <li>使用ConcurrentHashMap保证线程安全</li>
+ * </ul>
+ */
+@Service
+public class StorageService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
+
+    @Autowired
+    private ConfigService configService;
+
+    private final Map<String, StorageStats> statsCache = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastStatsUpdate = new ConcurrentHashMap<>();
+
+    /**
+     * Get all storage spaces
+     */
+    public List<StorageSpace> getAllStorageSpaces() {
+        SystemConfig config = configService.getConfig();
+        if (config == null || config.getStorageSpaces() == null) {
+            return new ArrayList<>();
+        }
+
+        return config.getStorageSpaces().stream()
+                .map(spaceConfig -> {
+                    StorageSpace space = new StorageSpace();
+                    space.setName(spaceConfig.getName());
+                    space.setPath(spaceConfig.getPath());
+                    space.setMaxSize(spaceConfig.getMaxSize());
+                    space.setUrlPrefix(spaceConfig.getUrlPrefix());
+                    space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
+                    return space;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Get storage space by name
+     */
+    public StorageSpace getStorageSpace(String name) {
+        SystemConfig config = configService.getConfig();
+        if (config == null || config.getStorageSpaces() == null) {
+            return null;
+        }
+
+        for (SystemConfig.StorageSpaceConfig spaceConfig : config.getStorageSpaces()) {
+            if (spaceConfig.getName().equals(name)) {
+                StorageSpace space = new StorageSpace();
+                space.setName(spaceConfig.getName());
+                space.setPath(spaceConfig.getPath());
+                space.setMaxSize(spaceConfig.getMaxSize());
+                space.setUrlPrefix(spaceConfig.getUrlPrefix());
+                space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
+                return space;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate storage space name
+     */
+    private boolean isValidStorageSpaceName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+        // Only allow letters, numbers, underscore, hyphen, and Chinese characters
+        return name.matches(AppConstants.Storage.STORAGE_NAME_PATTERN);
+    }
+
+    /**
+     * Validate URL prefix format
+     */
+    private boolean isValidUrlPrefix(String urlPrefix) {
+        if (urlPrefix == null || urlPrefix.trim().isEmpty()) {
+            return false;
+        }
+        // Must start with http:// or https://
+        if (!urlPrefix.matches("^https?://.*")) {
+            return false;
+        }
+        try {
+            new java.net.URL(urlPrefix);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Create storage space
+     */
+    public boolean createStorageSpace(String name, String path, String maxSize, String urlPrefix, boolean allowAnonymous) {
+        SystemConfig config = configService.getConfig();
+        if (config == null) {
+            return false;
+        }
+
+        // Validate name
+        if (!isValidStorageSpaceName(name)) {
+            logger.warn("Invalid storage space name: {}", name);
+            return false;
+        }
+
+        // Check if storage space already exists
+        if (getStorageSpace(name) != null) {
+            logger.warn("Storage space {} already exists", name);
+            return false;
+        }
+
+        // Validate URL prefix
+        if (!isValidUrlPrefix(urlPrefix)) {
+            logger.warn("Invalid URL prefix: {}", urlPrefix);
+            return false;
+        }
+
+        // Validate path and create directory if not exists
+        if (path == null || path.trim().isEmpty()) {
+            logger.warn("Path is empty");
+            return false;
+        }
+
+        File storageDir = new File(path);
+        if (!storageDir.exists()) {
+            try {
+                storageDir.mkdirs();
+                logger.info("Created storage directory: {}", path);
+            } catch (Exception e) {
+                logger.error("Failed to create storage directory: {}", path, e);
+                return false;
+            }
+        }
+
+        SystemConfig.StorageSpaceConfig spaceConfig = new SystemConfig.StorageSpaceConfig();
+        spaceConfig.setName(name);
+        spaceConfig.setPath(path);
+        spaceConfig.setMaxSize(maxSize);
+        spaceConfig.setUrlPrefix(urlPrefix);
+        spaceConfig.setAllowAnonymous(allowAnonymous);
+
+        if (config.getStorageSpaces() == null) {
+            config.setStorageSpaces(new ArrayList<>());
+        }
+        config.getStorageSpaces().add(spaceConfig);
+
+        // Automatically assign new storage space to all admin users
+        if (config.getUsers() != null) {
+            for (SystemConfig.UserConfig user : config.getUsers()) {
+                if ("ADMIN".equals(user.getRole()) && !user.getStorageSpaces().contains(name)) {
+                    user.getStorageSpaces().add(name);
+                    logger.info("Automatically assigned storage space {} to admin user {}", name, user.getUsername());
+                }
+            }
+        }
+
+        configService.saveConfig(config);
+
+        logger.info("Storage space {} created", name);
+        return true;
+    }
+
+    /**
+     * Update storage space
+     */
+    public boolean updateStorageSpace(String name, String path, String maxSize, String urlPrefix, boolean allowAnonymous) {
+        SystemConfig config = configService.getConfig();
+        if (config == null || config.getStorageSpaces() == null) {
+            return false;
+        }
+
+        // Validate URL prefix
+        if (!isValidUrlPrefix(urlPrefix)) {
+            logger.warn("Invalid URL prefix: {}", urlPrefix);
+            return false;
+        }
+
+        // Validate path and create directory if not exists
+        if (path == null || path.trim().isEmpty()) {
+            logger.warn("Path is empty");
+            return false;
+        }
+
+        File storageDir = new File(path);
+        if (!storageDir.exists()) {
+            try {
+                storageDir.mkdirs();
+                logger.info("Created storage directory: {}", path);
+            } catch (Exception e) {
+                logger.error("Failed to create storage directory: {}", path, e);
+                return false;
+            }
+        }
+
+        for (SystemConfig.StorageSpaceConfig spaceConfig : config.getStorageSpaces()) {
+            if (spaceConfig.getName().equals(name)) {
+                spaceConfig.setPath(path);
+                spaceConfig.setMaxSize(maxSize);
+                spaceConfig.setUrlPrefix(urlPrefix);
+                spaceConfig.setAllowAnonymous(allowAnonymous);
+
+                configService.saveConfig(config);
+                logger.info("Storage space {} updated", name);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Delete storage space
+     */
+    public boolean deleteStorageSpace(String name) {
+        SystemConfig config = configService.getConfig();
+        if (config == null || config.getStorageSpaces() == null) {
+            return false;
+        }
+
+        boolean removed = config.getStorageSpaces().removeIf(space -> space.getName().equals(name));
+        if (removed) {
+            configService.saveConfig(config);
+            logger.info("Storage space {} deleted", name);
+
+            // Clear cache
+            statsCache.remove(name);
+            lastStatsUpdate.remove(name);
+        }
+
+        return removed;
+    }
+
+    /**
+     * Get storage statistics
+     */
+    public StorageStats getStorageStats(String name) {
+        // Check cache (5 minute TTL)
+        Long lastUpdate = lastStatsUpdate.get(name);
+        if (lastUpdate != null && System.currentTimeMillis() - lastUpdate < AppConstants.Storage.STATS_CACHE_TTL_MS) {
+            return statsCache.get(name);
+        }
+
+        StorageSpace space = getStorageSpace(name);
+        if (space == null) {
+            return null;
+        }
+
+        File storageDir = space.getStorageDirectory();
+        if (!storageDir.exists()) {
+            return null;
+        }
+
+        StorageStats stats = new StorageStats();
+        stats.setStorageSpaceName(name);
+        stats.setTotalSize(space.getMaxSizeInBytes());
+
+        // Calculate usage
+        long usedSize = calculateDirectorySize(storageDir);
+        stats.setUsedSize(usedSize);
+        stats.setFreeSize(space.getMaxSizeInBytes() - usedSize);
+
+        // Count files and directories
+        int[] counts = countFilesAndDirectories(storageDir);
+        stats.setFileCount(counts[0]);
+        stats.setDirectoryCount(counts[1]);
+
+        stats.setUsagePercentage((double) usedSize / space.getMaxSizeInBytes() * 100);
+
+        // Update cache
+        statsCache.put(name, stats);
+        lastStatsUpdate.put(name, System.currentTimeMillis());
+
+        return stats;
+    }
+
+    /**
+     * Calculate directory size recursively
+     */
+    private long calculateDirectorySize(File dir) {
+        long size = 0;
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    size += file.length();
+                } else if (file.isDirectory()) {
+                    size += calculateDirectorySize(file);
+                }
+            }
+        }
+        return size;
+    }
+
+    /**
+     * Count files and directories
+     */
+    private int[] countFilesAndDirectories(File dir) {
+        int fileCount = 0;
+        int dirCount = 0;
+
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    fileCount++;
+                } else if (file.isDirectory()) {
+                    dirCount++;
+                    int[] subCounts = countFilesAndDirectories(file);
+                    fileCount += subCounts[0];
+                    dirCount += subCounts[1];
+                }
+            }
+        }
+
+        return new int[]{fileCount, dirCount};
+    }
+
+    /**
+     * Check if storage space has enough space
+     */
+    public boolean hasEnoughSpace(String name, long fileSize) {
+        StorageStats stats = getStorageStats(name);
+        return stats != null && stats.getFreeSize() >= fileSize;
+    }
+
+    /**
+     * Clear stats cache
+     */
+    public void clearStatsCache(String name) {
+        if (name != null) {
+            statsCache.remove(name);
+            lastStatsUpdate.remove(name);
+        } else {
+            statsCache.clear();
+            lastStatsUpdate.clear();
+        }
+    }
+
+    /**
+     * Get all storage stats
+     */
+    public List<StorageStats> getAllStorageStats() {
+        List<StorageStats> allStats = new ArrayList<>();
+        for (StorageSpace space : getAllStorageSpaces()) {
+            StorageStats stats = getStorageStats(space.getName());
+            if (stats != null) {
+                allStats.add(stats);
+            }
+        }
+        return allStats;
+    }
+}

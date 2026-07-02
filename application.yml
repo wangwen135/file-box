@@ -1,0 +1,27 @@
+file-box:
+  anonymous:
+    enabled: false
+  system:
+    name: File Box
+    description: 文件共享和管理工具
+    anonymous-upload-enabled: false
+  storage-spaces:
+    - name: default
+      path: ./uploads
+      max-size: 10GB
+      url-prefix: http://localhost:8080
+      allow-anonymous: false
+    - name: test
+      path: ./test-uploads
+      max-size: 5GB
+      url-prefix: http://localhost:8080
+      allow-anonymous: false
+  users:
+    - username: admin
+      password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
+      role: ADMIN
+      storage-spaces: [default, test]
+    - username: testuser
+      password: $2a$10$PbHqf/Ox1EQxcU1Wvmc7MurpVD1bCvcrAwvabssOzL208mL2FATSC
+      role: USER
+      storage-spaces: [default]

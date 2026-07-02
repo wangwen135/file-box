@@ -35,8 +35,13 @@ public class FileUtils {
         name = name.replace("/", "_").replace("\\", "_");
         // Collapse whitespace
         name = name.trim().replaceAll("\\s+", " ");
-        // Trim surrounding dots/spaces
-        name = name.replaceAll("^[\\.\\s]+", "").replaceAll("[\\.\\s]+$", "");
+        // 安全处理：只移除纯点和空格组成的文件名，保留其他以点开头的合法文件名
+        // 但禁止纯点（.）或纯多点（..）作为文件名
+        if (name.equals(".") || name.equals("..") || name.matches("^\\.+$")) {
+            name = "file";
+        }
+        // 只移除结尾的空白字符，不移除点
+        name = name.replaceAll("\\s+$", "");
         if (name.isEmpty()) name = "file";
         // Normalize to NFC to keep Unicode sensible
         name = Normalizer.normalize(name, Normalizer.Form.NFC);

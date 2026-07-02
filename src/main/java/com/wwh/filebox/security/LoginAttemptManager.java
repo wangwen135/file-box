@@ -1,5 +1,6 @@
 package com.wwh.filebox.security;
 
+import com.wwh.filebox.constants.AppConstants;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -11,13 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 public class LoginAttemptManager {
-
-    // 最大失败尝试次数
-    private static final int MAX_ATTEMPTS = 5;
-    // 时间窗口（分钟）- 在该时间内超过最大尝试次数将被锁定
-    private static final int TIME_WINDOW_MINUTES = 10;
-    // 锁定时间（分钟）
-    private static final int LOCK_TIME_MINUTES = 15;
 
     // 存储登录尝试信息的并发哈希表
     private final Map<String, LoginAttempt> loginAttempts = new ConcurrentHashMap<>();
@@ -57,13 +51,13 @@ public class LoginAttemptManager {
         }
 
         // 检查是否超过最大尝试次数
-        if (attempt.getAttempts() < MAX_ATTEMPTS) {
+        if (attempt.getAttempts() < AppConstants.LoginSecurity.MAX_ATTEMPTS) {
             return false;
         }
 
         LocalDateTime now = LocalDateTime.now();
         // 检查锁定是否过期
-        LocalDateTime lockExpiryTime = attempt.getLastAttemptTime().plusMinutes(LOCK_TIME_MINUTES);
+        LocalDateTime lockExpiryTime = attempt.getLastAttemptTime().plusMinutes(AppConstants.LoginSecurity.LOCK_TIME_MINUTES);
         if (now.isAfter(lockExpiryTime)) {
             // 锁定已过期，清除记录
             loginAttempts.remove(username);
@@ -71,7 +65,7 @@ public class LoginAttemptManager {
         }
 
         // 检查最后一次尝试是否在时间窗口内
-        LocalDateTime windowStartTime = now.minusMinutes(TIME_WINDOW_MINUTES);
+        LocalDateTime windowStartTime = now.minusMinutes(AppConstants.LoginSecurity.TIME_WINDOW_MINUTES);
         if (attempt.getLastAttemptTime().isBefore(windowStartTime)) {
             // 超过时间窗口，重置尝试次数
             attempt.resetAttempts();
@@ -94,7 +88,7 @@ public class LoginAttemptManager {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime lockExpiryTime = attempt.getLastAttemptTime().plusMinutes(LOCK_TIME_MINUTES);
+        LocalDateTime lockExpiryTime = attempt.getLastAttemptTime().plusMinutes(AppConstants.LoginSecurity.LOCK_TIME_MINUTES);
 
         if (now.isAfter(lockExpiryTime)) {
             return 0;
