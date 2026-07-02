@@ -200,10 +200,10 @@ public class ConfigService {
         config.setStorageSpaces(storageSpaces);
         config.setUsers(users);
 
-        // Debug: log loaded users
+        // Debug: log loaded users (without sensitive data)
         logger.info("Loaded {} user(s)", users.size());
         for (SystemConfig.UserConfig user : users) {
-            logger.info("  User: {}, Role: {}, Password: {}", user.getUsername(), user.getRole(), user.getPassword());
+            logger.info("  User: {}, Role: {}", user.getUsername(), user.getRole());
         }
 
         // Set defaults

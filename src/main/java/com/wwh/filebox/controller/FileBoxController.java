@@ -142,7 +142,7 @@ public class FileBoxController {
                 savePath = uploadDir.resolve(newFilename);
                 counter++;
             }
-            Files.copy(f.getInputStream(), savePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(f.getInputStream(), savePath);
             logger.info("User {} uploaded file: {}", username, savePath.getFileName());
         }
 

@@ -247,21 +247,17 @@ public class StorageService {
             return false;
         }
 
-        for (SystemConfig.StorageSpaceConfig spaceConfig : config.getStorageSpaces()) {
-            if (spaceConfig.getName().equals(name)) {
-                config.getStorageSpaces().remove(spaceConfig);
-                configService.saveConfig(config);
-                logger.info("Storage space {} deleted", name);
+        boolean removed = config.getStorageSpaces().removeIf(space -> space.getName().equals(name));
+        if (removed) {
+            configService.saveConfig(config);
+            logger.info("Storage space {} deleted", name);
 
-                // Clear cache
-                statsCache.remove(name);
-                lastStatsUpdate.remove(name);
-
-                return true;
-            }
+            // Clear cache
+            statsCache.remove(name);
+            lastStatsUpdate.remove(name);
         }
 
-        return false;
+        return removed;
     }
 
     /**

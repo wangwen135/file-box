@@ -140,16 +140,13 @@ public class UserService {
             return false;
         }
 
-        for (SystemConfig.UserConfig userConfig : config.getUsers()) {
-            if (userConfig.getUsername().equals(username)) {
-                config.getUsers().remove(userConfig);
-                configService.saveConfig(config);
-                logger.info("User {} deleted", username);
-                return true;
-            }
+        boolean removed = config.getUsers().removeIf(user -> user.getUsername().equals(username));
+        if (removed) {
+            configService.saveConfig(config);
+            logger.info("User {} deleted", username);
         }
 
-        return false;
+        return removed;
     }
 
     /**

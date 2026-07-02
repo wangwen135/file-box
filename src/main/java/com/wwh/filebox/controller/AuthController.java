@@ -116,6 +116,16 @@ public class AuthController {
 
         logger.info("API login attempt: {}", username);
 
+        // Check if user is locked
+        if (loginAttemptService.isLocked(username)) {
+            long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
+            logger.warn("User {} is locked, remaining lock time: {} seconds", username, remainingLockTime);
+            Map<String, Object> lockedResult = new HashMap<>();
+            lockedResult.put("success", false);
+            lockedResult.put("error", "登录失败次数过多，请" + remainingLockTime + "秒后重试");
+            return ResponseEntity.status(HttpStatus.LOCKED).body(lockedResult);
+        }
+
         // Check if config exists
         if (!configService.configExists()) {
             // First login with default admin credentials
@@ -144,12 +154,24 @@ public class AuthController {
         String token = authService.login(username, password, rememberMe);
 
         if (token == null) {
+            // Login failed, record attempt
+            if (loginAttemptService.loginFailed(username)) {
+                long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
+                Map<String, Object> lockedResult = new HashMap<>();
+                lockedResult.put("success", false);
+                lockedResult.put("error", "登录失败次数过多，请" + remainingLockTime + "秒后重试");
+                return ResponseEntity.status(HttpStatus.LOCKED).body(lockedResult);
+            }
+
             logger.warn("API login failed: {}", username);
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
             result.put("error", "用户名或密码错误");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
+
+        // Login successful, reset failed attempts
+        loginAttemptService.loginSucceeded(username);
 
         // Set token cookie
         setTokenCookie(response, token);
