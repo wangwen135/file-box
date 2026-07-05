@@ -543,6 +543,50 @@
                 align-items: center;
             }
         }
+
+        /* ===== 视图切换 / 目录浏览 ===== */
+        .view-tabs { display: flex; gap: 4px; margin: 14px 0 0; }
+        .view-tab {
+            padding: 8px 18px; border: 1px solid #d0d7de; border-bottom: none;
+            background: #f6f8fa; color: #555; cursor: pointer;
+            border-radius: 8px 8px 0 0; font-size: 14px; transition: all .2s;
+        }
+        .view-tab.active { background: #4a90e2; color: #fff; border-color: #4a90e2; }
+        [data-theme="dark"] .view-tab { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        [data-theme="dark"] .view-tab.active { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+
+        #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 10px; }
+        [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
+
+        .dir-breadcrumb { padding: 8px 0; font-size: 14px; word-break: break-all; }
+        .dir-breadcrumb .crumb { cursor: pointer; color: #4a90e2; font-weight: 500; }
+        .dir-breadcrumb .crumb:hover { text-decoration: underline; }
+        .dir-breadcrumb .crumb-sep { margin: 0 6px; color: #999; }
+        [data-theme="dark"] .dir-breadcrumb .crumb { color: #0ea5e9; }
+
+        .dir-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+        .dir-hint { color: #999; font-size: 12px; }
+
+        .folder-card {
+            display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+            border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
+            transition: background .15s;
+        }
+        .folder-card:hover { background: rgba(74, 144, 226, 0.08); }
+        [data-theme="dark"] .folder-card { border-color: #334155; }
+        [data-theme="dark"] .folder-card:hover { background: rgba(14, 165, 233, 0.1); }
+        .folder-icon { font-size: 20px; }
+        .folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .folder-ops, .file-row-ops { display: flex; gap: 4px; }
+        .mini-btn {
+            padding: 3px 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 5px;
+            background: #fff; cursor: pointer; line-height: 1;
+        }
+        .mini-btn:hover { background: #f6f8fa; }
+        [data-theme="dark"] .mini-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+        [data-theme="dark"] .mini-btn:hover { background: #334155; }
+
+        .dir-empty { text-align: center; color: #999; padding: 50px 20px; font-size: 14px; }
     </style>
 </head>
 
@@ -594,7 +638,12 @@
 
     <div class="divider"></div>
 
+    <div class="view-tabs">
+        <button id="tab-recent" class="view-tab active">最近上传</button>
+        <button id="tab-dir" class="view-tab">📁 目录浏览</button>
+    </div>
 
+    <div id="recent-view">
     <div id="periodSelector">
         <div class="date-selector">
             <select id="yearSelect"></select>
@@ -605,6 +654,17 @@
 
     <h2 id="uploadsTitle">最近上传的50个文件</h2>
     <div id="recent"></div>
+    </div><!-- /recent-view -->
+
+    <div id="dir-view" style="display:none">
+        <div id="dir-breadcrumb" class="dir-breadcrumb"></div>
+        <div class="dir-toolbar">
+            <button id="newFolderBtn" class="btn" style="display:none">＋ 新建文件夹</button>
+            <span class="dir-hint">提示:目录视图下的上传会进入当前文件夹(根目录则按 年/月 归档)</span>
+        </div>
+        <h2 id="dirTitle">根目录</h2>
+        <div id="dirContent"></div>
+    </div>
 </div>
 
 <script src="js/notification.js"></script>
@@ -630,6 +690,8 @@
             if (data.role === 'admin') {
                 userInfoElement.classList.add('admin');
                 userInfoElement.title = '管理员用户 拥有删除文件权限！';
+                const nfb = document.getElementById('newFolderBtn');
+                if (nfb) nfb.style.display = ''; // 目录浏览里仅 ADMIN 显示新建/重命名/移动/删除
             }
 
             // 根据是否为匿名用户调整登录/退出链接
@@ -668,6 +730,38 @@
     let currentYear = null;
     let currentMonth = null;
     let currentXhr = null; // 用于保存当前的XMLHttpRequest对象，以便取消上传
+
+    // 统一处理 fetch 请求：若被重定向到 /login(会话过期)则跳转登录页 / Unified fetch wrapper
+    function handleFetch(url, options = {}) {
+        return fetch(url, options).then(resp => {
+            if (resp.redirected && resp.url.includes('/login')) {
+                window.location.href = resp.url;
+                return Promise.reject('已跳转到登录页面');
+            }
+            return resp;
+        }).catch(error => {
+            if (error !== '已跳转到登录页面') {
+                console.error('请求错误:', error);
+            }
+            throw error;
+        });
+    }
+
+    // 格式化文件大小 / Format byte count
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + sizes[i];
+    }
+
+    // HTML 转义，防止文件名造成注入 / Escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
     // Show hover style
     dropzone.addEventListener("dragover", e => {
@@ -777,6 +871,10 @@
         const file = files[0]; // 只处理第一个文件
         const filename = file.name || `pasted_${timestamp}.bin`;
         formData.append("file", file, filename);
+        // 目录视图:上传进入当前文件夹(根目录不带 targetFolder → 后端按 年/月 归档)
+        if (typeof currentView !== 'undefined' && currentView === 'directory' && dirPath && dirPath.length > 0) {
+            formData.append("targetFolder", dirPath.join('/'));
+        }
 
         // 显示进度模态框
         const modalOverlay = document.getElementById('upload-modal-overlay');
@@ -841,9 +939,13 @@
                 const countdownBar = document.getElementById('countdown-bar');
                 countdownBar.style.display = 'block';
 
-                // 延迟刷新文件列表，让用户看到成功状态
+                // 延迟刷新:按当前视图刷新对应列表 / Refresh whichever view is active
                 setTimeout(() => {
-                    fetchFiles();
+                    if (typeof currentView !== 'undefined' && currentView === 'directory') {
+                        fetchDir();
+                    } else {
+                        fetchFiles();
+                    }
                 }, 500);
 
                 // 3秒后隐藏模态框
@@ -923,10 +1025,15 @@
      * @param {string} text - 文本内容
      */
     function uploadText(text) {
+        const payload = {text: text};
+        // 目录视图:文本也进入当前文件夹(与文件上传一致) / Directory view: text also goes into current folder
+        if (typeof currentView !== 'undefined' && currentView === 'directory' && dirPath && dirPath.length > 0) {
+            payload.targetFolder = dirPath.join('/');
+        }
         handleFetch("/upload_text", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({text}),
+            body: JSON.stringify(payload),
         }).then(resp => {
             if (!resp.ok) Notify.error("上传失败");
             else {
@@ -1063,7 +1170,7 @@
      * @param {Object} file - 文件对象
      * @returns {HTMLElement} 文件元素
      */
-    function createFileElement(file) {
+    function createFileElement(file, options) {
         const a = document.createElement("a");
         a.href = file.url;
         a.target = "_blank";
@@ -1082,8 +1189,48 @@
             addDeleteButton(previewDiv, file, a);
         }
 
+        // 目录视图:附加 重命名/移动(仅 ADMIN, 需要 file.path) / Directory view: rename/move ops
+        if (options && options.directoryView && window.currentRole === 'admin' && file.path) {
+            addFileOps(previewDiv, file, a);
+        }
+
         a.appendChild(previewDiv);
         return a;
+    }
+
+    /**
+     * 添加文件重命名/移动按钮(目录视图,仅 ADMIN) / Add rename/move buttons (directory view, ADMIN).
+     */
+    function addFileOps(container, file, linkElement) {
+        const ops = document.createElement('span');
+        ops.className = 'folder-ops';
+
+        const ren = document.createElement('button');
+        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
+        ren.onclick = (e) => {
+            e.stopPropagation(); e.preventDefault();
+            const newName = window.prompt('重命名文件 "' + file.filename + '" 为:', file.filename);
+            if (newName === null || newName === file.filename) return;
+            handleFetch('/rename_item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: file.path, newName: newName})
+            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
+        };
+
+        const mv = document.createElement('button');
+        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
+        mv.onclick = (e) => {
+            e.stopPropagation(); e.preventDefault();
+            const destDir = window.prompt('移动到哪个文件夹?(留空=根目录;可用 / 表示多级,如 "项目A/子")', dirPath.join('/'));
+            if (destDir === null) return;
+            handleFetch('/move_item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({src: file.path, destDir: destDir})
+            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
+        };
+
+        ops.appendChild(ren); ops.appendChild(mv);
+        container.appendChild(ops);
     }
 
     /**
@@ -1192,7 +1339,7 @@
                 okType: 'danger'
             }).then(result => {
                 if (result) {
-                    const filePath = file.url.replace(/^\/uploads/, '');
+                    const filePath = file.path || file.url.replace(/^\/uploads/, '');
                     deleteFile(filePath, linkElement);
                 }
             });
@@ -1230,6 +1377,125 @@
             })
             .catch(err => console.error('删除错误:', err));
     }
+
+    // ============== 目录浏览视图 / Directory browsing view ==============
+    let currentView = 'recent';     // 'recent' | 'directory'
+    let dirPath = [];                // 当前目录层级(文件夹名数组,相对存储根)
+
+    document.getElementById('tab-recent').addEventListener('click', () => switchView('recent'));
+    document.getElementById('tab-dir').addEventListener('click', () => switchView('directory'));
+
+    function switchView(v) {
+        currentView = v;
+        document.getElementById('tab-recent').classList.toggle('active', v === 'recent');
+        document.getElementById('tab-dir').classList.toggle('active', v === 'directory');
+        document.getElementById('recent-view').style.display = v === 'recent' ? '' : 'none';
+        document.getElementById('dir-view').style.display = v === 'directory' ? '' : 'none';
+        if (v === 'directory') fetchDir();
+    }
+
+    function fetchDir() {
+        const p = dirPath.join('/');
+        renderBreadcrumb();
+        handleFetch('/list_dir?path=' + encodeURIComponent(p))
+            .then(r => r.json())
+            .then(data => renderDir(data))
+            .catch(err => console.error('list_dir failed:', err));
+    }
+
+    function renderBreadcrumb() {
+        const bc = document.getElementById('dir-breadcrumb');
+        bc.innerHTML = '';
+        const root = document.createElement('span');
+        root.className = 'crumb'; root.textContent = '🏠 根目录';
+        root.onclick = () => { dirPath = []; fetchDir(); };
+        bc.appendChild(root);
+        dirPath.forEach((part, i) => {
+            const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '/';
+            bc.appendChild(sep);
+            const c = document.createElement('span'); c.className = 'crumb'; c.textContent = part;
+            c.onclick = () => { dirPath = dirPath.slice(0, i + 1); fetchDir(); };
+            bc.appendChild(c);
+        });
+        document.getElementById('dirTitle').textContent = dirPath.length ? dirPath.join(' / ') : '根目录';
+    }
+
+    function renderDir(data) {
+        const c = document.getElementById('dirContent');
+        c.innerHTML = '';
+        const folders = data.folders || [];
+        const files = data.files || [];
+        if (folders.length === 0 && files.length === 0) {
+            c.innerHTML = '<div class="dir-empty">📁 空文件夹</div>';
+            return;
+        }
+        folders.forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'folder-card';
+            const ic = document.createElement('span'); ic.className = 'folder-icon'; ic.textContent = '📁';
+            const nm = document.createElement('span'); nm.className = 'folder-name'; nm.textContent = f.name; nm.title = f.name;
+            card.appendChild(ic); card.appendChild(nm);
+            card.onclick = () => { dirPath.push(f.name); fetchDir(); };
+            if (window.currentRole === 'admin') appendFolderOps(card, f.name);
+            c.appendChild(card);
+        });
+        files.forEach(f => {
+            const el = createFileElement(f, {directoryView: true});
+            if (el) c.appendChild(el);
+        });
+    }
+
+    function appendFolderOps(card, name) {
+        const ops = document.createElement('span');
+        ops.className = 'folder-ops';
+        const ren = document.createElement('button');
+        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
+        ren.onclick = (e) => {
+            e.stopPropagation();
+            const newName = window.prompt('重命名文件夹 "' + name + '" 为:', name);
+            if (newName === null || newName === name) return;
+            handleFetch('/rename_item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: [...dirPath, name].join('/'), newName: newName})
+            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
+        };
+        const del = document.createElement('button');
+        del.className = 'mini-btn'; del.textContent = '🗑'; del.title = '删除文件夹';
+        del.onclick = (e) => {
+            e.stopPropagation();
+            const rel = [...dirPath, name].join('/');
+            Notify.confirm({
+                title: '确认删除文件夹', content: '将递归删除 "' + rel + '" 及其所有内容,不可恢复。', okType: 'danger'
+            }).then(ok => {
+                if (!ok) return;
+                handleFetch('/delete_folder?path=' + encodeURIComponent(rel), {method: 'DELETE'})
+                    .then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '删除失败')));
+            });
+        };
+        const mv = document.createElement('button');
+        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
+        mv.onclick = (e) => {
+            e.stopPropagation();
+            const destDir = window.prompt('把文件夹 "' + name + '" 移动到哪个文件夹?(留空=根目录)', dirPath.join('/'));
+            if (destDir === null) return;
+            handleFetch('/move_item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({src: [...dirPath, name].join('/'), destDir: destDir})
+            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
+        };
+        ops.appendChild(ren); ops.appendChild(mv); ops.appendChild(del);
+        card.appendChild(ops);
+    }
+
+    document.getElementById('newFolderBtn').addEventListener('click', () => {
+        const name = window.prompt('新建文件夹(可用 / 创建多级, 如 "项目A/子"):');
+        if (!name) return;
+        const full = dirPath.length ? dirPath.join('/') + '/' + name : name;
+        handleFetch('/create_folder', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({path: full})
+        }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '创建失败')));
+    });
 
     fetchPeriods();
     fetchFiles();

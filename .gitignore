@@ -40,6 +40,10 @@ temp/
 *.swp
 *~
 
+# Runtime storage (用户上传的实际文件,不应入库 / actual uploaded files, not VCS)
+uploads/
+test-uploads/
+
 # Archives and packages
 *.jar
 *.war

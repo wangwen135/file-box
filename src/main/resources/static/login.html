@@ -102,8 +102,8 @@
 
         .logo-container {
             position: absolute;
-            top: 16px;
-            left: 24px;
+            top: -20px;
+            left: 20px;
             background: var(--bg-card, #ffffff);
             padding: 5px;
             border-radius: 10px;
@@ -184,19 +184,16 @@
             box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
         }
 
-        .error-message-container {
-            min-height: 1.5rem;
-        }
-
         .error-message {
             text-align: center;
             font-size: 0.9rem;
             display: none;
+            margin-top: 1rem;
         }
 
         .login-footer-text {
             text-align: center;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
             font-size: 0.85rem;
         }
 
@@ -252,11 +249,10 @@
 </head>
 
 <body>
-    <div class="logo-container">
-        <img src="images/logo.png" alt="文件盒子 Logo" class="logo" onerror="this.style.display='none'">
-    </div>
-
     <div class="login-container">
+        <div class="logo-container">
+            <img src="images/logo.png" alt="文件盒子 Logo" class="logo" onerror="this.style.display='none'">
+        </div>
         <h1>文件盒子</h1>
 
         <form id="loginForm">
@@ -285,8 +281,6 @@
     </div>
 
     <div class="footer-credit">Core: XD | Implementation: WWH</div>
-
-    <button class="theme-toggle" title="切换主题">🌙</button>
 
     <script src="js/theme.js"></script>
     <script>
