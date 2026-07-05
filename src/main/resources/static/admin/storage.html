@@ -6,213 +6,59 @@
     <title>File Box - 存储空间管理</title>
     <link rel="icon" href="/images/favicon.png" type="image/png">
     <link rel="stylesheet" href="/css/theme.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background: #0f172a;
-            min-height: 100vh;
-        }
-        .sidebar {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            border-right: 1px solid #334155;
-        }
-        .nav-item {
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
-        .nav-item:hover {
-            background: rgba(14, 165, 233, 0.1);
-            border-left-color: #0ea5e9;
-        }
-        .nav-item.active {
-            background: rgba(14, 165, 233, 0.15);
-            border-left-color: #0ea5e9;
-        }
-        .btn {
-            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.25rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-        .btn-danger:hover {
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-        .btn-secondary {
-            background: #334155;
-            border: 1px solid #475569;
-        }
-        .btn-secondary:hover {
-            background: #475569;
-        }
-        .btn-sm {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.875rem;
-        }
-        .input-field {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #e2e8f0;
-            padding: 0.625rem 0.875rem;
-            border-radius: 8px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-        .input-field:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
-        }
-        .input-field::placeholder {
-            color: #64748b;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal.show {
-            display: flex;
-        }
-        .modal-content {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-        }
-        .table-container {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        .table-header {
-            background: #0f172a;
-            border-bottom: 1px solid #334155;
-        }
-        .table-row {
-            border-bottom: 1px solid #334155;
-            transition: background 0.2s ease;
-        }
-        .table-row:last-child {
-            border-bottom: none;
-        }
-        .table-row:hover {
-            background: rgba(14, 165, 233, 0.05);
-        }
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-        .badge-active {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-        }
-        .progress-bar {
-            background: #334155;
-            border-radius: 9999px;
-            overflow: hidden;
-            height: 6px;
-        }
-        .progress-fill {
-            background: linear-gradient(90deg, #0ea5e9 0%, #22d3ee 100%);
-            transition: width 0.5s ease;
-        }
-        .section-title {
-            color: #e2e8f0;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-        }
-        .text-gradient {
-            background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-        .checkbox-label input {
-            margin-right: 0.5rem;
-            accent-color: #0ea5e9;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="flex">
-    <!-- Sidebar -->
-    <div class="sidebar w-64 min-h-screen text-white flex flex-col">
-        <div class="p-6 border-b border-gray-700">
-            <h1 class="text-xl font-bold text-gradient">File Box</h1>
-            <p class="text-sm text-gray-400 mt-1">管理后台</p>
+<body class="admin-layout">
+    <!-- Sidebar / 侧栏 -->
+    <aside class="sidebar admin-sidebar">
+        <div class="admin-brand">
+            <h1 class="text-gradient">File Box</h1>
+            <p>管理后台</p>
         </div>
-        <nav class="mt-6 flex-1">
-            <a href="/admin/dashboard.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">📊</span>
+        <nav class="admin-nav">
+            <a href="/admin/dashboard.html" class="nav-item">
+                <span>📊</span>
                 <span>仪表盘</span>
             </a>
-            <a href="/admin/storage.html" class="nav-item active flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">💾</span>
+            <a href="/admin/storage.html" class="nav-item active">
+                <span>💾</span>
                 <span>存储管理</span>
             </a>
-            <a href="/admin/users.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">👥</span>
+            <a href="/admin/users.html" class="nav-item">
+                <span>👥</span>
                 <span>用户管理</span>
             </a>
+            <a href="/admin/settings.html" class="nav-item">
+                <span>⚙️</span>
+                <span>系统设置</span>
+            </a>
         </nav>
-        <div class="p-6 border-t border-gray-700">
-            <div class="flex items-center text-gray-400 text-sm mb-4">
-                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+        <div class="admin-sidebar-footer">
+            <div class="admin-user-row">
+                <span class="status-dot"></span>
                 <span id="currentUser">admin</span>
             </div>
-            <a href="/logout" class="btn btn-secondary w-full text-center block">退出登录</a>
+            <a href="/logout" class="btn btn-secondary admin-logout">退出登录</a>
         </div>
-    </div>
+    </aside>
 
-    <!-- Main Content -->
-    <div class="flex-1 p-8">
+    <!-- Main Content / 主内容 -->
+    <main class="admin-main">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
+        <div class="page-header">
             <div>
-                <h2 class="text-2xl font-bold text-white mb-2">存储空间管理</h2>
-                <p class="text-gray-400">配置和管理存储空间</p>
+                <h2 class="page-title">存储空间管理</h2>
+                <p class="page-subtitle">配置和管理存储空间</p>
             </div>
             <button onclick="openAddModal()" class="btn">
-                <span class="mr-2">+</span> 新增存储空间
+                <span class="btn-icon">+</span>新增存储空间
             </button>
         </div>
 
-        <!-- Storage Table -->
+        <!-- Storage Table / 存储空间表 -->
         <div class="table-container">
-            <div class="table-header px-6 py-4">
-                <div class="grid grid-cols-5 gap-4 text-sm font-medium text-gray-400">
+            <div class="table-header">
+                <div class="table-cells table-cells-5">
                     <div>名称</div>
                     <div>路径</div>
                     <div>容量限制</div>
@@ -221,51 +67,51 @@
                 </div>
             </div>
             <div id="storageList">
-                <!-- Storage items will be inserted here -->
+                <!-- 存储条目动态插入 / Storage items inserted here -->
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Add/Edit Modal -->
+    <!-- Add/Edit Modal / 新增/编辑模态框 -->
     <div id="storageModal" class="modal">
         <div class="modal-content">
-            <h3 class="text-xl font-bold text-white mb-6" id="modalTitle">新增存储空间</h3>
+            <h3 class="modal-title" id="modalTitle">新增存储空间</h3>
             <form id="storageForm" onsubmit="saveStorage(event)">
                 <input type="hidden" id="editName">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-2">存储空间名称</label>
+                <div class="form-stack">
+                    <div class="form-group">
+                        <label class="form-label">存储空间名称</label>
                         <input type="text" id="storageName" class="input-field" placeholder="例如：default" required>
                     </div>
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-2">存储路径</label>
+                    <div class="form-group">
+                        <label class="form-label">存储路径</label>
                         <input type="text" id="storagePath" class="input-field" placeholder="例如：/opt/file-box/data" required>
                     </div>
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-2">容量限制</label>
-                        <div class="flex gap-2">
+                    <div class="form-group">
+                        <label class="form-label">容量限制</label>
+                        <div class="field-row">
                             <input type="number" id="storageSize" class="input-field" placeholder="10" required>
-                            <select id="storageUnit" class="input-field" style="width: 100px;">
+                            <select id="storageUnit" class="input-field field-fixed">
                                 <option value="GB">GB</option>
                                 <option value="MB">MB</option>
                                 <option value="TB">TB</option>
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-gray-400 text-sm mb-2">URL 前缀</label>
+                    <div class="form-group">
+                        <label class="form-label">URL 前缀</label>
                         <input type="text" id="storageUrl" class="input-field" placeholder="http://localhost:8080">
                     </div>
-                    <div>
-                        <label class="checkbox-label text-gray-400 text-sm">
+                    <div class="form-group">
+                        <label class="checkbox-label">
                             <input type="checkbox" id="allowAnonymous">
                             允许匿名访问
                         </label>
                     </div>
                 </div>
-                <div class="flex gap-3 mt-8">
-                    <button type="button" onclick="closeModal()" class="btn btn-secondary flex-1">取消</button>
-                    <button type="submit" class="btn flex-1">保存</button>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">取消</button>
+                    <button type="submit" class="btn">保存</button>
                 </div>
             </form>
         </div>
@@ -306,23 +152,23 @@
         function renderStorageList(storageList) {
             const container = document.getElementById('storageList');
             if (storageList.length === 0) {
-                container.innerHTML = '<div class="px-6 py-8 text-center text-gray-400">暂无存储空间</div>';
+                container.innerHTML = '<div class="empty-state">暂无存储空间</div>';
                 return;
             }
 
             container.innerHTML = storageList.map(space => `
-                <div class="table-row px-6 py-4">
-                    <div class="grid grid-cols-5 gap-4 items-center">
-                        <div class="text-white font-medium">${space.name}</div>
-                        <div class="text-gray-400 text-sm truncate">${space.path}</div>
-                        <div class="text-gray-400 text-sm">${space.maxSize}</div>
-                        <div class="w-full">
-                            <div class="progress-bar mb-1">
+                <div class="table-row">
+                    <div class="table-cells table-cells-5">
+                        <div class="cell-strong">${space.name}</div>
+                        <div class="cell-muted-mono">${space.path}</div>
+                        <div class="cell-muted">${space.maxSize}</div>
+                        <div class="storage-progress-wrap">
+                            <div class="progress-bar storage-progress-bar">
                                 <div class="progress-fill" style="width: 0%"></div>
                             </div>
-                            <span class="text-gray-500 text-xs">加载中...</span>
+                            <span class="progress-text">加载中...</span>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="row-actions">
                             <button onclick="editStorage('${space.name}')" class="btn btn-sm btn-secondary">编辑</button>
                             <button onclick="deleteStorage('${space.name}')" class="btn btn-sm btn-danger">删除</button>
                         </div>
@@ -338,12 +184,12 @@
                         const stats = await statsResponse.json();
                         const maxBytes = parseSize(space.maxSize);
                         const percentage = maxBytes > 0 ? ((stats.usedBytes || 0) / maxBytes * 100).toFixed(1) : 0;
-                        
+
                         // Update the progress bar and text
                         const storageDiv = container.querySelector(`div:nth-child(${storageList.indexOf(space) + 1})`);
                         if (storageDiv) {
                             const progressBar = storageDiv.querySelector('.progress-fill');
-                            const progressText = storageDiv.querySelector('.text-gray-500');
+                            const progressText = storageDiv.querySelector('.progress-text');
                             if (progressBar) progressBar.style.width = percentage + '%';
                             if (progressText) progressText.textContent = `${formatBytes(stats.usedBytes || 0)} / ${space.maxSize}`;
                         }
@@ -405,7 +251,7 @@
             try {
                 const url = isEditing ? `/api/admin/storage/${document.getElementById('editName').value}` : '/api/admin/storage';
                 const method = isEditing ? 'PUT' : 'POST';
-                
+
                 const response = await fetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
