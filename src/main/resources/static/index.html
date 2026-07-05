@@ -249,49 +249,96 @@
             /*transform: scale(1.1);*/
         }
 
+        /* ===== 顶部信息条:存储空间 / 用户 / 退出 / 主题切换 同排 ===== */
         .header-controls {
             position: absolute;
-            top: 10px;
+            top: 12px;
             right: 20px;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
+            z-index: 20;
         }
 
-        .user-group {
-            font-size: 14px;
-            color: var(--secondary-color);
-            border: 1px solid var(--secondary-color);
-            border-radius: 10px;
-            padding-inline: 10px;
+        /* 顶部信息条:四个元素统一为 32px 高 / Header row: all four items share 32px height.
+           体系:填充 pill = 信息(存储/用户)、描边 pill = 动作(退出)、同高圆钮 = 图标控件(主题)。 */
+        .header-controls .user-group,
+        .header-controls .user-info,
+        .logout-link-container a,
+        .header-controls .theme-toggle {
+            height: 32px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            border-radius: 999px;
+            padding: 0 12px;
+            border: 1px solid transparent;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
 
-        .user-info {
-            font-size: 14px;
+        /* 信息项:浅蓝半透明填充 / info chips: subtle fill */
+        .header-controls .user-group,
+        .header-controls .user-info {
+            background: rgba(74, 144, 226, 0.10);
             color: var(--dark-text);
         }
-
-        .user-info.admin {
-            /*color: #ff4444;*/
-            font-weight: bold;
-        }
-        .user-info.admin::before {
+        .header-controls .user-group { color: var(--secondary-color); }
+        .header-controls .user-info.admin { font-weight: 600; }
+        .header-controls .user-info.admin::before {
             content: "★";
             color: #ffcc00;
-            margin-right: 3px;
-            font-size: 16px;
-        }
-
-        .logout-link-container a {
-            display: inline;
-            margin: 0;
-            color: #0077cc;
-            text-decoration: none;
+            margin-right: 4px;
             font-size: 14px;
         }
 
+        /* 退出:描边 pill,悬停转红色 / outlined pill action, red on hover */
+        .logout-link-container a {
+            color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            text-decoration: none;
+        }
         .logout-link-container a:hover {
-            text-decoration: underline;
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+        }
+
+        /* 主题切换:32px 同高圆钮 / theme toggle: same-height round icon button */
+        .header-controls .theme-toggle,
+        .theme-toggle.in-header {
+            position: static;
+            width: 32px;
+            min-width: 32px;
+            padding: 0;
+            border-radius: 50%;
+            background: rgba(74, 144, 226, 0.10);
+            border: 1px solid var(--secondary-color);
+            box-shadow: none;
+            color: var(--dark-text);
+            cursor: pointer;
+        }
+        .header-controls .theme-toggle:hover,
+        .theme-toggle.in-header:hover {
+            background: rgba(74, 144, 226, 0.22);
+            transform: none;
+            box-shadow: none;
+        }
+        .header-controls .theme-toggle svg,
+        .theme-toggle.in-header svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* 深色模式 / dark mode */
+        [data-theme="dark"] .header-controls .user-group,
+        [data-theme="dark"] .header-controls .user-info,
+        [data-theme="dark"] .header-controls .theme-toggle {
+            background: rgba(14, 165, 233, 0.16);
+            border-color: var(--secondary-color);
         }
 
         .btn {
@@ -544,16 +591,37 @@
             }
         }
 
-        /* ===== 视图切换 / 目录浏览 ===== */
-        .view-tabs { display: flex; gap: 4px; margin: 14px 0 0; }
-        .view-tab {
-            padding: 8px 18px; border: 1px solid #d0d7de; border-bottom: none;
-            background: #f6f8fa; color: #555; cursor: pointer;
-            border-radius: 8px 8px 0 0; font-size: 14px; transition: all .2s;
+        /* ===== 视图切换:分段控件 / Segmented control ===== */
+        .view-tabs {
+            display: inline-flex;
+            padding: 3px;
+            gap: 2px;
+            margin: 14px 0 4px;
+            background: #e9ecef;
+            border-radius: 9px;
         }
-        .view-tab.active { background: #4a90e2; color: #fff; border-color: #4a90e2; }
-        [data-theme="dark"] .view-tab { background: #1e293b; border-color: #334155; color: #cbd5e1; }
-        [data-theme="dark"] .view-tab.active { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+        .view-tab {
+            border: none;
+            background: transparent;
+            color: var(--light-text);
+            padding: 7px 18px;
+            border-radius: 7px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .view-tab:hover:not(.active) { color: var(--dark-text); }
+        .view-tab.active {
+            background: #ffffff;
+            color: var(--primary-color);
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+        [data-theme="dark"] .view-tabs { background: rgba(255, 255, 255, 0.08); }
+        [data-theme="dark"] .view-tab.active {
+            background: #1e293b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
 
         #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 10px; }
         [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
@@ -586,7 +654,56 @@
         [data-theme="dark"] .mini-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
         [data-theme="dark"] .mini-btn:hover { background: #334155; }
 
+        /* 目录视图的文件网格:与 #recent 一致(居中、换行) / file grid mirroring the recent view */
+        .dir-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+        .dir-files a { display: block; margin-bottom: 15px; }
+        .dir-files a:hover { text-decoration: none; }
+
         .dir-empty { text-align: center; color: #999; padding: 50px 20px; font-size: 14px; }
+
+        /* ===== 深色模式:整体覆盖(修正硬编码浅色)/ Dark-mode global overrides ===== */
+        [data-theme="dark"] body {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        }
+        [data-theme="dark"] a { color: #38bdf8; }
+        [data-theme="dark"] #dropzone {
+            border-color: #475569;
+            color: #94a3b8;
+        }
+        [data-theme="dark"] #dropzone.dragover {
+            background-color: rgba(14, 165, 233, 0.15);
+            border-color: #0ea5e9;
+            color: #38bdf8;
+        }
+        [data-theme="dark"] .preview {
+            background-color: #1e293b;
+            border-color: #334155;
+        }
+        [data-theme="dark"] .preview .file-ext { color: rgba(203, 213, 225, 0.4); }
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select,
+        [data-theme="dark"] input[type="text"] {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+        [data-theme="dark"] #upload-modal-overlay { background: rgba(0, 0, 0, 0.75); }
+        [data-theme="dark"] #upload-progress-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] #upload-status { color: #e2e8f0; }
+        [data-theme="dark"] .divider { background: #334155; }
+        [data-theme="dark"] .empty-state,
+        [data-theme="dark"] .dir-empty { color: #64748b; }
     </style>
 </head>
 
@@ -595,6 +712,7 @@
         <div class="user-group" id="user-group"></div>
         <div class="user-info" id="user-info"></div>
         <div class="logout-link-container" id="login-logout-container"><a href="/logout">退出</a></div>
+        <span id="theme-toggle-slot"></span>
     </div>
 <div class="container">
     <div class="header-title">
@@ -1170,7 +1288,7 @@
      * @param {Object} file - 文件对象
      * @returns {HTMLElement} 文件元素
      */
-    function createFileElement(file, options) {
+    function createFileElement(file) {
         const a = document.createElement("a");
         a.href = file.url;
         a.target = "_blank";
@@ -1189,49 +1307,10 @@
             addDeleteButton(previewDiv, file, a);
         }
 
-        // 目录视图:附加 重命名/移动(仅 ADMIN, 需要 file.path) / Directory view: rename/move ops
-        if (options && options.directoryView && window.currentRole === 'admin' && file.path) {
-            addFileOps(previewDiv, file, a);
-        }
-
         a.appendChild(previewDiv);
         return a;
     }
 
-    /**
-     * 添加文件重命名/移动按钮(目录视图,仅 ADMIN) / Add rename/move buttons (directory view, ADMIN).
-     */
-    function addFileOps(container, file, linkElement) {
-        const ops = document.createElement('span');
-        ops.className = 'folder-ops';
-
-        const ren = document.createElement('button');
-        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
-        ren.onclick = (e) => {
-            e.stopPropagation(); e.preventDefault();
-            const newName = window.prompt('重命名文件 "' + file.filename + '" 为:', file.filename);
-            if (newName === null || newName === file.filename) return;
-            handleFetch('/rename_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: file.path, newName: newName})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
-        };
-
-        const mv = document.createElement('button');
-        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
-        mv.onclick = (e) => {
-            e.stopPropagation(); e.preventDefault();
-            const destDir = window.prompt('移动到哪个文件夹?(留空=根目录;可用 / 表示多级,如 "项目A/子")', dirPath.join('/'));
-            if (destDir === null) return;
-            handleFetch('/move_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({src: file.path, destDir: destDir})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
-        };
-
-        ops.appendChild(ren); ops.appendChild(mv);
-        container.appendChild(ops);
-    }
 
     /**
      * 添加预览内容
@@ -1439,26 +1518,21 @@
             if (window.currentRole === 'admin') appendFolderOps(card, f.name);
             c.appendChild(card);
         });
-        files.forEach(f => {
-            const el = createFileElement(f, {directoryView: true});
-            if (el) c.appendChild(el);
-        });
+        // 文件:网格排列,与"最近上传"一致 / files in a grid matching the recent view
+        if (files.length > 0) {
+            const fileGrid = document.createElement('div');
+            fileGrid.className = 'dir-files';
+            files.forEach(f => {
+                const el = createFileElement(f);
+                if (el) fileGrid.appendChild(el);
+            });
+            c.appendChild(fileGrid);
+        }
     }
 
     function appendFolderOps(card, name) {
         const ops = document.createElement('span');
         ops.className = 'folder-ops';
-        const ren = document.createElement('button');
-        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
-        ren.onclick = (e) => {
-            e.stopPropagation();
-            const newName = window.prompt('重命名文件夹 "' + name + '" 为:', name);
-            if (newName === null || newName === name) return;
-            handleFetch('/rename_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: [...dirPath, name].join('/'), newName: newName})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
-        };
         const del = document.createElement('button');
         del.className = 'mini-btn'; del.textContent = '🗑'; del.title = '删除文件夹';
         del.onclick = (e) => {
@@ -1472,18 +1546,7 @@
                     .then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '删除失败')));
             });
         };
-        const mv = document.createElement('button');
-        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
-        mv.onclick = (e) => {
-            e.stopPropagation();
-            const destDir = window.prompt('把文件夹 "' + name + '" 移动到哪个文件夹?(留空=根目录)', dirPath.join('/'));
-            if (destDir === null) return;
-            handleFetch('/move_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({src: [...dirPath, name].join('/'), destDir: destDir})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
-        };
-        ops.appendChild(ren); ops.appendChild(mv); ops.appendChild(del);
+        ops.appendChild(del);
         card.appendChild(ops);
     }
 

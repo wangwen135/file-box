@@ -43,13 +43,21 @@
     // 创建主题切换按钮 (若页面已硬编码按钮则复用之,并始终绑定监听器,避免硬编码按钮无响应)
     function createThemeToggle() {
         let toggle = document.querySelector('.theme-toggle');
+        const slot = document.getElementById('theme-toggle-slot');
         if (!toggle) {
             toggle = document.createElement('button');
             toggle.className = 'theme-toggle';
-            document.body.appendChild(toggle);
+            toggle.setAttribute('aria-label', '切换主题');
+            // 优先放进页头槽位(与存储/用户/退出同排);无槽位则回退到右上角悬浮(如登录页)
+            // Prefer an in-header slot; fall back to a floating button (e.g. login page).
+            if (slot) {
+                slot.appendChild(toggle);
+                toggle.classList.add('in-header');
+            } else {
+                document.body.appendChild(toggle);
+            }
         }
         toggle.setAttribute('title', '切换主题');
-        toggle.setAttribute('aria-label', '切换主题');
         toggle.addEventListener('click', toggleTheme);
         updateThemeIcon(localStorage.getItem('filebox-theme') || 'light');
     }
