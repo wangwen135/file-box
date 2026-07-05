@@ -52,7 +52,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/admin/dashboard.html",
             "/admin/storage.html",
             "/admin/users.html",
-            "/admin/system.html",
+            "/admin/settings.html",
             "/api/admin/"
     };
 

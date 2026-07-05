@@ -295,6 +295,16 @@
             font-size: 14px;
         }
 
+        /* 管理后台入口:文字链接风格 / admin-panel entry link */
+        .header-controls .admin-entry-link {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-size: 0.95rem;
+            padding: 0 0.5rem;
+            cursor: pointer;
+        }
+        .header-controls .admin-entry-link:hover { text-decoration: underline; }
+
         /* 退出:描边 pill,悬停转红色 / outlined pill action, red on hover */
         .logout-link-container a {
             color: var(--secondary-color);
@@ -711,6 +721,8 @@
 <div class="header-controls">
         <div class="user-group" id="user-group"></div>
         <div class="user-info" id="user-info"></div>
+        <!-- 仅管理员可见的后台入口 / Admin-panel entry, shown only for ADMIN -->
+        <a id="admin-entry" href="/admin/dashboard.html" class="admin-entry-link" style="display:none;">⚙️ 管理后台</a>
         <div class="logout-link-container" id="login-logout-container"><a href="/logout">退出</a></div>
         <span id="theme-toggle-slot"></span>
     </div>
@@ -810,6 +822,8 @@
                 userInfoElement.title = '管理员用户 拥有删除文件权限！';
                 const nfb = document.getElementById('newFolderBtn');
                 if (nfb) nfb.style.display = ''; // 目录浏览里仅 ADMIN 显示新建/重命名/移动/删除
+                const ae = document.getElementById('admin-entry');
+                if (ae) ae.style.display = ''; // ADMIN 显示后台入口
             }
 
             // 根据是否为匿名用户调整登录/退出链接
