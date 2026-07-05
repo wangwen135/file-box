@@ -216,6 +216,38 @@ public class AuthController {
     }
 
     /**
+     * 旧前端兼容接口:当前用户信息 / Legacy current-user endpoint for the old frontend.
+     *
+     * index.html 仍调用 /api/user(2026-03 重构前的旧路径)。重构把端点改成了
+     * /api/auth/user 但前端未同步,导致登录后 index.html 的 fetch('/api/user') 命中 404
+     * → /error → 重定向回 /index.html → 返回 HTML → response.json() 抛异常 → .catch
+     * 又跳回 /login.html,表现为“登录成功后立即弹回登录页”。此处保留旧端点、返回旧字段
+     * 结构 {groupName, username, role, isAnonymous} 以恢复前端契约。
+     */
+    @GetMapping("/api/user")
+    @ResponseBody
+    public ResponseEntity<?> getLegacyUserInfo(@CookieValue(value = "token", required = false) String token) {
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\":\"Not logged in\"}");
+        }
+
+        LoginSession session = authService.getSession(token);
+        if (session == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\":\"Invalid or expired token\"}");
+        }
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("username", session.getUsername());
+        // 前端 index.html 以小写比较 role === 'admin',这里返回小写以保持兼容
+        userInfo.put("role", session.getRole().name().toLowerCase());
+        // groupName 旧指“用户组”(已随 GroupConfig 移除),这里用当前存储空间名代替,保留头部上下文显示
+        userInfo.put("groupName", session.getCurrentStorageSpace());
+        // 经 token 鉴权的均为已登录用户,非匿名
+        userInfo.put("isAnonymous", false);
+        return ResponseEntity.ok(userInfo);
+    }
+
+    /**
      * Switch storage space
      */
     @PostMapping("/api/auth/switch-storage")

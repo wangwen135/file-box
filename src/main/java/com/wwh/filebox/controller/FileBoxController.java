@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
 /**
@@ -94,7 +95,9 @@ public class FileBoxController {
 
     @PostMapping("/upload_file")
     @ResponseBody
-    public ResponseEntity<String> uploadFile(HttpServletRequest request, @RequestParam("file") MultipartFile[] files) throws IOException {
+    public ResponseEntity<String> uploadFile(HttpServletRequest request,
+                                             @RequestParam("file") MultipartFile[] files,
+                                             @RequestParam(value = "targetFolder", required = false) String targetFolder) throws IOException {
         LoginSession session = getSession(request);
         String username = session != null ? session.getUsername() : "unknown";
         logger.info("User {} attempting to upload {} files", username, files.length);
@@ -120,7 +123,20 @@ public class FileBoxController {
 
         String storageSpaceName = storageSpace.getName();
         String storageDir = storageSpace.getPath();
-        Path uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        // 目标目录:目录视图带 targetFolder → 进入该文件夹;否则按 年/月 自动归档(保留原行为)
+        // Target dir: directory-view sends targetFolder; otherwise default to YYYY/MM.
+        Path uploadDir;
+        if (targetFolder != null && !targetFolder.trim().isEmpty()) {
+            uploadDir = resolveWithinStorage(request, targetFolder);
+            if (uploadDir == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
+            }
+            if (!Files.isDirectory(uploadDir)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
+            }
+        } else {
+            uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        }
         Files.createDirectories(uploadDir);
         String timestamp = DateTimeFormatter.getCurrentTimestamp();
 
@@ -133,7 +149,17 @@ public class FileBoxController {
                 return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
             }
 
-            String filename = FileUtils.safeUnicodeFilename(f.getOriginalFilename() != null ? f.getOriginalFilename() : AppConstants.FileUpload.PASTED_FILE_PREFIX + timestamp + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION);
+            // 文件名:合规→原样保留,不合规→最小清理;返回 null 表示无法采用
+            // Filename: keep original when compliant, otherwise minimal cleanup; null = unusable.
+            String original = f.getOriginalFilename();
+            String filename = FileUtils.prepareUploadFilename(
+                    (original != null && !original.isEmpty())
+                            ? original
+                            : AppConstants.FileUpload.PASTED_FILE_PREFIX + timestamp + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION);
+            if (filename == null) {
+                logger.warn("Upload rejected for user {}: non-compliant filename '{}'", username, original);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("文件名不合规，请重命名后上传");
+            }
             Path savePath = uploadDir.resolve(filename);
             int counter = 1;
             int dotIndex = filename.lastIndexOf('.');
@@ -186,7 +212,20 @@ public class FileBoxController {
         }
 
         String storageDir = storageSpace.getPath();
-        Path uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        // 目录视图带 targetFolder → 进入该文件夹;否则按 年/月 自动归档(与 upload_file 一致)
+        String targetFolder = body.get("targetFolder") != null ? body.get("targetFolder").toString() : null;
+        Path uploadDir;
+        if (targetFolder != null && !targetFolder.trim().isEmpty()) {
+            uploadDir = resolveWithinStorage(request, targetFolder);
+            if (uploadDir == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
+            }
+            if (!Files.isDirectory(uploadDir)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
+            }
+        } else {
+            uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        }
         Files.createDirectories(uploadDir);
         String filename = AppConstants.FileUpload.PASTE_FILE_PREFIX + DateTimeFormatter.getCurrentTimestamp() + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION;
         Path savePath = uploadDir.resolve(filename);
@@ -379,46 +418,73 @@ public class FileBoxController {
                           @PathVariable String year,
                           @PathVariable String month,
                           @PathVariable String filename) throws IOException {
-
         // 验证filename不为空
         if (filename == null || filename.trim().isEmpty()) {
             logger.warn("Invalid file path request: filename is null or empty");
             writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
             return;
         }
+        // 解析路径(含穿越校验)后委托统一流式方法 / Resolve (with traversal check) then delegate
+        Path target = resolveServedPath(request, response, Paths.get(year, month, filename));
+        if (target == null) return;
+        serveResolvedFile(target, request, response);
+    }
 
-        // 使用统一的存储空间验证方法（文件服务不需要检查用户权限）
+    /**
+     * 按相对路径下载文件(目录视图用) / Serve a file by storage-relative path (used by directory view).
+     * 与 /uploads/{year}/{month}/{filename} 共用 {@link #serveResolvedFile},仅路径来源不同。
+     */
+    @GetMapping("/api/file")
+    public void serveByPath(HttpServletRequest request,
+                            HttpServletResponse response,
+                            @RequestParam("path") String relPath) throws IOException {
+        if (relPath == null || relPath.trim().isEmpty()) {
+            writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
+            return;
+        }
+        Path target = resolveServedPath(request, response, Paths.get(relPath));
+        if (target == null) return;
+        serveResolvedFile(target, request, response);
+    }
+
+    /**
+     * 解析"当前存储空间"内的相对路径,做路径穿越校验。失败时写入错误响应并返回 null。
+     * Resolve a storage-relative path with traversal check; writes error response and returns null on failure.
+     */
+    private Path resolveServedPath(HttpServletRequest request, HttpServletResponse response, Path rel) throws IOException {
         String storageSpaceName = getCurrentStorageSpace(request);
         if (storageSpaceName == null) {
             writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "未选择存储空间");
-            return;
+            return null;
         }
-
         StorageSpace storageSpace = storageService.getStorageSpace(storageSpaceName);
         if (storageSpace == null) {
             writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "存储空间未找到");
-            return;
+            return null;
         }
-
-        String storageDir = storageSpace.getPath();
-
-        Path basePath = Paths.get(storageDir).toAbsolutePath().normalize();
+        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
         Path target;
         try {
-            Path rel = Paths.get(year, month, filename);
             target = basePath.resolve(rel).toAbsolutePath().normalize();
         } catch (InvalidPathException e) {
-            logger.warn("Invalid file path request: {}/{}/{} - {}", year, month, filename, e.getMessage());
+            logger.warn("Invalid file path request: {} - {}", rel, e.getMessage());
             writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
-            return;
+            return null;
         }
-
-        // 安全检查：确保目标路径在存储目录内
         if (!target.startsWith(basePath)) {
             logger.warn("Path traversal attempt: {}", target);
             writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
-            return;
+            return null;
         }
+        return target;
+    }
+
+    /**
+     * 流式输出已解析(且通过穿越校验)的文件,保留 Range / 大文件 / 错误处理语义。
+     * Stream a resolved file; preserves Range / large-file / error-handling semantics.
+     */
+    private void serveResolvedFile(Path target, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String filename = target.getFileName().toString();
 
         if (!Files.exists(target) || !Files.isRegularFile(target)) {
             writeError(response, HttpStatus.NOT_FOUND.value(), "文件不存在");
@@ -584,6 +650,44 @@ public class FileBoxController {
         return map;
     }
 
+    /**
+     * 为目录视图构建文件记录(url 走 /api/file?path=<rel>) / Build a file record for the directory view.
+     * 与 buildRecord 的区别:文件可位于任意深度的自定义文件夹,url 用 /api/file?path=。
+     */
+    private Map<String, Object> buildDirRecord(Path fullPath, String relPath) {
+        Map<String, Object> map = new HashMap<>();
+        try {
+            File f = fullPath.toFile();
+            String filename = fullPath.getFileName().toString();
+            String ftype = FileUtils.getFileTypeCategory(filename);
+            String content = null;
+            if ("text".equals(ftype)) {
+                try {
+                    byte[] bytes = Files.readAllBytes(fullPath);
+                    String txt = new String(bytes, StandardCharsets.UTF_8);
+                    content = txt.length() > AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH
+                        ? txt.substring(0, AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH) : txt;
+                } catch (IOException e) {
+                    content = null;
+                }
+            }
+            map.put("filename", filename);
+            map.put("path", relPath); // 存储空间根的相对路径,供前端删除/重命名/移动使用
+            try {
+                map.put("url", "/api/file?path=" + java.net.URLEncoder.encode(relPath, "UTF-8"));
+            } catch (java.io.UnsupportedEncodingException e) {
+                map.put("url", "/api/file?path=" + relPath); // UTF-8 始终可用,理论上不会走到
+            }
+            map.put("time", DateTimeFormatter.formatFileTime(new Date(f.lastModified())));
+            map.put("type", ftype);
+            map.put("size", f.length());
+            map.put("content", content);
+        } catch (Exception e) {
+            logger.warn("Error building dir record: {}", e.getMessage(), e);
+        }
+        return map;
+    }
+
     private boolean canUserAccessStorageSpace(LoginSession session, String storageSpaceName) {
         for (String space : session.getStorageSpaces()) {
             if (space.equals(storageSpaceName)) {
@@ -623,5 +727,236 @@ public class FileBoxController {
         }
 
         return storageSpace;
+    }
+
+    // ==================== 目录浏览 / Directory browsing ====================
+
+    /**
+     * 把"当前存储空间根"内的相对路径解析为绝对路径,并做路径穿越校验。
+     * 失败(存储空间不可用或穿越)返回 null。 / Resolve a storage-relative path with traversal check.
+     */
+    private Path resolveWithinStorage(HttpServletRequest request, String relPath) {
+        StorageSpace storageSpace = validateAndGetStorageSpace(request, "Path resolve");
+        if (storageSpace == null) return null;
+        return resolveWithin(Paths.get(storageSpace.getPath()), relPath);
+    }
+
+    /**
+     * 在 base 下解析 relPath 并校验不越界。relPath 为空/纯根 → 返回 base。 / Resolve relPath under base, reject traversal.
+     */
+    private Path resolveWithin(Path base, String relPath) {
+        Path basePath = base.toAbsolutePath().normalize();
+        String p = relPath == null ? "" : relPath.trim();
+        if (p.startsWith("/")) p = p.substring(1);
+        if (p.isEmpty()) return basePath;
+        Path target = basePath.resolve(p).toAbsolutePath().normalize();
+        if (!target.startsWith(basePath)) return null; // 路径穿越
+        return target;
+    }
+
+    /**
+     * 列出某目录的子文件夹 + 文件(目录视图用) / List subfolders + files of a directory.
+     * GET /list_dir?path=<relpath>(空=根)
+     */
+    @GetMapping("/list_dir")
+    @ResponseBody
+    public ResponseEntity<?> listDir(HttpServletRequest request,
+                                     @RequestParam(value = "path", required = false) String path) {
+        StorageSpace storageSpace = validateAndGetStorageSpace(request, "list_dir");
+        if (storageSpace == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的存储空间");
+        }
+        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path dir = resolveWithin(basePath, path);
+        if (dir == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
+        }
+        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目录不存在");
+        }
+
+        List<Map<String, Object>> folders = new ArrayList<>();
+        List<Map<String, Object>> files = new ArrayList<>();
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
+            for (Path p : ds) {
+                String name = p.getFileName().toString();
+                if (Files.isDirectory(p)) {
+                    Map<String, Object> fo = new HashMap<>();
+                    fo.put("name", name);
+                    folders.add(fo);
+                } else if (Files.isRegularFile(p)) {
+                    String rel = basePath.relativize(p).toString().replace('\\', '/');
+                    files.add(buildDirRecord(p, rel));
+                }
+            }
+        } catch (IOException e) {
+            logger.warn("list_dir failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("读取目录失败");
+        }
+        folders.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("name"), (String) b.get("name")));
+        files.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("filename"), (String) b.get("filename")));
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("path", path == null ? "" : path);
+        resp.put("folders", folders);
+        resp.put("files", files);
+        return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * 新建文件夹(可多级)。仅 ADMIN。 / Create a folder (nested allowed). ADMIN only.
+     * POST /create_folder  body: {"path": "<relpath>"}
+     */
+    @PostMapping("/create_folder")
+    @ResponseBody
+    public ResponseEntity<?> createFolder(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        LoginSession session = getSession(request);
+        if (session == null || session.getRole() != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可创建文件夹");
+        }
+        String path = body == null ? null : (String) body.get("path");
+        Path target = resolveWithinStorage(request, path);
+        if (target == null || target.toString().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的文件夹路径");
+        }
+        if (Files.exists(target)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("已存在同名项");
+        }
+        try {
+            Files.createDirectories(target);
+        } catch (IOException e) {
+            logger.warn("create_folder failed for {}: {}", path, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("创建文件夹失败");
+        }
+        logger.info("User {} created folder: {}", session.getUsername(), path);
+        return ResponseEntity.ok("OK");
+    }
+
+    /**
+     * 重命名文件或文件夹(叶子换名)。仅 ADMIN。 / Rename a file or folder. ADMIN only.
+     * POST /rename_item  body: {"path": "<relpath>", "newName": "<name>"}
+     */
+    @PostMapping("/rename_item")
+    @ResponseBody
+    public ResponseEntity<?> renameItem(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        LoginSession session = getSession(request);
+        if (session == null || session.getRole() != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可重命名");
+        }
+        String path = body == null ? null : (String) body.get("path");
+        String newName = body == null ? null : (String) body.get("newName");
+        // 重命名是用户显式输入新名:不合规直接拒绝(不静默清洗,避免"a/b.txt"被偷偷改成"b.txt")
+        // Rename uses an explicitly typed name: reject non-compliant names instead of silently cleaning.
+        if (!FileUtils.isFilenameCompliant(newName)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("新文件名不合规：必须是纯文件名（不含 / \\ 或控制字符）");
+        }
+        String cleanName = newName;
+        Path src = resolveWithinStorage(request, path);
+        if (src == null || !Files.exists(src)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
+        }
+        Path target = src.resolveSibling(cleanName);
+        if (Files.exists(target)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("目标名称已存在");
+        }
+        try {
+            Files.move(src, target);
+        } catch (IOException e) {
+            logger.warn("rename_item failed {} -> {}: {}", path, cleanName, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("重命名失败");
+        }
+        logger.info("User {} renamed {} -> {}", session.getUsername(), path, cleanName);
+        return ResponseEntity.ok("OK");
+    }
+
+    /**
+     * 移动文件/文件夹到另一文件夹下。仅 ADMIN。 / Move an item into another folder. ADMIN only.
+     * POST /move_item  body: {"src": "<relpath>", "destDir": "<relpath>"}
+     */
+    @PostMapping("/move_item")
+    @ResponseBody
+    public ResponseEntity<?> moveItem(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        LoginSession session = getSession(request);
+        if (session == null || session.getRole() != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可移动");
+        }
+        String srcPath = body == null ? null : (String) body.get("src");
+        String destDir = body == null ? null : (String) body.get("destDir");
+        Path src = resolveWithinStorage(request, srcPath);
+        Path dest = resolveWithinStorage(request, destDir);
+        if (src == null || dest == null || !Files.exists(src)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
+        }
+        if (!Files.isDirectory(dest)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("目标不是文件夹");
+        }
+        // 禁止把目录移进自身或其子树 / forbid moving a dir into itself or its descendant
+        Path srcAbs = src.toAbsolutePath();
+        Path destAbs = dest.toAbsolutePath();
+        if (destAbs.equals(srcAbs) || destAbs.startsWith(srcAbs)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("不能把文件夹移进自身或其子目录");
+        }
+        Path target = dest.resolve(src.getFileName().toString());
+        if (Files.exists(target)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("目标位置已存在同名项");
+        }
+        try {
+            Files.move(src, target);
+        } catch (IOException e) {
+            logger.warn("move_item failed {} -> {}: {}", srcPath, destDir, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("移动失败");
+        }
+        logger.info("User {} moved {} -> {}", session.getUsername(), srcPath, destDir);
+        return ResponseEntity.ok("OK");
+    }
+
+    /**
+     * 递归删除文件夹。仅 ADMIN。 / Recursively delete a folder. ADMIN only.
+     * DELETE /delete_folder?path=<relpath>
+     */
+    @DeleteMapping("/delete_folder")
+    @ResponseBody
+    public ResponseEntity<?> deleteFolder(@RequestParam("path") String folderPath, HttpServletRequest request) throws IOException {
+        LoginSession session = getSession(request);
+        if (session == null || session.getRole() != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可删除文件夹");
+        }
+        StorageSpace storageSpace = validateAndGetStorageSpace(request, "delete_folder");
+        if (storageSpace == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的存储空间");
+        }
+        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path target = resolveWithin(basePath, folderPath);
+        if (target == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
+        }
+        if (target.equals(basePath)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("不能删除存储根目录");
+        }
+        if (!Files.exists(target)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("文件夹不存在");
+        }
+        if (!Files.isDirectory(target)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("目标不是文件夹");
+        }
+        try {
+            Files.walkFileTree(target, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            logger.warn("delete_folder failed {}: {}", folderPath, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除文件夹失败");
+        }
+        logger.info("User {} deleted folder: {}", session.getUsername(), folderPath);
+        return ResponseEntity.ok("文件夹删除成功");
     }
 }

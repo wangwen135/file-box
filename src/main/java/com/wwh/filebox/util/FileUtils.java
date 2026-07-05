@@ -1,5 +1,6 @@
 package com.wwh.filebox.util;
 
+import com.wwh.filebox.constants.AppConstants;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -62,6 +63,76 @@ public class FileUtils {
         // Final fallback
         if (name.isEmpty()) name = "file";
         return name;
+    }
+
+    /**
+     * 文件名合规校验 / Filename compliance check.
+     * 合规 = 无需任何改写即可安全使用的文件名:
+     *   - 非空,且为"纯文件名"(不含路径分隔符)
+     *   - 不含控制字符、空字节、'/'、'\'
+     *   - 不是纯点(. / .. / 纯多点)
+     *   - UTF-8 字节长度 ≤ FILENAME_MAX_BYTES
+     * 注意:中文等 Unicode 视为合规;本方法不做 NFC、不压缩空白 ——
+     * 合规名交给 {@link #prepareUploadFilename} 后会逐字节原样保留。
+     *
+     * @param name 待校验的文件名
+     * @return 合规返回 true
+     */
+    public static boolean isFilenameCompliant(String name) {
+        if (name == null || name.isEmpty()) return false;
+        // 必须是纯文件名:basename 应等于自身(排除含路径分隔符的情况)
+        if (!Paths.get(name).getFileName().toString().equals(name)) return false;
+        if (name.indexOf('/') >= 0 || name.indexOf('\\') >= 0 || name.indexOf('\0') >= 0) return false;
+        for (int i = 0; i < name.length(); i++) {
+            if (Character.isISOControl(name.charAt(i))) return false;
+        }
+        if (name.matches("^\\.+$")) return false; // 纯点
+        if (name.getBytes(StandardCharsets.UTF_8).length > AppConstants.FileUpload.FILENAME_MAX_BYTES) return false;
+        return true;
+    }
+
+    /**
+     * 上传文件名准备 / Prepare a filename for upload.
+     * - 合规名 → 逐字节原样返回(不做 NFC、不压缩空白,完整保留用户原名)
+     * - 不合规名 → 最小清理:剥离 basename(防御浏览器附带路径)、去除控制字符/空字节、
+     *   纯点回退、超长按 UTF-8 字节截断(保留扩展名)
+     * - 仍无法得到合法文件名 → 返回 null(调用方应以上传文件名不合规为由拒绝)
+     *
+     * @param original 浏览器提交的原始文件名
+     * @return 可安全使用的文件名;null 表示无法救回
+     */
+    public static String prepareUploadFilename(String original) {
+        if (original == null || original.isEmpty()) return null;
+        // 防御性 basename:个别浏览器会传 "C:\a\b.png" 或 "a/b.png"
+        String base = Paths.get(original).getFileName().toString();
+        if (base.isEmpty()) return null;
+        // 合规 → 原样返回
+        if (isFilenameCompliant(base)) return base;
+        // 不合规 → 最小清理(仅去控制字符/空字节;不 NFC、不压空白)
+        String cleaned = base.replaceAll("[\\p{Cntrl}]", "").replace("\0", "");
+        if (cleaned.isEmpty() || cleaned.matches("^\\.+$")) return null;
+        // 超长 → 按 UTF-8 字节截断,保留扩展名
+        if (cleaned.getBytes(StandardCharsets.UTF_8).length > AppConstants.FileUpload.FILENAME_MAX_BYTES) {
+            int dot = cleaned.lastIndexOf('.');
+            String ext = dot > 0 ? cleaned.substring(dot) : "";
+            String name = dot > 0 ? cleaned.substring(0, dot) : cleaned;
+            cleaned = truncateToUtf8Bytes(name, AppConstants.FileUpload.FILENAME_MAX_BYTES - ext.getBytes(StandardCharsets.UTF_8).length) + ext;
+            if (cleaned.isEmpty() || cleaned.matches("^\\.+$")) return null;
+        }
+        return cleaned;
+    }
+
+    /**
+     * 按 UTF-8 字节长度截断字符串,且不截断在多字节字符的中间 / Truncate to N UTF-8 bytes on a char boundary.
+     */
+    private static String truncateToUtf8Bytes(String s, int maxBytes) {
+        if (maxBytes <= 0) return "";
+        byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length <= maxBytes) return s;
+        int len = maxBytes;
+        // 回退到字符边界:跳过 UTF-8 continuation 字节(0x80~0xBF)
+        while (len > 0 && (bytes[len] & 0xC0) == 0x80) len--;
+        return new String(bytes, 0, len, StandardCharsets.UTF_8);
     }
 
     /**

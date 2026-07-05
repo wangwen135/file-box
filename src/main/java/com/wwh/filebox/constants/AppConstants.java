@@ -70,8 +70,11 @@ public final class AppConstants {
         /** 重复文件后缀格式 */
         public static final String DUPLICATE_FILE_SUFFIX = " ({0})";
 
-        /** 文件名最大长度 */
+        /** 文件名最大长度（字符数，旧清洗器用） */
         public static final int MAX_FILENAME_LENGTH = 200;
+
+        /** 文件名最大字节数（文件系统以字节计，ext4 等上限 255）/ Max filename size in bytes */
+        public static final int FILENAME_MAX_BYTES = 255;
 
         /** 文件列表默认限制 */
         public static final int DEFAULT_FILE_LIMIT = 50;
