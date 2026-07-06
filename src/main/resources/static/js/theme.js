@@ -6,10 +6,10 @@
     // 从 localStorage 获取保存的主题
     const savedTheme = localStorage.getItem('filebox-theme') || 'light';
 
-    // 主题图标 (Lucide 简洁线性图标, ISC 许可: https://lucide.dev )
-    // Theme icons — clean line icons (Lucide, ISC license)
-    const MOON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>';
-    const SUN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+    // 主题图标走本地精灵 /images/icons.svg (Lucide 线性图标, ISC 许可: https://lucide.dev)
+    // Theme icons live in the local sprite /images/icons.svg (Lucide, ISC).
+    // 自带 width/height,确保未定义 .theme-toggle svg 尺寸的页面(登录/后台)也能正常显示。
+    const THEME_ICON = name => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/images/icons.svg#ico-${name}"/></svg>`;
 
     // 应用主题
     function applyTheme(theme) {
@@ -26,7 +26,7 @@
     function updateThemeIcon(theme) {
         const toggleBtn = document.querySelector('.theme-toggle');
         if (toggleBtn) {
-            toggleBtn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
+            toggleBtn.innerHTML = theme === 'dark' ? THEME_ICON('sun') : THEME_ICON('moon');
             const label = theme === 'dark' ? '切换到浅色模式' : '切换到深色模式';
             toggleBtn.setAttribute('title', label);
             toggleBtn.setAttribute('aria-label', label);

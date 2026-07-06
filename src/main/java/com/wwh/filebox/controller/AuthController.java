@@ -242,6 +242,9 @@ public class AuthController {
         userInfo.put("role", session.getRole().name().toLowerCase());
         // groupName 旧指“用户组”(已随 GroupConfig 移除),这里用当前存储空间名代替,保留头部上下文显示
         userInfo.put("groupName", session.getCurrentStorageSpace());
+        // 顶栏存储空间切换器需要可选列表与当前空间 / for the header storage-space switcher
+        userInfo.put("storageSpaces", session.getStorageSpaces());
+        userInfo.put("currentStorageSpace", session.getCurrentStorageSpace());
         // 经 token 鉴权的均为已登录用户,非匿名
         userInfo.put("isAnonymous", false);
         return ResponseEntity.ok(userInfo);

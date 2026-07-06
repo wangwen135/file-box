@@ -260,62 +260,71 @@
             z-index: 20;
         }
 
-        /* 顶部信息条:四个元素统一为 32px 高 / Header row: all four items share 32px height.
-           体系:填充 pill = 信息(存储/用户)、描边 pill = 动作(退出)、同高圆钮 = 图标控件(主题)。 */
-        .header-controls .user-group,
-        .header-controls .user-info,
-        .logout-link-container a,
-        .header-controls .theme-toggle {
+        /* 顶部信息条:触发按钮统一为 32px pill / Header triggers share a 32px pill shape.
+           体系:存储切换 + 用户菜单 = 填充 pill(带下拉),主题 = 同高圆钮(见下)。 */
+        .header-controls .hd-trigger {
             height: 32px;
             box-sizing: border-box;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
+            gap: 6px;
             font-size: 13px;
             line-height: 1;
             white-space: nowrap;
             border-radius: 999px;
             padding: 0 12px;
             border: 1px solid transparent;
-            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-        }
-
-        /* 信息项:浅蓝半透明填充 / info chips: subtle fill */
-        .header-controls .user-group,
-        .header-controls .user-info {
             background: rgba(74, 144, 226, 0.10);
             color: var(--dark-text);
-        }
-        .header-controls .user-group { color: var(--secondary-color); }
-        .header-controls .user-info.admin { font-weight: 600; }
-        .header-controls .user-info.admin::before {
-            content: "★";
-            color: #ffcc00;
-            margin-right: 4px;
-            font-size: 14px;
-        }
-
-        /* 管理后台入口:文字链接风格 / admin-panel entry link */
-        .header-controls .admin-entry-link {
-            color: var(--secondary-color);
-            text-decoration: none;
-            font-size: 0.95rem;
-            padding: 0 0.5rem;
             cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
-        .header-controls .admin-entry-link:hover { text-decoration: underline; }
+        .header-controls .hd-trigger:hover { background: rgba(74, 144, 226, 0.22); }
+        /* 存储切换触发用次要色 / storage trigger in secondary tone */
+        .header-controls #storageTrigger { color: var(--secondary-color); }
+        /* 顶栏小图标(精灵 /images/icons.svg, Lucide) / header icons (local sprite) */
+        .ico { width: 16px; height: 16px; flex-shrink: 0; }
+        .header-controls .hd-trigger .caret { width: 14px; height: 14px; opacity: 0.6; transition: transform 0.2s ease; }
+        .header-dropdown.open .hd-trigger { background: rgba(74, 144, 226, 0.22); border-color: var(--secondary-color); }
+        .header-dropdown.open .hd-trigger .caret { transform: rotate(180deg); }
 
-        /* 退出:描边 pill,悬停转红色 / outlined pill action, red on hover */
-        .logout-link-container a {
-            color: var(--secondary-color);
-            border-color: var(--secondary-color);
+        /* 用户名 / username(管理员略加粗,无特殊标记 / admin: slightly bold, no marker) */
+        .header-controls #user-info.admin { font-weight: 600; }
+
+        /* 下拉菜单 / dropdown menus(存储切换 + 用户菜单 / storage switcher + user menu) */
+        .header-dropdown { position: relative; display: inline-flex; }
+        .hd-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 168px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            z-index: 30;
+        }
+        .header-dropdown.open .hd-menu { display: block; }
+        .hd-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
             text-decoration: none;
         }
-        .logout-link-container a:hover {
-            background: #ef4444;
-            border-color: #ef4444;
-            color: #fff;
-        }
+        .hd-menu-item:hover { background: var(--bg-hover); color: var(--primary); }
+        .hd-menu-item.active { color: var(--primary); font-weight: 600; }
+        .hd-menu-item.hd-danger { color: var(--danger); }
+        .hd-menu-item.hd-danger:hover { background: var(--danger-bg); color: var(--danger); }
+        .hd-menu-sep { height: 1px; background: var(--border-color); margin: 4px 2px; }
 
         /* 主题切换:32px 同高圆钮 / theme toggle: same-height round icon button */
         .header-controls .theme-toggle,
@@ -323,10 +332,11 @@
             position: static;
             width: 32px;
             min-width: 32px;
+            height: 32px;
             padding: 0;
             border-radius: 50%;
             background: rgba(74, 144, 226, 0.10);
-            border: 1px solid var(--secondary-color);
+            border: 1px solid transparent;
             box-shadow: none;
             color: var(--dark-text);
             cursor: pointer;
@@ -344,8 +354,7 @@
         }
 
         /* 深色模式 / dark mode */
-        [data-theme="dark"] .header-controls .user-group,
-        [data-theme="dark"] .header-controls .user-info,
+        [data-theme="dark"] .header-controls .hd-trigger,
         [data-theme="dark"] .header-controls .theme-toggle {
             background: rgba(14, 165, 233, 0.16);
             border-color: var(--secondary-color);
@@ -555,10 +564,6 @@
                 padding: 0 10px;
             }
 
-            .user-group {
-                display: none;
-            }
-
             .delete-btn {
                 width: 28px;
                 height: 28px;
@@ -576,7 +581,6 @@
                 width: 100%;
                 height: 160px;
             }
-
             .preview img,
             .preview video {
                 max-height: 100px;
@@ -719,11 +723,32 @@
 
 <body>
 <div class="header-controls">
-        <div class="user-group" id="user-group"></div>
-        <div class="user-info" id="user-info"></div>
-        <!-- 仅管理员可见的后台入口 / Admin-panel entry, shown only for ADMIN -->
-        <a id="admin-entry" href="/admin/dashboard.html" class="admin-entry-link" style="display:none;">⚙️ 管理后台</a>
-        <div class="logout-link-container" id="login-logout-container"><a href="/logout">退出</a></div>
+        <!-- 存储空间切换 / storage space switcher -->
+        <div class="header-dropdown" id="storageSwitcher">
+            <button class="hd-trigger" id="storageTrigger" type="button">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-database"/></svg>
+                <span id="storageCurrent">…</span>
+                <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+            </button>
+            <div class="hd-menu" id="storageMenu"><!-- 存储空间列表动态插入 / spaces injected here --></div>
+        </div>
+
+        <!-- 用户菜单 / user menu(点击用户名展开 / click username to open) -->
+        <div class="header-dropdown" id="userMenu">
+            <button class="hd-trigger hd-user" id="userTrigger" type="button">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span id="user-info"></span>
+                <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+            </button>
+            <div class="hd-menu" id="userMenuList">
+                <!-- 仅管理员可见 / ADMIN only -->
+                <a class="hd-menu-item" id="adminEntry" href="/admin/dashboard.html" style="display:none;"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg>后台管理</a>
+                <div class="hd-menu-sep" id="adminSep" style="display:none;"></div>
+                <a class="hd-menu-item hd-danger" href="/logout"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>退出登录</a>
+            </div>
+        </div>
+
+        <!-- 主题切换 / theme toggle(theme.js 注入按钮 / button injected by theme.js) -->
         <span id="theme-toggle-slot"></span>
     </div>
 <div class="container">
@@ -809,39 +834,97 @@
             return response.json();
         })
         .then(data => {
-            const userGroupElement = document.getElementById('user-group');
-            userGroupElement.textContent = data.groupName;
-            const userInfoElement = document.getElementById('user-info');
-            userInfoElement.textContent = data.username;
             window.currentRole = data.role;
             window.isAnonymous = data.isAnonymous || false;
 
-            // 为管理员用户添加特殊样式
+            // 用户名(管理员加 ★ 样式) / username (admin gets star styling)
+            const userInfoElement = document.getElementById('user-info');
+            userInfoElement.textContent = data.username;
             if (data.role === 'admin') {
                 userInfoElement.classList.add('admin');
-                userInfoElement.title = '管理员用户 拥有删除文件权限！';
+                userInfoElement.title = '管理员用户';
                 const nfb = document.getElementById('newFolderBtn');
                 if (nfb) nfb.style.display = ''; // 目录浏览里仅 ADMIN 显示新建/重命名/移动/删除
-                const ae = document.getElementById('admin-entry');
-                if (ae) ae.style.display = ''; // ADMIN 显示后台入口
+                // 管理员菜单显示“后台管理” / show admin-panel item for ADMIN
+                document.getElementById('adminEntry').style.display = '';
+                document.getElementById('adminSep').style.display = '';
             }
 
-            // 根据是否为匿名用户调整登录/退出链接
-            const loginLogoutContainer = document.getElementById('login-logout-container');
-            const loginLogoutLink = loginLogoutContainer.querySelector('a');
-            if (window.isAnonymous) {
-                // 匿名用户显示登录链接
-                loginLogoutLink.href = '/login.html';
-                loginLogoutLink.textContent = '登录';
-            } else {
-                // 已登录用户显示退出链接
-                loginLogoutLink.href = '/logout';
-                loginLogoutLink.textContent = '退出';
-            }
+            // 存储空间切换器 / storage space switcher
+            renderStorageSwitcher(data.storageSpaces || [], data.currentStorageSpace || data.groupName || '');
         })
         .catch(() => {
             window.location.href = '/login.html';
         });
+
+    // ===== 顶栏下拉菜单:存储切换 + 用户菜单 / header dropdowns =====
+    // 渲染存储空间切换器 / render the storage-space switcher
+    function renderStorageSwitcher(spaceList, current) {
+        const trigger = document.getElementById('storageTrigger');
+        const currentEl = document.getElementById('storageCurrent');
+        const menu = document.getElementById('storageMenu');
+        const caret = trigger.querySelector('.caret');
+
+        currentEl.textContent = current || (spaceList[0] || '');
+
+        // 只有一个(或没有)空间:作为静态标签,不展开下拉 / single space: static label, no dropdown
+        if (!spaceList.length || spaceList.length <= 1) {
+            if (caret) caret.style.display = 'none';
+            trigger.style.cursor = 'default';
+            return;
+        }
+
+        menu.innerHTML = spaceList.map(name => `
+            <div class="hd-menu-item${name === current ? ' active' : ''}" data-space="${name}">
+                ${name === current ? '✓ ' : ''}${name}
+            </div>
+        `).join('');
+        menu.querySelectorAll('.hd-menu-item').forEach(el => {
+            el.addEventListener('click', () => switchStorage(el.dataset.space));
+        });
+    }
+
+    // 切换存储空间并刷新 / switch storage space then reload
+    async function switchStorage(name) {
+        try {
+            const resp = await fetch('/api/auth/switch-storage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storageSpace: name })
+            });
+            if (resp.ok) {
+                window.location.reload(); // 切换后刷新以重载文件列表 / reload to refresh file list
+            } else {
+                alert('切换存储空间失败');
+            }
+        } catch (e) {
+            alert('切换存储空间失败:' + e.message);
+        }
+    }
+
+    // 下拉菜单:点击触发器展开/收起,点击外部或 Esc 关闭 / toggle on click, close on outside click / Esc
+    function setupHeaderDropdowns() {
+        document.querySelectorAll('.header-dropdown .hd-trigger').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const wrapper = trigger.closest('.header-dropdown');
+                const menu = wrapper.querySelector('.hd-menu');
+                if (!menu || !menu.children.length) return; // 空菜单不展开 / no items → skip
+                const wasOpen = wrapper.classList.contains('open');
+                document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+                if (!wasOpen) wrapper.classList.add('open');
+            });
+        });
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+            }
+        });
+    }
+    setupHeaderDropdowns();
 </script>
 <script>
 
