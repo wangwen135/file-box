@@ -79,6 +79,9 @@ public final class AppConstants {
         /** 文件列表默认限制 */
         public static final int DEFAULT_FILE_LIMIT = 50;
 
+        /** 文件列表允许的最大返回数量 */
+        public static final int MAX_FILE_LIMIT = 1000;
+
         /** 文件遍历最大深度 */
         public static final int MAX_TRAVERSE_DEPTH = 3;
 

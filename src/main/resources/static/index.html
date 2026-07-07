@@ -249,49 +249,115 @@
             /*transform: scale(1.1);*/
         }
 
+        /* ===== 顶部信息条:存储空间 / 用户 / 退出 / 主题切换 同排 ===== */
         .header-controls {
             position: absolute;
-            top: 10px;
+            top: 12px;
             right: 20px;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
+            z-index: 20;
         }
 
-        .user-group {
-            font-size: 14px;
-            color: var(--secondary-color);
-            border: 1px solid var(--secondary-color);
-            border-radius: 10px;
-            padding-inline: 10px;
-        }
-
-        .user-info {
-            font-size: 14px;
+        /* 顶部信息条:触发按钮统一为 32px pill / Header triggers share a 32px pill shape.
+           体系:存储切换 + 用户菜单 = 填充 pill(带下拉),主题 = 同高圆钮(见下)。 */
+        .header-controls .hd-trigger {
+            height: 32px;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            border-radius: 999px;
+            padding: 0 12px;
+            border: 1px solid transparent;
+            background: rgba(74, 144, 226, 0.10);
             color: var(--dark-text);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
+        .header-controls .hd-trigger:hover { background: rgba(74, 144, 226, 0.22); }
+        /* 存储切换触发用次要色 / storage trigger in secondary tone */
+        .header-controls #storageTrigger { color: var(--secondary-color); }
+        /* 顶栏小图标(精灵 /images/icons.svg, Lucide) / header icons (local sprite) */
+        .ico { width: 16px; height: 16px; flex-shrink: 0; }
+        .header-controls .hd-trigger .caret { width: 14px; height: 14px; opacity: 0.6; transition: transform 0.2s ease; }
+        .header-dropdown.open .hd-trigger { background: rgba(74, 144, 226, 0.22); border-color: var(--secondary-color); }
+        .header-dropdown.open .hd-trigger .caret { transform: rotate(180deg); }
 
-        .user-info.admin {
-            /*color: #ff4444;*/
-            font-weight: bold;
-        }
-        .user-info.admin::before {
-            content: "★";
-            color: #ffcc00;
-            margin-right: 3px;
-            font-size: 16px;
-        }
+        /* 用户名 / username(管理员略加粗,无特殊标记 / admin: slightly bold, no marker) */
+        .header-controls #user-info.admin { font-weight: 600; }
 
-        .logout-link-container a {
-            display: inline;
-            margin: 0;
-            color: #0077cc;
+        /* 下拉菜单 / dropdown menus(存储切换 + 用户菜单 / storage switcher + user menu) */
+        .header-dropdown { position: relative; display: inline-flex; }
+        .hd-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 168px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            z-index: 30;
+        }
+        .header-dropdown.open .hd-menu { display: block; }
+        .hd-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
             text-decoration: none;
-            font-size: 14px;
+        }
+        .hd-menu-item:hover { background: var(--bg-hover); color: var(--primary); }
+        .hd-menu-item.active { color: var(--primary); font-weight: 600; }
+        .hd-menu-item.hd-danger { color: var(--danger); }
+        .hd-menu-item.hd-danger:hover { background: var(--danger-bg); color: var(--danger); }
+        .hd-menu-sep { height: 1px; background: var(--border-color); margin: 4px 2px; }
+
+        /* 主题切换:32px 同高圆钮 / theme toggle: same-height round icon button */
+        .header-controls .theme-toggle,
+        .theme-toggle.in-header {
+            position: static;
+            width: 32px;
+            min-width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
+            background: rgba(74, 144, 226, 0.10);
+            border: 1px solid transparent;
+            box-shadow: none;
+            color: var(--dark-text);
+            cursor: pointer;
+        }
+        .header-controls .theme-toggle:hover,
+        .theme-toggle.in-header:hover {
+            background: rgba(74, 144, 226, 0.22);
+            transform: none;
+            box-shadow: none;
+        }
+        .header-controls .theme-toggle svg,
+        .theme-toggle.in-header svg {
+            width: 18px;
+            height: 18px;
         }
 
-        .logout-link-container a:hover {
-            text-decoration: underline;
+        /* 深色模式 / dark mode */
+        [data-theme="dark"] .header-controls .hd-trigger,
+        [data-theme="dark"] .header-controls .theme-toggle {
+            background: rgba(14, 165, 233, 0.16);
+            border-color: var(--secondary-color);
         }
 
         .btn {
@@ -331,26 +397,154 @@
             display: none;
         }
 
-        #periodSelector {
+        /* ===== 最近文件横向时间轴 / Horizontal modified-time timeline ===== */
+        .time-timeline {
+            max-width: 1120px;
+            margin: 0 auto 18px;
+            padding: 10px 14px;
+            border: 1px solid #dfe5ec;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 2px 10px rgba(30, 41, 59, 0.05);
+        }
+        .timeline-row { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 38px; }
+        .timeline-row + .timeline-row { margin-top: 4px; }
+        .timeline-row[hidden] { display: none; }
+        .timeline-row-label {
+            flex: 0 0 84px;
+            padding-right: 12px;
+            color: var(--dark-text);
+            font-size: 13px;
+            font-weight: 650;
+            text-align: right;
+            white-space: nowrap;
+            border-right: 1px solid #dfe5ec;
+        }
+        .timeline-month-row {
+            padding-top: 5px;
+            border-top: 1px dashed #dfe5ec;
+        }
+        .timeline-month-row .timeline-row-label {
+            color: var(--light-text);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .timeline-scroll {
+            width: 30px;
+            min-width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid #d7dee7;
+            border-radius: 50%;
+            background: #fff;
+            color: var(--secondary-color);
+            cursor: pointer;
+            box-shadow: none;
+            line-height: 1;
+        }
+        .timeline-scroll:hover { color: var(--primary-color); border-color: var(--primary-color); }
+        .timeline-scroll.is-hidden { visibility: hidden; pointer-events: none; }
+        .timeline-scroll:disabled { opacity: .38; cursor: default; }
+        .timeline-viewport {
+            flex: 1;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
+            scroll-behavior: smooth;
+            overscroll-behavior-x: contain;
+        }
+        .timeline-track {
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 10px;
+            width: max-content;
+            min-width: 100%;
+            padding: 2px 10px 4px;
         }
-
-        #periodSelector .date-selector {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
+        .timeline-node {
+            position: relative;
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 76px;
+            padding: 20px 12px 2px;
+            border: 0;
+            background: transparent;
+            color: var(--light-text);
+            font-size: 13px;
+            line-height: 1.2;
+            cursor: pointer;
+            box-shadow: none;
         }
-
-        #periodSelector #yearSelect {
-            width: 100px;
+        .timeline-node::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 9px;
+            height: 2px;
+            background: #d8e0e8;
         }
-
-        #periodSelector #monthSelect {
-            width: 80px;
+        .timeline-node::after {
+            content: "";
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            margin-left: -6px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            background: #aab7c4;
+            box-shadow: 0 0 0 1px #aab7c4;
+            transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
         }
+        .timeline-node:hover { color: var(--dark-text); }
+        .timeline-node:hover::after { transform: scale(1.15); background: var(--primary-color); }
+        .timeline-node.active { color: var(--primary-color); font-weight: 700; }
+        .timeline-node.active::before { background: rgba(74, 144, 226, .42); }
+        .timeline-node.active::after {
+            background: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-color), 0 0 0 5px rgba(74, 144, 226, .15);
+        }
+        .timeline-node:focus-visible, .timeline-scroll:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        /* 月份使用紧凑胶囊节点，与年份的圆点轨道形成层级区分。 */
+        .timeline-month-row .timeline-viewport {
+            padding: 3px;
+            border-radius: 9px;
+            background: rgba(74, 144, 226, .065);
+        }
+        .timeline-month-row .timeline-track { padding: 0 4px; gap: 4px; }
+        .timeline-month-row .timeline-node {
+            min-width: 58px;
+            padding: 7px 12px;
+            border-radius: 7px;
+            font-size: 12px;
+        }
+        .timeline-month-row .timeline-node::before,
+        .timeline-month-row .timeline-node::after { display: none; }
+        .timeline-month-row .timeline-node:hover { background: rgba(74, 144, 226, .10); }
+        .timeline-month-row .timeline-node.active {
+            background: var(--primary-color);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(74, 144, 226, .22);
+        }
+        [data-theme="dark"] .time-timeline {
+            background: rgba(15, 23, 42, .55);
+            border-color: #334155;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .22);
+        }
+        [data-theme="dark"] .timeline-row-label { border-right-color: #334155; }
+        [data-theme="dark"] .timeline-month-row { border-top-color: #334155; }
+        [data-theme="dark"] .timeline-scroll { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+        [data-theme="dark"] .timeline-node::before { background: #475569; }
+        [data-theme="dark"] .timeline-node::after { border-color: #172033; background: #64748b; box-shadow: 0 0 0 1px #64748b; }
+        [data-theme="dark"] .timeline-node.active::before { background: rgba(14, 165, 233, .5); }
+        [data-theme="dark"] .timeline-node.active::after { background: #0ea5e9; box-shadow: 0 0 0 2px #0ea5e9, 0 0 0 5px rgba(14, 165, 233, .16); }
+        [data-theme="dark"] .timeline-month-row .timeline-viewport { background: rgba(14, 165, 233, .09); }
+        [data-theme="dark"] .timeline-month-row .timeline-node:hover { background: rgba(14, 165, 233, .14); }
+        [data-theme="dark"] .timeline-month-row .timeline-node.active { background: #0ea5e9; color: #07111f; }
 
         /* 模态框样式 */
         #upload-modal-overlay {
@@ -498,10 +692,6 @@
                 padding: 0 10px;
             }
 
-            .user-group {
-                display: none;
-            }
-
             .delete-btn {
                 width: 28px;
                 height: 28px;
@@ -519,7 +709,6 @@
                 width: 100%;
                 height: 160px;
             }
-
             .preview img,
             .preview video {
                 max-height: 100px;
@@ -538,22 +727,45 @@
                 padding: 10px;
             }
 
-            #periodSelector {
-                flex-direction: column;
-                align-items: center;
-            }
+            .time-timeline { margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
+            .timeline-row-label { flex-basis: 66px; padding-right: 7px; font-size: 12px; }
+            .timeline-scroll { display: none; }
+            .timeline-track { padding-left: 2px; padding-right: 2px; }
+            .timeline-node { min-width: 68px; padding-left: 9px; padding-right: 9px; }
+            .timeline-month-row .timeline-node { min-width: 54px; padding: 7px 9px; }
         }
 
-        /* ===== 视图切换 / 目录浏览 ===== */
-        .view-tabs { display: flex; gap: 4px; margin: 14px 0 0; }
-        .view-tab {
-            padding: 8px 18px; border: 1px solid #d0d7de; border-bottom: none;
-            background: #f6f8fa; color: #555; cursor: pointer;
-            border-radius: 8px 8px 0 0; font-size: 14px; transition: all .2s;
+        /* ===== 视图切换:分段控件 / Segmented control ===== */
+        .view-tabs {
+            display: inline-flex;
+            padding: 3px;
+            gap: 2px;
+            margin: 14px 0 4px;
+            background: #e9ecef;
+            border-radius: 9px;
         }
-        .view-tab.active { background: #4a90e2; color: #fff; border-color: #4a90e2; }
-        [data-theme="dark"] .view-tab { background: #1e293b; border-color: #334155; color: #cbd5e1; }
-        [data-theme="dark"] .view-tab.active { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+        .view-tab {
+            border: none;
+            background: transparent;
+            color: var(--light-text);
+            padding: 7px 18px;
+            border-radius: 7px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: color 0.15s ease, background 0.15s ease;
+        }
+        .view-tab:hover:not(.active) { color: var(--dark-text); }
+        .view-tab.active {
+            background: #ffffff;
+            color: var(--primary-color);
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+        [data-theme="dark"] .view-tabs { background: rgba(255, 255, 255, 0.08); }
+        [data-theme="dark"] .view-tab.active {
+            background: #1e293b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
 
         #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 10px; }
         [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
@@ -586,15 +798,88 @@
         [data-theme="dark"] .mini-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
         [data-theme="dark"] .mini-btn:hover { background: #334155; }
 
+        /* 目录视图的文件网格:与 #recent 一致(居中、换行) / file grid mirroring the recent view */
+        .dir-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+        .dir-files a { display: block; margin-bottom: 15px; }
+        .dir-files a:hover { text-decoration: none; }
+
         .dir-empty { text-align: center; color: #999; padding: 50px 20px; font-size: 14px; }
+
+        /* ===== 深色模式:整体覆盖(修正硬编码浅色)/ Dark-mode global overrides ===== */
+        [data-theme="dark"] body {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        }
+        [data-theme="dark"] a { color: #38bdf8; }
+        [data-theme="dark"] #dropzone {
+            border-color: #475569;
+            color: #94a3b8;
+        }
+        [data-theme="dark"] #dropzone.dragover {
+            background-color: rgba(14, 165, 233, 0.15);
+            border-color: #0ea5e9;
+            color: #38bdf8;
+        }
+        [data-theme="dark"] .preview {
+            background-color: #1e293b;
+            border-color: #334155;
+        }
+        [data-theme="dark"] .preview .file-ext { color: rgba(203, 213, 225, 0.4); }
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select,
+        [data-theme="dark"] input[type="text"] {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+        }
+        [data-theme="dark"] #upload-modal-overlay { background: rgba(0, 0, 0, 0.75); }
+        [data-theme="dark"] #upload-progress-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] #upload-status { color: #e2e8f0; }
+        [data-theme="dark"] .divider { background: #334155; }
+        [data-theme="dark"] .empty-state,
+        [data-theme="dark"] .dir-empty { color: #64748b; }
     </style>
 </head>
 
 <body>
 <div class="header-controls">
-        <div class="user-group" id="user-group"></div>
-        <div class="user-info" id="user-info"></div>
-        <div class="logout-link-container" id="login-logout-container"><a href="/logout">退出</a></div>
+        <!-- 存储空间切换 / storage space switcher -->
+        <div class="header-dropdown" id="storageSwitcher">
+            <button class="hd-trigger" id="storageTrigger" type="button">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-database"/></svg>
+                <span id="storageCurrent">…</span>
+                <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+            </button>
+            <div class="hd-menu" id="storageMenu"><!-- 存储空间列表动态插入 / spaces injected here --></div>
+        </div>
+
+        <!-- 用户菜单 / user menu(点击用户名展开 / click username to open) -->
+        <div class="header-dropdown" id="userMenu">
+            <button class="hd-trigger hd-user" id="userTrigger" type="button">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span id="user-info"></span>
+                <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+            </button>
+            <div class="hd-menu" id="userMenuList">
+                <!-- 仅管理员可见 / ADMIN only -->
+                <a class="hd-menu-item" id="adminEntry" href="/admin/dashboard.html" style="display:none;"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg>后台管理</a>
+                <div class="hd-menu-sep" id="adminSep" style="display:none;"></div>
+                <a class="hd-menu-item hd-danger" href="/logout"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>退出登录</a>
+            </div>
+        </div>
+
+        <!-- 主题切换 / theme toggle(theme.js 注入按钮 / button injected by theme.js) -->
+        <span id="theme-toggle-slot"></span>
     </div>
 <div class="container">
     <div class="header-title">
@@ -644,15 +929,25 @@
     </div>
 
     <div id="recent-view">
-    <div id="periodSelector">
-        <div class="date-selector">
-            <select id="yearSelect"></select>
-            <select id="monthSelect"></select>
-        </div>
-        <button id="loadBtn" class="btn"> 加 载</button>
-    </div>
-
     <h2 id="uploadsTitle">最近上传的50个文件</h2>
+    <section id="timeTimeline" class="time-timeline" aria-label="按文件修改时间筛选">
+        <div class="timeline-row timeline-year-row" aria-label="年份">
+            <div class="timeline-row-label" title="按文件修改时间筛选">时间筛选</div>
+            <button class="timeline-scroll" type="button" data-target="yearTimelineViewport" data-direction="-1" aria-label="向前浏览年份">‹</button>
+            <div id="yearTimelineViewport" class="timeline-viewport" tabindex="0">
+                <div id="yearTimeline" class="timeline-track" role="tablist" aria-label="选择年份"></div>
+            </div>
+            <button class="timeline-scroll" type="button" data-target="yearTimelineViewport" data-direction="1" aria-label="向后浏览年份">›</button>
+        </div>
+        <div id="monthTimelineRow" class="timeline-row timeline-month-row" aria-label="月份" hidden>
+            <div class="timeline-row-label">月份</div>
+            <button class="timeline-scroll" type="button" data-target="monthTimelineViewport" data-direction="-1" aria-label="向前浏览月份">‹</button>
+            <div id="monthTimelineViewport" class="timeline-viewport" tabindex="0">
+                <div id="monthTimeline" class="timeline-track" role="tablist" aria-label="选择月份"></div>
+            </div>
+            <button class="timeline-scroll" type="button" data-target="monthTimelineViewport" data-direction="1" aria-label="向后浏览月份">›</button>
+        </div>
+    </section>
     <div id="recent"></div>
     </div><!-- /recent-view -->
 
@@ -660,7 +955,7 @@
         <div id="dir-breadcrumb" class="dir-breadcrumb"></div>
         <div class="dir-toolbar">
             <button id="newFolderBtn" class="btn" style="display:none">＋ 新建文件夹</button>
-            <span class="dir-hint">提示:目录视图下的上传会进入当前文件夹(根目录则按 年/月 归档)</span>
+            <span class="dir-hint">提示：上传文件会进入当前文件夹，根目录上传则直接保存在根目录</span>
         </div>
         <h2 id="dirTitle">根目录</h2>
         <div id="dirContent"></div>
@@ -679,37 +974,97 @@
             return response.json();
         })
         .then(data => {
-            const userGroupElement = document.getElementById('user-group');
-            userGroupElement.textContent = data.groupName;
-            const userInfoElement = document.getElementById('user-info');
-            userInfoElement.textContent = data.username;
             window.currentRole = data.role;
             window.isAnonymous = data.isAnonymous || false;
 
-            // 为管理员用户添加特殊样式
+            // 用户名(管理员加 ★ 样式) / username (admin gets star styling)
+            const userInfoElement = document.getElementById('user-info');
+            userInfoElement.textContent = data.username;
             if (data.role === 'admin') {
                 userInfoElement.classList.add('admin');
-                userInfoElement.title = '管理员用户 拥有删除文件权限！';
+                userInfoElement.title = '管理员用户';
                 const nfb = document.getElementById('newFolderBtn');
                 if (nfb) nfb.style.display = ''; // 目录浏览里仅 ADMIN 显示新建/重命名/移动/删除
+                // 管理员菜单显示“后台管理” / show admin-panel item for ADMIN
+                document.getElementById('adminEntry').style.display = '';
+                document.getElementById('adminSep').style.display = '';
             }
 
-            // 根据是否为匿名用户调整登录/退出链接
-            const loginLogoutContainer = document.getElementById('login-logout-container');
-            const loginLogoutLink = loginLogoutContainer.querySelector('a');
-            if (window.isAnonymous) {
-                // 匿名用户显示登录链接
-                loginLogoutLink.href = '/login.html';
-                loginLogoutLink.textContent = '登录';
-            } else {
-                // 已登录用户显示退出链接
-                loginLogoutLink.href = '/logout';
-                loginLogoutLink.textContent = '退出';
-            }
+            // 存储空间切换器 / storage space switcher
+            renderStorageSwitcher(data.storageSpaces || [], data.currentStorageSpace || data.groupName || '');
         })
         .catch(() => {
             window.location.href = '/login.html';
         });
+
+    // ===== 顶栏下拉菜单:存储切换 + 用户菜单 / header dropdowns =====
+    // 渲染存储空间切换器 / render the storage-space switcher
+    function renderStorageSwitcher(spaceList, current) {
+        const trigger = document.getElementById('storageTrigger');
+        const currentEl = document.getElementById('storageCurrent');
+        const menu = document.getElementById('storageMenu');
+        const caret = trigger.querySelector('.caret');
+
+        currentEl.textContent = current || (spaceList[0] || '');
+
+        // 只有一个(或没有)空间:作为静态标签,不展开下拉 / single space: static label, no dropdown
+        if (!spaceList.length || spaceList.length <= 1) {
+            if (caret) caret.style.display = 'none';
+            trigger.style.cursor = 'default';
+            return;
+        }
+
+        menu.innerHTML = spaceList.map(name => `
+            <div class="hd-menu-item${name === current ? ' active' : ''}" data-space="${name}">
+                ${name === current ? '✓ ' : ''}${name}
+            </div>
+        `).join('');
+        menu.querySelectorAll('.hd-menu-item').forEach(el => {
+            el.addEventListener('click', () => switchStorage(el.dataset.space));
+        });
+    }
+
+    // 切换存储空间并刷新 / switch storage space then reload
+    async function switchStorage(name) {
+        try {
+            const resp = await fetch('/api/auth/switch-storage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storageSpace: name })
+            });
+            if (resp.ok) {
+                window.location.reload(); // 切换后刷新以重载文件列表 / reload to refresh file list
+            } else {
+                alert('切换存储空间失败');
+            }
+        } catch (e) {
+            alert('切换存储空间失败:' + e.message);
+        }
+    }
+
+    // 下拉菜单:点击触发器展开/收起,点击外部或 Esc 关闭 / toggle on click, close on outside click / Esc
+    function setupHeaderDropdowns() {
+        document.querySelectorAll('.header-dropdown .hd-trigger').forEach(trigger => {
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const wrapper = trigger.closest('.header-dropdown');
+                const menu = wrapper.querySelector('.hd-menu');
+                if (!menu || !menu.children.length) return; // 空菜单不展开 / no items → skip
+                const wasOpen = wrapper.classList.contains('open');
+                document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+                if (!wasOpen) wrapper.classList.add('open');
+            });
+        });
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+            }
+        });
+    }
+    setupHeaderDropdowns();
 </script>
 <script>
 
@@ -729,6 +1084,7 @@
 
     let currentYear = null;
     let currentMonth = null;
+    let fileRequestSequence = 0;
     let currentXhr = null; // 用于保存当前的XMLHttpRequest对象，以便取消上传
 
     // 统一处理 fetch 请求：若被重定向到 /login(会话过期)则跳转登录页 / Unified fetch wrapper
@@ -871,7 +1227,7 @@
         const file = files[0]; // 只处理第一个文件
         const filename = file.name || `pasted_${timestamp}.bin`;
         formData.append("file", file, filename);
-        // 目录视图:上传进入当前文件夹(根目录不带 targetFolder → 后端按 年/月 归档)
+        // 目录视图上传到当前文件夹；其他情况上传到存储空间根目录。
         if (typeof currentView !== 'undefined' && currentView === 'directory' && dirPath && dirPath.length > 0) {
             formData.append("targetFolder", dirPath.join('/'));
         }
@@ -1044,67 +1400,116 @@
         });
     }
 
-    function fetchPeriods() {
-        handleFetch("/list_periods").then(r => r.json()).then(data => {
-            const periods = data.periods;
-            const yearSelect = document.getElementById("yearSelect");
-            yearSelect.innerHTML = '<option value="">最近上传</option>';
-            periods.forEach(p => {
-                const opt = document.createElement("option");
-                opt.value = p.year;
-                opt.textContent = p.year + " 年";
-                yearSelect.appendChild(opt);
-            });
-            yearSelect.addEventListener("change", updateMonths);
-            updateMonths();
+    document.querySelectorAll('.timeline-scroll').forEach(button => {
+        button.addEventListener('click', () => {
+            const viewport = document.getElementById(button.dataset.target);
+            viewport.scrollBy({left: Number(button.dataset.direction) * Math.max(240, viewport.clientWidth * 0.7), behavior: 'smooth'});
         });
-    }
-
-    function updateMonths() {
-        const year = document.getElementById("yearSelect").value;
-        const monthSelect = document.getElementById("monthSelect");
-        if (!year) {
-            monthSelect.innerHTML = '<option value="">--</option>';
-            monthSelect.disabled = true;
-            return;
-        }
-        monthSelect.disabled = false;
-        handleFetch("/list_periods").then(r => r.json()).then(data => {
-            const p = data.periods.find(pp => pp.year === year);
-            monthSelect.innerHTML = "";
-            p.months.forEach(m => {
-                const opt = document.createElement("option");
-                opt.value = m;
-                opt.textContent = m + " 月";
-                monthSelect.appendChild(opt);
-            });
-        });
-    }
-
-    document.getElementById("loadBtn").addEventListener("click", () => {
-        currentYear = document.getElementById("yearSelect").value;
-        currentMonth = document.getElementById("monthSelect").value;
-        fetchFiles();
     });
+
+    document.querySelectorAll('.timeline-viewport').forEach(viewport => {
+        viewport.addEventListener('scroll', updateTimelineScrollControls, {passive: true});
+    });
+    window.addEventListener('resize', updateTimelineScrollControls);
+
+    function updateTimelineScrollControls() {
+        document.querySelectorAll('.timeline-row').forEach(row => {
+            const viewport = row.querySelector('.timeline-viewport');
+            const buttons = row.querySelectorAll('.timeline-scroll');
+            if (!viewport || buttons.length !== 2) return;
+            const hasOverflow = viewport.scrollWidth > viewport.clientWidth + 1;
+            buttons.forEach(button => button.classList.toggle('is-hidden', !hasOverflow));
+            buttons[0].disabled = hasOverflow && viewport.scrollLeft <= 1;
+            buttons[1].disabled = hasOverflow && viewport.scrollLeft + viewport.clientWidth >= viewport.scrollWidth - 1;
+        });
+    }
+
+    function centerActiveTimelineNodes() {
+        document.querySelectorAll('.timeline-node.active').forEach(node => {
+            const viewport = node.closest('.timeline-viewport');
+            if (!viewport) return;
+            const targetLeft = node.offsetLeft - (viewport.clientWidth - node.offsetWidth) / 2;
+            viewport.scrollTo({left: Math.max(0, targetLeft), behavior: 'smooth'});
+        });
+        updateTimelineScrollControls();
+    }
+
+    function createTimelineNode(label, active, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'timeline-node' + (active ? ' active' : '');
+        button.textContent = label;
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', String(active));
+        button.addEventListener('click', onClick);
+        return button;
+    }
+
+    function selectTimeline(year, month) {
+        if (currentYear === year && currentMonth === month) return;
+        currentYear = year;
+        currentMonth = month;
+        fetchFiles();
+    }
+
+    function renderTimeline(periods) {
+        const safePeriods = Array.isArray(periods) ? periods : [];
+        const yearTrack = document.getElementById('yearTimeline');
+        const monthTrack = document.getElementById('monthTimeline');
+        const monthRow = document.getElementById('monthTimelineRow');
+        yearTrack.innerHTML = '';
+        monthTrack.innerHTML = '';
+
+        yearTrack.appendChild(createTimelineNode('最近', currentYear === null,
+            () => selectTimeline(null, null)));
+        safePeriods.forEach(period => {
+            yearTrack.appendChild(createTimelineNode(period.year, currentYear === period.year,
+                () => selectTimeline(period.year, null)));
+        });
+
+        const selectedPeriod = safePeriods.find(period => period.year === currentYear);
+        monthRow.hidden = !selectedPeriod;
+        if (selectedPeriod) {
+            monthTrack.appendChild(createTimelineNode('全年', currentMonth === null,
+                () => selectTimeline(currentYear, null)));
+            (selectedPeriod.months || []).forEach(month => {
+                monthTrack.appendChild(createTimelineNode(month + '月', currentMonth === month,
+                    () => selectTimeline(currentYear, month)));
+            });
+        }
+
+        requestAnimationFrame(centerActiveTimelineNodes);
+    }
 
     /**
      * 获取文件列表并显示
      */
     function fetchFiles() {
-        let url = "/list_files";
+        const requestId = ++fileRequestSequence;
+        const params = new URLSearchParams({limit: '50'});
         let title = "最近上传的50个文件";
-        if (currentYear && currentMonth) {
-            url += `?year=${currentYear}&month=${currentMonth}`;
-            title = `${currentYear}年-${currentMonth}月 上传的文件`;
+        if (currentYear) {
+            params.set('year', currentYear);
+            title = `${currentYear}年修改的文件`;
+        }
+        if (currentMonth) {
+            params.set('month', currentMonth);
+            title = `${currentYear}年${currentMonth}月修改的文件`;
         }
         uploadsTitle.textContent = title;
 
         // 显示加载状态
         showLoadingState();
 
-        handleFetch(url).then(r => r.json()).then(data => {
+        handleFetch('/list_files?' + params.toString()).then(async r => {
+            if (!r.ok) throw new Error(await r.text() || '文件列表请求失败');
+            return r.json();
+        }).then(data => {
+            if (requestId !== fileRequestSequence) return;
+            renderTimeline(data.periods);
             renderFileList(data.files);
         }).catch(err => {
+            if (requestId !== fileRequestSequence) return;
             console.error('获取文件列表失败:', err);
             Notify.error('获取文件列表失败，请重试');
             // 显示错误状态
@@ -1170,7 +1575,7 @@
      * @param {Object} file - 文件对象
      * @returns {HTMLElement} 文件元素
      */
-    function createFileElement(file, options) {
+    function createFileElement(file) {
         const a = document.createElement("a");
         a.href = file.url;
         a.target = "_blank";
@@ -1189,49 +1594,10 @@
             addDeleteButton(previewDiv, file, a);
         }
 
-        // 目录视图:附加 重命名/移动(仅 ADMIN, 需要 file.path) / Directory view: rename/move ops
-        if (options && options.directoryView && window.currentRole === 'admin' && file.path) {
-            addFileOps(previewDiv, file, a);
-        }
-
         a.appendChild(previewDiv);
         return a;
     }
 
-    /**
-     * 添加文件重命名/移动按钮(目录视图,仅 ADMIN) / Add rename/move buttons (directory view, ADMIN).
-     */
-    function addFileOps(container, file, linkElement) {
-        const ops = document.createElement('span');
-        ops.className = 'folder-ops';
-
-        const ren = document.createElement('button');
-        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
-        ren.onclick = (e) => {
-            e.stopPropagation(); e.preventDefault();
-            const newName = window.prompt('重命名文件 "' + file.filename + '" 为:', file.filename);
-            if (newName === null || newName === file.filename) return;
-            handleFetch('/rename_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: file.path, newName: newName})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
-        };
-
-        const mv = document.createElement('button');
-        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
-        mv.onclick = (e) => {
-            e.stopPropagation(); e.preventDefault();
-            const destDir = window.prompt('移动到哪个文件夹?(留空=根目录;可用 / 表示多级,如 "项目A/子")', dirPath.join('/'));
-            if (destDir === null) return;
-            handleFetch('/move_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({src: file.path, destDir: destDir})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
-        };
-
-        ops.appendChild(ren); ops.appendChild(mv);
-        container.appendChild(ops);
-    }
 
     /**
      * 添加预览内容
@@ -1358,13 +1724,8 @@
             .then(response => {
                 if (response.ok) {
                     Notify.success('删除成功！');
-                    // 如果提供了元素，则直接删除它
-                    if (element && element.parentNode) {
-                        element.parentNode.removeChild(element);
-                    } else {
-                        // 如果没有元素，刷新页面
-                        window.location.reload();
-                    }
+                    if (typeof currentView !== 'undefined' && currentView === 'directory') fetchDir();
+                    else fetchFiles();
                 } else {
                     response.text().then(text => {
                         if (text) {
@@ -1392,6 +1753,7 @@
         document.getElementById('recent-view').style.display = v === 'recent' ? '' : 'none';
         document.getElementById('dir-view').style.display = v === 'directory' ? '' : 'none';
         if (v === 'directory') fetchDir();
+        else fetchFiles();
     }
 
     function fetchDir() {
@@ -1439,26 +1801,21 @@
             if (window.currentRole === 'admin') appendFolderOps(card, f.name);
             c.appendChild(card);
         });
-        files.forEach(f => {
-            const el = createFileElement(f, {directoryView: true});
-            if (el) c.appendChild(el);
-        });
+        // 文件:网格排列,与"最近上传"一致 / files in a grid matching the recent view
+        if (files.length > 0) {
+            const fileGrid = document.createElement('div');
+            fileGrid.className = 'dir-files';
+            files.forEach(f => {
+                const el = createFileElement(f);
+                if (el) fileGrid.appendChild(el);
+            });
+            c.appendChild(fileGrid);
+        }
     }
 
     function appendFolderOps(card, name) {
         const ops = document.createElement('span');
         ops.className = 'folder-ops';
-        const ren = document.createElement('button');
-        ren.className = 'mini-btn'; ren.textContent = '✏'; ren.title = '重命名';
-        ren.onclick = (e) => {
-            e.stopPropagation();
-            const newName = window.prompt('重命名文件夹 "' + name + '" 为:', name);
-            if (newName === null || newName === name) return;
-            handleFetch('/rename_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: [...dirPath, name].join('/'), newName: newName})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '重命名失败')));
-        };
         const del = document.createElement('button');
         del.className = 'mini-btn'; del.textContent = '🗑'; del.title = '删除文件夹';
         del.onclick = (e) => {
@@ -1472,18 +1829,7 @@
                     .then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '删除失败')));
             });
         };
-        const mv = document.createElement('button');
-        mv.className = 'mini-btn'; mv.textContent = '↔'; mv.title = '移动到…';
-        mv.onclick = (e) => {
-            e.stopPropagation();
-            const destDir = window.prompt('把文件夹 "' + name + '" 移动到哪个文件夹?(留空=根目录)', dirPath.join('/'));
-            if (destDir === null) return;
-            handleFetch('/move_item', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({src: [...dirPath, name].join('/'), destDir: destDir})
-            }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '移动失败')));
-        };
-        ops.appendChild(ren); ops.appendChild(mv); ops.appendChild(del);
+        ops.appendChild(del);
         card.appendChild(ops);
     }
 
@@ -1497,7 +1843,6 @@
         }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '创建失败')));
     });
 
-    fetchPeriods();
     fetchFiles();
 
 </script>

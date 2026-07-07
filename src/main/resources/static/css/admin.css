@@ -1,0 +1,525 @@
+/*!
+ * File Box 管理后台样式 / Admin backend styles
+ *
+ * 依赖 theme.css 提供的 CSS 变量与基础组件:
+ *   .sidebar / .nav-item(+hover/active) / .card / .table-container/.table-header/.table-row /
+ *   .badge(+ -admin/-manager/-user) / .modal/.modal.show/.modal-content / .input-field /
+ *   .progress-bar/.progress-fill / .stat-card / .text-gradient
+ *   以及 :root(浅色) 与 [data-theme="dark"](深色) 两套变量。
+ *
+ * 本文件只补:布局外壳 + theme.css 未覆盖的组件。
+ * 所有颜色一律使用变量,随 data-theme 自动切换明暗。
+ * Dependent on theme.css variables & base components. This file only adds the
+ * layout shell and the few components theme.css does not cover. Every color uses
+ * a variable so the light/dark toggle applies automatically.
+ */
+
+/* ============ 布局外壳 / Layout shell ============ */
+/* <body class="admin-layout"> 顶部承载 sidebar + main 两栏 */
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 侧栏:宽度 + 纵向排列;背景/右边框沿用 theme.css 的 .sidebar */
+.admin-sidebar {
+    width: 16rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.admin-brand {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.admin-brand h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+.admin-brand p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.admin-nav {
+    margin-top: 1.5rem;
+    flex: 1;
+}
+
+.admin-sidebar-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 主内容区 / Main content area */
+.admin-main {
+    flex: 1;
+    padding: 2rem;
+    min-width: 0; /* 允许内部网格收缩 / allow inner grids to shrink */
+}
+
+/* ============ 导航项 / Nav items ============ */
+/* theme.css 的 .nav-item 只给了 hover/active 背景,这里补布局与文本色 */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+/* 侧栏底部:当前用户行 + 登出按钮 */
+.admin-user-row {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+.status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--success);
+    border-radius: 9999px;
+    margin-right: 0.5rem;
+    display: inline-block;
+}
+.admin-logout {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+/* ============ 按钮 / Buttons ============ */
+/* theme.css 有 .btn-primary/.btn-secondary;后台页用的是 .btn(+.btn-danger/.btn-sm),
+   为减少 HTML 改动,在此补齐。.btn-secondary 需在 .btn 之后定义,使 .btn.btn-secondary
+   显示成次要样式。 */
+.btn {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: var(--text-inverse);
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+.btn-icon {
+    margin-right: 0.5rem;
+}
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger) 0%, #b91c1c 100%);
+}
+.btn-danger:hover {
+    box-shadow: 0 6px 20px var(--danger-bg);
+}
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+/* 次要按钮:需覆盖 .btn 的渐变与上浮动效 / neutralize .btn gradient + lift */
+.btn-secondary {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+.btn-secondary:hover {
+    background: var(--border-light);
+    transform: none;
+    box-shadow: none;
+}
+
+/* ============ 页面头部 / Page header ============ */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.page-header-simple {
+    margin-bottom: 2rem;
+}
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+.page-subtitle {
+    color: var(--text-muted);
+}
+
+/* ============ 区块标题 / Section title ============ */
+.section-title {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+/* settings 页带下边框的变体 / bordered variant (settings page) */
+.section-title--bordered {
+    font-size: 1.125rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* ============ 表格 / Tables ============ */
+/* theme.css 的 .table-header/.table-row 只给背景/边框/悬停;这里补内边距与列网格 */
+.table-header,
+.table-row {
+    padding: 1rem 1.5rem;
+}
+.table-header {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+/* 列网格(替代 Tailwind 的 grid grid-cols-N gap-4) */
+.table-cells {
+    display: grid;
+    gap: 1rem;
+    align-items: center;
+}
+.table-cells-5 { grid-template-columns: repeat(5, 1fr); }
+.table-cells-4 { grid-template-columns: repeat(4, 1fr); }
+/* 允许单元格内容收缩(如长路径省略) / let cells shrink (e.g. ellipsis on long paths) */
+.table-cells > * {
+    min-width: 0;
+}
+
+/* 单元格文本 */
+.cell-strong {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.cell-muted {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+/* 等宽显示路径并省略 / mono font + ellipsis for storage paths */
+.cell-muted-mono {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.row-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.empty-state {
+    padding: 2rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* ============ 模态框 / Modal ============ */
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+}
+/* theme.css .modal-content 已给背景/边框/圆角/最大宽度;补滚动与宽变体 */
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-content--wide {
+    max-width: 550px;
+}
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+.modal-actions .btn {
+    flex: 1;
+    text-align: center;
+}
+
+/* ============ 表单 / Forms ============ */
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* 替代 Tailwind space-y-4 */
+}
+.form-group {
+    margin-bottom: 1.25rem;
+}
+.form-stack .form-group {
+    margin-bottom: 0; /* form-stack 用 gap 控制间距 / gap handles spacing */
+}
+.form-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+.field-row {
+    display: flex;
+    gap: 0.5rem;
+}
+.field-fixed {
+    width: 100px; /* 覆盖 .input-field 的 width:100% / override .input-field width */
+    flex-shrink: 0;
+}
+
+/* users 页:存储空间多选 / multi-select storage checkboxes */
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.checkbox-item:hover {
+    border-color: var(--primary);
+}
+.checkbox-item input {
+    margin-right: 0.5rem;
+    accent-color: var(--primary);
+}
+.checkbox-item label {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+/* storage 页:单行复选 / single-line checkbox (storage page) */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+.checkbox-label input {
+    margin-right: 0.5rem;
+    accent-color: var(--primary);
+}
+
+/* ============ Settings: 开关 / Toggle switch ============ */
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background: var(--border-color);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+.toggle-switch.on {
+    background: var(--primary);
+}
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+.toggle-switch.on::after {
+    transform: translateX(24px);
+}
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.setting-row-title {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+.setting-row-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* ============ Settings: 警告条 / Alert ============ */
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.alert-success {
+    background: var(--success-bg);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+.alert-error {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+}
+.form-actions-right {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* settings 的卡片之间留间距 / spacing between settings cards */
+.card {
+    margin-bottom: 1.5rem;
+}
+
+/* ============ Dashboard: 统计网格 / Stats grid ============ */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+@media (max-width: 1024px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .stat-grid { grid-template-columns: 1fr; }
+}
+/* theme.css .stat-card 已含 padding:1.5rem 与 hover */
+.stat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.stat-icon.blue   { background: var(--primary-light); color: var(--primary); }
+.stat-icon.green  { background: var(--success-bg);   color: var(--success); }
+.stat-icon.purple { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+.stat-icon.orange { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+.stat-icon-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Dashboard: 存储使用条目 / per-storage usage item */
+.usage-item {
+    margin-bottom: 1rem;
+}
+.usage-item:last-child {
+    margin-bottom: 0;
+}
+.usage-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.usage-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.usage-meta {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+.usage-progress-text {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+/* Dashboard: 系统信息键值行 / key-value rows */
+.sys-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.sys-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.sys-info-row:last-child {
+    border-bottom: none;
+}
+.sys-info-key {
+    color: var(--text-muted);
+}
+.sys-info-val {
+    color: var(--text-primary);
+}
+.card-mb {
+    margin-bottom: 2rem;
+}
+
+/* ============ Storage 专属 / Storage-specific ============ */
+/* 进度条下方文字(JS 通过 .progress-text 选择) / progress caption (JS-selected) */
+.progress-text {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.storage-progress-wrap {
+    width: 100%;
+}
+.storage-progress-bar {
+    margin-bottom: 0.25rem;
+}
+/* 存储启用徽章 / "active" badge */
+.badge-active {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+/* ============ 语义颜色助手 / Semantic color helpers ============ */
+.text-muted {
+    color: var(--text-muted);
+}
+.text-secondary {
+    color: var(--text-secondary);
+}
+.text-small {
+    font-size: 0.875rem;
+}
+.text-tiny {
+    font-size: 0.75rem;
+}

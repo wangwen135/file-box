@@ -6,228 +6,95 @@
     <title>File Box - 系统设置</title>
     <link rel="icon" href="/images/favicon.png" type="image/png">
     <link rel="stylesheet" href="/css/theme.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background: #0f172a;
-            min-height: 100vh;
-        }
-        .sidebar {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            border-right: 1px solid #334155;
-        }
-        .nav-item {
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
-        .nav-item:hover {
-            background: rgba(14, 165, 233, 0.1);
-            border-left-color: #0ea5e9;
-        }
-        .nav-item.active {
-            background: rgba(14, 165, 233, 0.15);
-            border-left-color: #0ea5e9;
-        }
-        .btn {
-            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.25rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
-        }
-        .btn-secondary {
-            background: #334155;
-            border: 1px solid #475569;
-        }
-        .btn-secondary:hover {
-            background: #475569;
-        }
-        .input-field {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: #e2e8f0;
-            padding: 0.625rem 0.875rem;
-            border-radius: 8px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-        .input-field:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
-        }
-        .input-field::placeholder {
-            color: #64748b;
-        }
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .section-title {
-            color: #e2e8f0;
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-bottom: 1.25rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #334155;
-        }
-        .text-gradient {
-            background: linear-gradient(135deg, #0ea5e9 0%, #22d3ee 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-        .form-group label {
-            display: block;
-            color: #94a3b8;
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-        }
-        .toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 26px;
-            background: #334155;
-            border-radius: 13px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        .toggle-switch.on {
-            background: #0ea5e9;
-        }
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s ease;
-        }
-        .toggle-switch.on::after {
-            transform: translateX(24px);
-        }
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-        .alert-success {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid #22c55e;
-            color: #4ade80;
-        }
-        .alert-error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid #ef4444;
-            color: #f87171;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="flex">
-    <!-- Sidebar -->
-    <div class="sidebar w-64 min-h-screen text-white flex flex-col">
-        <div class="p-6 border-b border-gray-700">
-            <h1 class="text-xl font-bold text-gradient">File Box</h1>
-            <p class="text-sm text-gray-400 mt-1">管理后台</p>
+<body class="admin-layout">
+    <!-- Sidebar / 侧栏 -->
+    <aside class="sidebar admin-sidebar">
+        <div class="admin-brand">
+            <h1 class="text-gradient">File Box</h1>
+            <p>管理后台</p>
         </div>
-        <nav class="mt-6 flex-1">
-            <a href="/admin/dashboard.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">📊</span>
+        <nav class="admin-nav">
+            <a href="/admin/dashboard.html" class="nav-item">
+                <span>📊</span>
                 <span>仪表盘</span>
             </a>
-            <a href="/admin/storage.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">💾</span>
+            <a href="/admin/storage.html" class="nav-item">
+                <span>💾</span>
                 <span>存储管理</span>
             </a>
-            <a href="/admin/users.html" class="nav-item flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">👥</span>
+            <a href="/admin/users.html" class="nav-item">
+                <span>👥</span>
                 <span>用户管理</span>
             </a>
-            <a href="/admin/settings.html" class="nav-item active flex items-center px-6 py-3 text-gray-300">
-                <span class="mr-3">⚙️</span>
+            <a href="/admin/settings.html" class="nav-item active">
+                <span>⚙️</span>
                 <span>系统设置</span>
             </a>
         </nav>
-        <div class="p-6 border-t border-gray-700">
-            <div class="flex items-center text-gray-400 text-sm mb-4">
-                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+        <div class="admin-sidebar-footer">
+            <div class="admin-user-row">
+                <span class="status-dot"></span>
                 <span id="currentUser">admin</span>
             </div>
-            <a href="/logout" class="btn btn-secondary w-full text-center block">退出登录</a>
+            <a href="/logout" class="btn btn-secondary admin-logout">退出登录</a>
         </div>
-    </div>
+    </aside>
 
-    <!-- Main Content -->
-    <div class="flex-1 p-8">
+    <!-- Main Content / 主内容 -->
+    <main class="admin-main">
         <!-- Header -->
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold text-white mb-2">系统设置</h2>
-            <p class="text-gray-400">配置系统参数和选项</p>
+        <div class="page-header-simple">
+            <h2 class="page-title">系统设置</h2>
+            <p class="page-subtitle">配置系统参数和选项</p>
         </div>
 
-        <!-- Alert -->
+        <!-- Alert / 提示条 -->
         <div id="alert" class="alert" style="display: none;"></div>
 
-        <!-- Basic Settings -->
+        <!-- Basic Settings / 基础设置 -->
         <div class="card">
-            <h3 class="section-title">基础设置</h3>
+            <h3 class="section-title section-title--bordered">基础设置</h3>
             <div class="form-group">
-                <label>系统名称</label>
+                <label class="form-label">系统名称</label>
                 <input type="text" id="systemName" class="input-field" placeholder="File Box">
             </div>
             <div class="form-group">
-                <label>系统描述</label>
+                <label class="form-label">系统描述</label>
                 <input type="text" id="systemDesc" class="input-field" placeholder="文件共享和管理工具">
             </div>
         </div>
 
-        <!-- Anonymous Access -->
+        <!-- Anonymous Access / 匿名访问 -->
         <div class="card">
-            <h3 class="section-title">匿名访问</h3>
-            <div class="flex items-center justify-between">
+            <h3 class="section-title section-title--bordered">匿名访问</h3>
+            <div class="setting-row">
                 <div>
-                    <p class="text-white font-medium mb-1">启用匿名访问</p>
-                    <p class="text-gray-400 text-sm">允许未登录用户访问匿名存储空间</p>
+                    <p class="setting-row-title">启用匿名访问</p>
+                    <p class="setting-row-desc">允许未登录用户访问匿名存储空间</p>
                 </div>
                 <div class="toggle-switch" id="anonymousToggle" onclick="toggleAnonymous()"></div>
             </div>
         </div>
 
-        <!-- Anonymous Upload -->
+        <!-- Anonymous Upload / 匿名上传 -->
         <div class="card">
-            <h3 class="section-title">匿名上传</h3>
-            <div class="flex items-center justify-between">
+            <h3 class="section-title section-title--bordered">匿名上传</h3>
+            <div class="setting-row">
                 <div>
-                    <p class="text-white font-medium mb-1">启用匿名上传</p>
-                    <p class="text-gray-400 text-sm">允许匿名用户上传文件到匿名空间</p>
+                    <p class="setting-row-title">启用匿名上传</p>
+                    <p class="setting-row-desc">允许匿名用户上传文件到匿名空间</p>
                 </div>
                 <div class="toggle-switch" id="anonymousUploadToggle" onclick="toggleAnonymousUpload()"></div>
             </div>
         </div>
 
-        <!-- Save Button -->
-        <div class="flex justify-end">
+        <!-- Save Button / 保存按钮 -->
+        <div class="form-actions-right">
             <button onclick="saveSettings()" class="btn">保存设置</button>
         </div>
-    </div>
+    </main>
 
     <script>
         let settings = {

@@ -4,7 +4,9 @@
 
 ## 目标
 
-在现有"最近上传(按时间平铺)"视图之外,新增一种**按目录浏览**的视图:用户可像文件管理器一样,在文件夹之间钻取浏览、新建文件夹、上传到当前文件夹、重命名、移动、删除。同时改进上传文件名处理:合规文件名原样保留,不再被改写。
+在现有"最近上传(按时间平铺)"视图之外,新增一种**按目录浏览**的视图:用户可像文件管理器一样,在文件夹之间钻取浏览、新建文件夹、上传到当前文件夹、删除文件夹/文件。同时改进上传文件名处理:合规文件名原样保留,不再被改写。
+
+> **更新(2026-07-05,用户反馈后)**:定位明确为"简单的局域网文件分享工具",目录功能主要服务于"用户手动复制文件到共享目录"的浏览需求。故**移除文件/文件夹的重命名与移动功能**(原设计的 `/rename_item` `/move_item` 端点及对应 UI 不再保留)。最终保留:目录浏览、上传到当前文件夹、ADMIN 新建/删除文件夹、ADMIN/MANAGER 删除文件。
 
 ## 关键决策(已与用户确认)
 
@@ -30,8 +32,6 @@
 |---|---|---|---|
 | `/list_dir` | GET | 登录 | `?path=<relpath>`(空=根);返回 `{folders:[{name}], files:[record]}`。文件 record 复用 `buildRecord` 思路,url 用 `/api/file?path=<encodedRelPath>` |
 | `/create_folder` | POST | ADMIN | body `{path}`;`Files.createDirectories`;已存在返回 409 |
-| `/rename_item` | POST | ADMIN | body `{path, newName}`;重命名文件或文件夹(叶子)。`newName` 走合规校验;目标已存在返回 409 |
-| `/move_item` | POST | ADMIN | body `{src, destDir}`;移动文件/文件夹到 `destDir` 下,冲突返回 409;禁止把目录移进自己子树 |
 | `/delete_folder` | DELETE | ADMIN | `?path=<relpath>`;递归删除 |
 | `/api/file` | GET | 登录 | `?path=<relpath>`;下载任意深度路径的文件。**抽 `serveResolved(Path,req,resp)` 复用**(保留 Range/大文件流式/错误处理),旧 `/uploads/{y}/{m}/{fn}` 调同一 helper,行为不变 |
 

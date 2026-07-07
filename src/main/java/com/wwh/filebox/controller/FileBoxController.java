@@ -5,6 +5,7 @@ import com.wwh.filebox.model.LoginSession;
 import com.wwh.filebox.model.Role;
 import com.wwh.filebox.model.StorageSpace;
 import com.wwh.filebox.service.AuthService;
+import com.wwh.filebox.service.FileCatalogService;
 import com.wwh.filebox.service.StorageService;
 import com.wwh.filebox.util.DateTimeFormatter;
 import com.wwh.filebox.util.FileUtils;
@@ -24,11 +25,13 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.*;
 
 /**
@@ -64,6 +67,9 @@ public class FileBoxController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private FileCatalogService fileCatalogService;
 
     private String getTokenFromRequest(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
@@ -123,19 +129,13 @@ public class FileBoxController {
 
         String storageSpaceName = storageSpace.getName();
         String storageDir = storageSpace.getPath();
-        // 目标目录:目录视图带 targetFolder → 进入该文件夹;否则按 年/月 自动归档(保留原行为)
-        // Target dir: directory-view sends targetFolder; otherwise default to YYYY/MM.
-        Path uploadDir;
-        if (targetFolder != null && !targetFolder.trim().isEmpty()) {
-            uploadDir = resolveWithinStorage(request, targetFolder);
-            if (uploadDir == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
-            }
-            if (!Files.isDirectory(uploadDir)) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
-            }
-        } else {
-            uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        // 上传始终进入当前目录；未指定 targetFolder 时即存储空间根目录。
+        Path uploadDir = resolveWithinStorage(request, targetFolder);
+        if (uploadDir == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
+        }
+        if (Files.exists(uploadDir) && !Files.isDirectory(uploadDir)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
         }
         Files.createDirectories(uploadDir);
         String timestamp = DateTimeFormatter.getCurrentTimestamp();
@@ -180,6 +180,7 @@ public class FileBoxController {
             // Note 2: pass an ABSOLUTE path. Part.write resolves a relative path against the
             //         multipart location (Tomcat work dir), not the process CWD.
             f.transferTo(savePath.toAbsolutePath().normalize().toFile());
+            Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
             logger.info("User {} uploaded file: {}", username, savePath.getFileName());
         }
 
@@ -212,24 +213,20 @@ public class FileBoxController {
         }
 
         String storageDir = storageSpace.getPath();
-        // 目录视图带 targetFolder → 进入该文件夹;否则按 年/月 自动归档(与 upload_file 一致)
+        // 上传文本也进入当前目录；未指定 targetFolder 时即存储空间根目录。
         String targetFolder = body.get("targetFolder") != null ? body.get("targetFolder").toString() : null;
-        Path uploadDir;
-        if (targetFolder != null && !targetFolder.trim().isEmpty()) {
-            uploadDir = resolveWithinStorage(request, targetFolder);
-            if (uploadDir == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
-            }
-            if (!Files.isDirectory(uploadDir)) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
-            }
-        } else {
-            uploadDir = Paths.get(storageDir, DateTimeFormatter.getCurrentYear(), DateTimeFormatter.getCurrentMonth());
+        Path uploadDir = resolveWithinStorage(request, targetFolder);
+        if (uploadDir == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
+        }
+        if (Files.exists(uploadDir) && !Files.isDirectory(uploadDir)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
         }
         Files.createDirectories(uploadDir);
         String filename = AppConstants.FileUpload.PASTE_FILE_PREFIX + DateTimeFormatter.getCurrentTimestamp() + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION;
         Path savePath = uploadDir.resolve(filename);
         Files.write(savePath, ((String) body.get("text")).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE_NEW);
+        Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
         logger.info("User {} uploaded text file: {}", username, filename);
 
         return ResponseEntity.ok("OK");
@@ -282,7 +279,7 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的文件路径");
         }
 
-        if (Files.exists(targetPath) && Files.isRegularFile(targetPath)) {
+        if (Files.exists(targetPath) && Files.isRegularFile(targetPath) && !Files.isSymbolicLink(targetPath)) {
             Files.delete(targetPath);
             logger.info("User {} successfully deleted file: {}", username, filePath);
             return ResponseEntity.ok("文件删除成功");
@@ -309,37 +306,10 @@ public class FileBoxController {
             }});
         }
 
-        String storageDir = storageSpace.getPath();
-        File root = new File(storageDir);
-        List<Map<String, Object>> periods = new ArrayList<>();
-        if (root.exists() && root.isDirectory()) {
-            File[] years = root.listFiles(File::isDirectory);
-            if (years != null) {
-                for (File ydir : years) {
-                    String yname = ydir.getName();
-                    if (yname.matches("\\d+")) {
-                        File[] months = ydir.listFiles(File::isDirectory);
-                        List<String> mlist = new ArrayList<>();
-                        if (months != null) {
-                            for (File mdir : months) {
-                                String mname = mdir.getName();
-                                if (mname.matches("\\d+")) {
-                                    mlist.add(mname);
-                                }
-                            }
-                        }
-                        mlist.sort((a, b) -> Integer.compare(Integer.parseInt(b), Integer.parseInt(a)));
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("year", yname);
-                        map.put("months", mlist);
-                        periods.add(map);
-                    }
-                }
-            }
-        }
-        periods.sort((a, b) -> Integer.parseInt((String) b.get("year")) - Integer.parseInt((String) a.get("year")));
+        FileCatalogService.ScanResult scan = fileCatalogService.scan(
+                Paths.get(storageSpace.getPath()), null, null, 1);
         Map<String, Object> resp = new HashMap<>();
-        resp.put("periods", periods);
+        resp.put("periods", scan.getPeriods());
         return ResponseEntity.ok(resp);
     }
 
@@ -350,9 +320,18 @@ public class FileBoxController {
                                        @RequestParam(value = "month", required = false) String month,
                                        @RequestParam(value = "limit", required = false, defaultValue = "50") int limit) throws IOException {
 
-        // 限制limit的最大值，防止性能问题
-        if (limit > 1000) {
-            limit = 1000;
+        if (limit < 1) {
+            return ResponseEntity.badRequest().body("limit 必须大于 0");
+        }
+        limit = Math.min(limit, AppConstants.FileUpload.MAX_FILE_LIMIT);
+        if (year != null && !year.matches("\\d{4}")) {
+            return ResponseEntity.badRequest().body("年份格式无效");
+        }
+        if (month != null && !month.matches("0[1-9]|1[0-2]")) {
+            return ResponseEntity.badRequest().body("月份格式无效");
+        }
+        if (month != null && year == null) {
+            return ResponseEntity.badRequest().body("选择月份时必须同时指定年份");
         }
 
         String storageSpaceName = getCurrentStorageSpace(request);
@@ -369,46 +348,20 @@ public class FileBoxController {
             }});
         }
 
-        String storageDir = storageSpace.getPath();
-        Path root = Paths.get(storageDir);
-
         List<Map<String, Object>> result = new ArrayList<>();
-        if (year != null && month != null && !year.isEmpty() && !month.isEmpty()) {
-            Path folder = root.resolve(year).resolve(month);
-            if (Files.exists(folder) && Files.isDirectory(folder)) {
-                try (DirectoryStream<Path> ds = Files.newDirectoryStream(folder)) {
-                    for (Path p : ds) {
-                        if (Files.isRegularFile(p)) {
-                            result.add(buildRecord(p, year, month));
-                        }
-                    }
-                }
-                result.sort((a, b) -> ((String) b.get("time")).compareTo((String) a.get("time")));
+        FileCatalogService.ScanResult scan;
+        try {
+            scan = fileCatalogService.scan(Paths.get(storageSpace.getPath()), year, month, limit);
+            for (FileCatalogService.FileEntry entry : scan.getFiles()) {
+                result.add(buildDirRecord(entry.getPath(), entry.getRelativePath()));
             }
-        } else {
-            // 使用try-with-resources确保Stream正确关闭
-            // 限制遍历深度为3层（year/month/file）以提高性能
-            try {
-                List<Map<String, Object>> all = new ArrayList<>();
-                Files.walk(root, AppConstants.FileUpload.MAX_TRAVERSE_DEPTH)
-                        .filter(Files::isRegularFile)
-                        .forEach(p -> {
-                            Path rel = root.relativize(p);
-                            if (rel.getNameCount() >= 3) {
-                                String y = rel.getName(0).toString();
-                                String m = rel.getName(1).toString();
-                                all.add(buildRecord(p, y, m));
-                            }
-                        });
-                all.sort((a, b) -> ((String) b.get("time")).compareTo((String) a.get("time")));
-                int lim = Math.min(limit, all.size());
-                result = all.subList(0, lim);
-            } catch (IOException e) {
-                logger.warn("Error traversing directory: {}", e.getMessage());
-            }
+        } catch (IOException e) {
+            logger.warn("Error scanning storage space {}: {}", storageSpaceName, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("读取文件列表失败");
         }
         Map<String, Object> resp = new HashMap<>();
         resp.put("files", result);
+        resp.put("periods", scan.getPeriods());
         return ResponseEntity.ok(resp);
     }
 
@@ -476,6 +429,11 @@ public class FileBoxController {
             writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
             return null;
         }
+        if (containsSymbolicLink(basePath, target)) {
+            logger.warn("Symbolic-link access rejected: {}", target);
+            writeError(response, HttpStatus.BAD_REQUEST.value(), "不支持符号链接");
+            return null;
+        }
         return target;
     }
 
@@ -486,7 +444,7 @@ public class FileBoxController {
     private void serveResolvedFile(Path target, HttpServletRequest request, HttpServletResponse response) throws IOException {
         String filename = target.getFileName().toString();
 
-        if (!Files.exists(target) || !Files.isRegularFile(target)) {
+        if (!Files.exists(target) || !Files.isRegularFile(target) || Files.isSymbolicLink(target)) {
             writeError(response, HttpStatus.NOT_FOUND.value(), "文件不存在");
             return;
         }
@@ -626,15 +584,7 @@ public class FileBoxController {
             long fileSize = f.length();
             String content = null;
             if ("text".equals(ftype)) {
-                try {
-                    byte[] bytes = Files.readAllBytes(fullPath);
-                    String txt = new String(bytes, StandardCharsets.UTF_8);
-                    content = txt.length() > AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH
-                        ? txt.substring(0, AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH)
-                        : txt;
-                } catch (IOException e) {
-                    content = null;
-                }
+                content = readTextPreview(fullPath);
             }
             map.put("year", y);
             map.put("month", m);
@@ -662,14 +612,7 @@ public class FileBoxController {
             String ftype = FileUtils.getFileTypeCategory(filename);
             String content = null;
             if ("text".equals(ftype)) {
-                try {
-                    byte[] bytes = Files.readAllBytes(fullPath);
-                    String txt = new String(bytes, StandardCharsets.UTF_8);
-                    content = txt.length() > AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH
-                        ? txt.substring(0, AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH) : txt;
-                } catch (IOException e) {
-                    content = null;
-                }
+                content = readTextPreview(fullPath);
             }
             map.put("filename", filename);
             map.put("path", relPath); // 存储空间根的相对路径,供前端删除/重命名/移动使用
@@ -686,6 +629,22 @@ public class FileBoxController {
             logger.warn("Error building dir record: {}", e.getMessage(), e);
         }
         return map;
+    }
+
+    /** Read only the small prefix needed by the UI instead of loading a whole text file into heap. */
+    private String readTextPreview(Path path) {
+        char[] buffer = new char[AppConstants.FileUpload.TEXT_PREVIEW_MAX_LENGTH];
+        int total = 0;
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            while (total < buffer.length) {
+                int read = reader.read(buffer, total, buffer.length - total);
+                if (read < 0) break;
+                total += read;
+            }
+            return new String(buffer, 0, total);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private boolean canUserAccessStorageSpace(LoginSession session, String storageSpaceName) {
@@ -751,7 +710,21 @@ public class FileBoxController {
         if (p.isEmpty()) return basePath;
         Path target = basePath.resolve(p).toAbsolutePath().normalize();
         if (!target.startsWith(basePath)) return null; // 路径穿越
+        if (containsSymbolicLink(basePath, target)) return null;
         return target;
+    }
+
+    /** Reject a path when any existing component below the storage root is a symbolic link. */
+    private boolean containsSymbolicLink(Path basePath, Path target) {
+        Path current = basePath;
+        Path relative = basePath.relativize(target);
+        for (Path part : relative) {
+            current = current.resolve(part);
+            if (Files.exists(current, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(current)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -780,11 +753,14 @@ public class FileBoxController {
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
             for (Path p : ds) {
                 String name = p.getFileName().toString();
-                if (Files.isDirectory(p)) {
+                if (Files.isSymbolicLink(p)) {
+                    continue;
+                }
+                if (Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS)) {
                     Map<String, Object> fo = new HashMap<>();
                     fo.put("name", name);
                     folders.add(fo);
-                } else if (Files.isRegularFile(p)) {
+                } else if (Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
                     String rel = basePath.relativize(p).toString().replace('\\', '/');
                     files.add(buildDirRecord(p, rel));
                 }
@@ -829,84 +805,6 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("创建文件夹失败");
         }
         logger.info("User {} created folder: {}", session.getUsername(), path);
-        return ResponseEntity.ok("OK");
-    }
-
-    /**
-     * 重命名文件或文件夹(叶子换名)。仅 ADMIN。 / Rename a file or folder. ADMIN only.
-     * POST /rename_item  body: {"path": "<relpath>", "newName": "<name>"}
-     */
-    @PostMapping("/rename_item")
-    @ResponseBody
-    public ResponseEntity<?> renameItem(HttpServletRequest request, @RequestBody Map<String, Object> body) {
-        LoginSession session = getSession(request);
-        if (session == null || session.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可重命名");
-        }
-        String path = body == null ? null : (String) body.get("path");
-        String newName = body == null ? null : (String) body.get("newName");
-        // 重命名是用户显式输入新名:不合规直接拒绝(不静默清洗,避免"a/b.txt"被偷偷改成"b.txt")
-        // Rename uses an explicitly typed name: reject non-compliant names instead of silently cleaning.
-        if (!FileUtils.isFilenameCompliant(newName)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("新文件名不合规：必须是纯文件名（不含 / \\ 或控制字符）");
-        }
-        String cleanName = newName;
-        Path src = resolveWithinStorage(request, path);
-        if (src == null || !Files.exists(src)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
-        }
-        Path target = src.resolveSibling(cleanName);
-        if (Files.exists(target)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("目标名称已存在");
-        }
-        try {
-            Files.move(src, target);
-        } catch (IOException e) {
-            logger.warn("rename_item failed {} -> {}: {}", path, cleanName, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("重命名失败");
-        }
-        logger.info("User {} renamed {} -> {}", session.getUsername(), path, cleanName);
-        return ResponseEntity.ok("OK");
-    }
-
-    /**
-     * 移动文件/文件夹到另一文件夹下。仅 ADMIN。 / Move an item into another folder. ADMIN only.
-     * POST /move_item  body: {"src": "<relpath>", "destDir": "<relpath>"}
-     */
-    @PostMapping("/move_item")
-    @ResponseBody
-    public ResponseEntity<?> moveItem(HttpServletRequest request, @RequestBody Map<String, Object> body) {
-        LoginSession session = getSession(request);
-        if (session == null || session.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可移动");
-        }
-        String srcPath = body == null ? null : (String) body.get("src");
-        String destDir = body == null ? null : (String) body.get("destDir");
-        Path src = resolveWithinStorage(request, srcPath);
-        Path dest = resolveWithinStorage(request, destDir);
-        if (src == null || dest == null || !Files.exists(src)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
-        }
-        if (!Files.isDirectory(dest)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("目标不是文件夹");
-        }
-        // 禁止把目录移进自身或其子树 / forbid moving a dir into itself or its descendant
-        Path srcAbs = src.toAbsolutePath();
-        Path destAbs = dest.toAbsolutePath();
-        if (destAbs.equals(srcAbs) || destAbs.startsWith(srcAbs)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("不能把文件夹移进自身或其子目录");
-        }
-        Path target = dest.resolve(src.getFileName().toString());
-        if (Files.exists(target)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("目标位置已存在同名项");
-        }
-        try {
-            Files.move(src, target);
-        } catch (IOException e) {
-            logger.warn("move_item failed {} -> {}: {}", srcPath, destDir, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("移动失败");
-        }
-        logger.info("User {} moved {} -> {}", session.getUsername(), srcPath, destDir);
         return ResponseEntity.ok("OK");
     }
 
