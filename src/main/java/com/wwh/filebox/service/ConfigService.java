@@ -156,12 +156,6 @@ public class ConfigService {
                     currentSpace.setPath(trimmed.substring(5).trim());
                 } else if (trimmed.startsWith("max-size:") || trimmed.startsWith("maxSize:")) {
                     currentSpace.setMaxSize(trimmed.substring(trimmed.indexOf(":") + 1).trim());
-                } else if (trimmed.startsWith("url-prefix:") || trimmed.startsWith("urlPrefix:")) {
-                    currentSpace.setUrlPrefix(trimmed.substring(trimmed.indexOf(":") + 1).trim());
-                } else if (trimmed.startsWith("domain:")) {
-                    // Legacy support: map domain to urlPrefix
-                    String domain = trimmed.substring(7).trim();
-                    currentSpace.setUrlPrefix(domain);
                 } else if (trimmed.startsWith("allow-anonymous:") || trimmed.startsWith("allowAnonymous:")) {
                     currentSpace.setAllowAnonymous(Boolean.parseBoolean(trimmed.substring(trimmed.indexOf(":") + 1).trim()));
                 }
@@ -265,7 +259,6 @@ public class ConfigService {
                 yaml.append("    - name: ").append(space.getName()).append("\n");
                 yaml.append("      path: ").append(space.getPath()).append("\n");
                 yaml.append("      max-size: ").append(space.getMaxSize()).append("\n");
-                yaml.append("      url-prefix: ").append(space.getUrlPrefix() != null ? space.getUrlPrefix() : "").append("\n");
                 yaml.append("      allow-anonymous: ").append(space.isAllowAnonymous()).append("\n");
             }
         }
@@ -298,7 +291,6 @@ public class ConfigService {
         defaultSpace.setName("default");
         defaultSpace.setPath("./uploads");
         defaultSpace.setMaxSize("10GB");
-        defaultSpace.setUrlPrefix("http://localhost:8080");
         defaultSpace.setAllowAnonymous(false);
 
         List<SystemConfig.StorageSpaceConfig> spaces = new ArrayList<>();

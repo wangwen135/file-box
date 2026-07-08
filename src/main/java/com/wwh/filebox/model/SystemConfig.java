@@ -69,7 +69,6 @@ public class SystemConfig {
         private String name;
         private String path;
         private String maxSize;
-        private String urlPrefix;
         private boolean allowAnonymous;
 
         public String getName() {
@@ -94,14 +93,6 @@ public class SystemConfig {
 
         public void setMaxSize(String maxSize) {
             this.maxSize = maxSize;
-        }
-
-        public String getUrlPrefix() {
-            return urlPrefix;
-        }
-
-        public void setUrlPrefix(String urlPrefix) {
-            this.urlPrefix = urlPrefix;
         }
 
         public boolean isAllowAnonymous() {

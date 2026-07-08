@@ -12,7 +12,6 @@ public class StorageSpace {
     private String path;
     private String maxSizeStr; // String representation like "10GB"
     private long maxSize; // in bytes
-    private String urlPrefix; // URL prefix for file access
     private boolean allowAnonymous;
 
     public StorageSpace() {
@@ -89,14 +88,6 @@ public class StorageSpace {
         } else {
             return bytes + " B";
         }
-    }
-
-    public String getUrlPrefix() {
-        return urlPrefix;
-    }
-
-    public void setUrlPrefix(String urlPrefix) {
-        this.urlPrefix = urlPrefix;
     }
 
     public boolean isAllowAnonymous() {

@@ -57,7 +57,6 @@ public class StorageService {
                     space.setName(spaceConfig.getName());
                     space.setPath(spaceConfig.getPath());
                     space.setMaxSize(spaceConfig.getMaxSize());
-                    space.setUrlPrefix(spaceConfig.getUrlPrefix());
                     space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
                     return space;
                 })
@@ -79,7 +78,6 @@ public class StorageService {
                 space.setName(spaceConfig.getName());
                 space.setPath(spaceConfig.getPath());
                 space.setMaxSize(spaceConfig.getMaxSize());
-                space.setUrlPrefix(spaceConfig.getUrlPrefix());
                 space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
                 return space;
             }
@@ -100,28 +98,9 @@ public class StorageService {
     }
 
     /**
-     * Validate URL prefix format
-     */
-    private boolean isValidUrlPrefix(String urlPrefix) {
-        if (urlPrefix == null || urlPrefix.trim().isEmpty()) {
-            return false;
-        }
-        // Must start with http:// or https://
-        if (!urlPrefix.matches("^https?://.*")) {
-            return false;
-        }
-        try {
-            new java.net.URL(urlPrefix);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
      * Create storage space
      */
-    public boolean createStorageSpace(String name, String path, String maxSize, String urlPrefix, boolean allowAnonymous) {
+    public boolean createStorageSpace(String name, String path, String maxSize, boolean allowAnonymous) {
         SystemConfig config = configService.getConfig();
         if (config == null) {
             return false;
@@ -136,12 +115,6 @@ public class StorageService {
         // Check if storage space already exists
         if (getStorageSpace(name) != null) {
             logger.warn("Storage space {} already exists", name);
-            return false;
-        }
-
-        // Validate URL prefix
-        if (!isValidUrlPrefix(urlPrefix)) {
-            logger.warn("Invalid URL prefix: {}", urlPrefix);
             return false;
         }
 
@@ -166,7 +139,6 @@ public class StorageService {
         spaceConfig.setName(name);
         spaceConfig.setPath(path);
         spaceConfig.setMaxSize(maxSize);
-        spaceConfig.setUrlPrefix(urlPrefix);
         spaceConfig.setAllowAnonymous(allowAnonymous);
 
         if (config.getStorageSpaces() == null) {
@@ -193,15 +165,9 @@ public class StorageService {
     /**
      * Update storage space
      */
-    public boolean updateStorageSpace(String name, String path, String maxSize, String urlPrefix, boolean allowAnonymous) {
+    public boolean updateStorageSpace(String name, String path, String maxSize, boolean allowAnonymous) {
         SystemConfig config = configService.getConfig();
         if (config == null || config.getStorageSpaces() == null) {
-            return false;
-        }
-
-        // Validate URL prefix
-        if (!isValidUrlPrefix(urlPrefix)) {
-            logger.warn("Invalid URL prefix: {}", urlPrefix);
             return false;
         }
 
@@ -226,7 +192,6 @@ public class StorageService {
             if (spaceConfig.getName().equals(name)) {
                 spaceConfig.setPath(path);
                 spaceConfig.setMaxSize(maxSize);
-                spaceConfig.setUrlPrefix(urlPrefix);
                 spaceConfig.setAllowAnonymous(allowAnonymous);
 
                 configService.saveConfig(config);
