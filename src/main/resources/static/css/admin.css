@@ -89,10 +89,14 @@
     margin-right: 0.5rem;
     display: inline-block;
 }
+.admin-home-link,
 .admin-logout {
     display: block;
     width: 100%;
     text-align: center;
+}
+.admin-home-link {
+    margin-bottom: 0.75rem;
 }
 
 /* ============ 按钮 / Buttons ============ */
@@ -160,6 +164,26 @@
 }
 .page-subtitle {
     color: var(--text-muted);
+}
+
+/* ============ 主题切换按钮(后台悬浮版)/ Theme toggle (admin floating) ============ */
+/* 后台无页头槽位,按钮悬浮在右上角;此处缩到与上传页一致的 32px,避免压住顶栏操作按钮。
+   / No header slot in admin → floating toggle; shrink to 32px (matches upload page). */
+.admin-layout .theme-toggle {
+    width: 32px;
+    height: 32px;
+    top: 18px;
+    right: 18px;
+    font-size: 14px;
+}
+.admin-layout .theme-toggle svg {
+    width: 18px;
+    height: 18px;
+}
+/* 顶栏右侧为悬浮主题按钮留出避让区 / keep header buttons clear of the floating toggle */
+.page-header,
+.page-header-simple {
+    padding-right: 1.5rem;
 }
 
 /* ============ 区块标题 / Section title ============ */
@@ -404,6 +428,80 @@
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
+    .admin-layout {
+        display: block;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+        min-height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .admin-brand {
+        padding: 1rem;
+    }
+
+    .admin-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0;
+        padding: 0.5rem;
+    }
+
+    .nav-item {
+        flex: 1 1 calc(50% - 0.25rem);
+        justify-content: center;
+        padding: 0.75rem 0.5rem;
+        border-radius: 8px;
+    }
+
+    .admin-sidebar-footer {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem 1rem;
+        border-top: none;
+    }
+
+    .admin-user-row {
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+
+    .admin-home-link,
+    .admin-logout {
+        width: auto;
+        flex: 1;
+    }
+
+    .admin-home-link {
+        margin-bottom: 0;
+    }
+
+    .admin-main {
+        width: 100%;
+        padding: 1rem;
+    }
+
+    .page-header,
+    .page-header-simple {
+        margin-bottom: 1rem;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table-header,
+    .table-row {
+        min-width: 620px;
+    }
+
     .stat-grid { grid-template-columns: 1fr; }
 }
 /* theme.css .stat-card 已含 padding:1.5rem 与 hover */

@@ -38,6 +38,7 @@
                 <span class="status-dot"></span>
                 <span id="currentUser">admin</span>
             </div>
+            <a href="/index.html" class="btn btn-secondary admin-home-link">返回上传页</a>
             <a href="/logout" class="btn btn-secondary admin-logout">退出登录</a>
         </div>
     </aside>
@@ -97,10 +98,6 @@
                                 <option value="TB">TB</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">URL 前缀</label>
-                        <input type="text" id="storageUrl" class="input-field" placeholder="http://localhost:8080">
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -221,7 +218,6 @@
                     document.getElementById('storageSize').value = parseInt(data.maxSize) || 10;
                     const unit = data.maxSize.match(/[A-Z]+/)?.[0] || 'GB';
                     document.getElementById('storageUnit').value = unit;
-                    document.getElementById('storageUrl').value = data.urlPrefix || '';
                     document.getElementById('allowAnonymous').checked = data.allowAnonymous || false;
                 });
             document.getElementById('storageModal').classList.add('show');
@@ -237,14 +233,12 @@
             const path = document.getElementById('storagePath').value;
             const size = document.getElementById('storageSize').value;
             const unit = document.getElementById('storageUnit').value;
-            const urlPrefix = document.getElementById('storageUrl').value;
             const allowAnonymous = document.getElementById('allowAnonymous').checked;
 
             const data = {
                 name,
                 path,
                 maxSize: size + unit,
-                urlPrefix: urlPrefix || 'http://localhost:8080',
                 allowAnonymous
             };
 

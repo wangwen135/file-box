@@ -110,7 +110,6 @@ public class AdminController {
             spaceMap.put("name", space.getName());
             spaceMap.put("path", space.getPath());
             spaceMap.put("maxSize", space.getFormattedMaxSize());
-            spaceMap.put("urlPrefix", space.getUrlPrefix());
             spaceMap.put("maxSizeBytes", space.getMaxSizeInBytes());
             spaceMap.put("allowAnonymous", space.isAllowAnonymous());
 
@@ -137,10 +136,9 @@ public class AdminController {
         String name = (String) request.get("name");
         String path = (String) request.get("path");
         String maxSize = (String) request.get("maxSize");
-        String urlPrefix = (String) request.get("urlPrefix");
         Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
 
-        boolean success = storageService.createStorageSpace(name, path, maxSize, urlPrefix, allowAnonymous);
+        boolean success = storageService.createStorageSpace(name, path, maxSize, allowAnonymous);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
@@ -161,10 +159,9 @@ public class AdminController {
             @RequestBody Map<String, Object> request) {
         String path = (String) request.get("path");
         String maxSize = (String) request.get("maxSize");
-        String urlPrefix = (String) request.get("urlPrefix");
         Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
 
-        boolean success = storageService.updateStorageSpace(name, path, maxSize, urlPrefix, allowAnonymous);
+        boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymous);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
@@ -334,7 +331,6 @@ public class AdminController {
         response.put("name", space.getName());
         response.put("path", space.getPath());
         response.put("maxSize", space.getFormattedMaxSize());
-        response.put("urlPrefix", space.getUrlPrefix());
         response.put("allowAnonymous", space.isAllowAnonymous());
 
         return ResponseEntity.ok(response);

@@ -219,7 +219,7 @@
                     animation: modal-fade-out 0.2s ease-in forwards;
                 }
                 
-                .modal {
+                .notify-modal {
                     background: #fff;
                     border-radius: 12px;
                     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -443,7 +443,7 @@
                 overlay.className = 'modal-overlay';
 
                 const modal = document.createElement('div');
-                modal.className = 'modal';
+                modal.className = 'notify-modal';
                 if (width) modal.style.minWidth = width + 'px';
 
                 modal.innerHTML = `
@@ -504,7 +504,7 @@
                 overlay.className = 'modal-overlay';
 
                 const modal = document.createElement('div');
-                modal.className = 'modal';
+                modal.className = 'notify-modal';
                 if (width) modal.style.minWidth = width + 'px';
 
                 const iconHTML = type === 'error' ? '<span style="font-size: 48px; display: block; text-align: center; color: #ff4d4f;">✕</span>' : '';
