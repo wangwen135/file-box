@@ -184,6 +184,8 @@ public class FileBoxController {
             logger.info("User {} uploaded file: {}", username, savePath.getFileName());
         }
 
+        // 上传改变了文件集，作废该存储空间的遍历缓存 / uploads changed the file set; drop the cached walk
+        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
         return ResponseEntity.ok("OK");
     }
 
@@ -229,6 +231,8 @@ public class FileBoxController {
         Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
         logger.info("User {} uploaded text file: {}", username, filename);
 
+        // 文本上传改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
+        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
         return ResponseEntity.ok("OK");
     }
 
@@ -281,6 +285,8 @@ public class FileBoxController {
 
         if (Files.exists(targetPath) && Files.isRegularFile(targetPath) && !Files.isSymbolicLink(targetPath)) {
             Files.delete(targetPath);
+            // 删除改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
+            fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
             logger.info("User {} successfully deleted file: {}", username, filePath);
             return ResponseEntity.ok("文件删除成功");
         } else {
@@ -307,7 +313,8 @@ public class FileBoxController {
         }
 
         FileCatalogService.ScanResult scan = fileCatalogService.scan(
-                Paths.get(storageSpace.getPath()), null, null, 1);
+                Paths.get(storageSpace.getPath()), null, null,
+                AppConstants.FileUpload.DEFAULT_FILE_OFFSET, 1);
         Map<String, Object> resp = new HashMap<>();
         resp.put("periods", scan.getPeriods());
         return ResponseEntity.ok(resp);
@@ -318,10 +325,14 @@ public class FileBoxController {
     public ResponseEntity<?> listFiles(HttpServletRequest request,
                                        @RequestParam(value = "year", required = false) String year,
                                        @RequestParam(value = "month", required = false) String month,
+                                       @RequestParam(value = "offset", required = false, defaultValue = "0") int offset,
                                        @RequestParam(value = "limit", required = false, defaultValue = "50") int limit) throws IOException {
 
         if (limit < 1) {
             return ResponseEntity.badRequest().body("limit 必须大于 0");
+        }
+        if (offset < 0) {
+            return ResponseEntity.badRequest().body("offset 必须 >= 0");
         }
         limit = Math.min(limit, AppConstants.FileUpload.MAX_FILE_LIMIT);
         if (year != null && !year.matches("\\d{4}")) {
@@ -351,7 +362,7 @@ public class FileBoxController {
         List<Map<String, Object>> result = new ArrayList<>();
         FileCatalogService.ScanResult scan;
         try {
-            scan = fileCatalogService.scan(Paths.get(storageSpace.getPath()), year, month, limit);
+            scan = fileCatalogService.scan(Paths.get(storageSpace.getPath()), year, month, offset, limit);
             for (FileCatalogService.FileEntry entry : scan.getFiles()) {
                 result.add(buildDirRecord(entry.getPath(), entry.getRelativePath()));
             }
@@ -362,6 +373,9 @@ public class FileBoxController {
         Map<String, Object> resp = new HashMap<>();
         resp.put("files", result);
         resp.put("periods", scan.getPeriods());
+        // 分页元信息：是否还有更多 + 切片前总数 / pagination metadata for infinite scroll
+        resp.put("hasMore", offset + result.size() < scan.getTotalFiltered());
+        resp.put("total", scan.getTotalFiltered());
         return ResponseEntity.ok(resp);
     }
 
@@ -734,7 +748,18 @@ public class FileBoxController {
     @GetMapping("/list_dir")
     @ResponseBody
     public ResponseEntity<?> listDir(HttpServletRequest request,
-                                     @RequestParam(value = "path", required = false) String path) {
+                                     @RequestParam(value = "path", required = false) String path,
+                                     @RequestParam(value = "offset", required = false, defaultValue = "0") int offset,
+                                     @RequestParam(value = "limit", required = false, defaultValue = "50") int limit) {
+        // 只对文件分页；文件夹通常很少，全量返回以便导航。
+        // Paginate files only; folders are usually few and returned in full for navigation.
+        if (offset < 0) {
+            return ResponseEntity.badRequest().body("offset 必须 >= 0");
+        }
+        if (limit < 1) {
+            return ResponseEntity.badRequest().body("limit 必须大于 0");
+        }
+        limit = Math.min(limit, AppConstants.FileUpload.MAX_FILE_LIMIT);
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "list_dir");
         if (storageSpace == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的存储空间");
@@ -770,12 +795,22 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("读取目录失败");
         }
         folders.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("name"), (String) b.get("name")));
+        // 文件按名排序(确定性强，分页稳定)；注意这与 /list_files 的 mtime 倒序不同，为既有行为。
+        // Files sorted by name (deterministic, stable for paging); differs from /list_files' mtime order — pre-existing.
         files.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("filename"), (String) b.get("filename")));
+
+        // 对文件做 offset/limit 分页(文件夹不分页) / paginate files only (folders are not paginated)
+        int totalFiles = files.size();
+        int from = Math.min(offset, totalFiles);
+        int to = Math.min(offset + limit, totalFiles);
+        List<Map<String, Object>> filePage = from < to ? new ArrayList<>(files.subList(from, to)) : new ArrayList<>();
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("path", path == null ? "" : path);
         resp.put("folders", folders);
-        resp.put("files", files);
+        resp.put("files", filePage);
+        resp.put("hasMore", offset + filePage.size() < totalFiles);
+        resp.put("total", totalFiles);
         return ResponseEntity.ok(resp);
     }
 
@@ -854,6 +889,8 @@ public class FileBoxController {
             logger.warn("delete_folder failed {}: {}", folderPath, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除文件夹失败");
         }
+        // 删除文件夹改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
+        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
         logger.info("User {} deleted folder: {}", session.getUsername(), folderPath);
         return ResponseEntity.ok("文件夹删除成功");
     }

@@ -150,6 +150,14 @@ public class UserService {
     }
 
     /**
+     * 校验明文密码是否与指定用户的存储哈希匹配 / Verify a raw password against the stored hash.
+     */
+    public boolean checkPassword(String username, String rawPassword) {
+        User user = getUser(username);
+        return user != null && passwordEncoder.matches(rawPassword, user.getPassword());
+    }
+
+    /**
      * Change password
      */
     public boolean changePassword(String username, String newPassword) {

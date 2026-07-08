@@ -667,6 +667,28 @@
             }
         }
 
+        .loading-spinner--mini {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(74, 144, 226, 0.2);
+            border-top-color: #4a90e2;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* 无限滚动哨兵：滚入视口时触发加载下一页 / infinite-scroll sentinel */
+        .scroll-sentinel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 24px 16px;
+            color: #999;
+            font-size: 13px;
+        }
+        .scroll-sentinel[hidden] { display: none; } /* 类的 display:flex 会盖过原生 [hidden]，需显式声明 */
+
         #upload-cancel-btn {
             padding: 8px 20px;
             background-color: #f44336;
@@ -874,6 +896,7 @@
                 <!-- 仅管理员可见 / ADMIN only -->
                 <a class="hd-menu-item" id="adminEntry" href="/admin/dashboard.html" style="display:none;"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg>后台管理</a>
                 <div class="hd-menu-sep" id="adminSep" style="display:none;"></div>
+                <a class="hd-menu-item" id="changePwdEntry" href="javascript:void(0);"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-key"/></svg>修改密码</a>
                 <a class="hd-menu-item hd-danger" href="/logout"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>退出登录</a>
             </div>
         </div>
@@ -949,6 +972,10 @@
         </div>
     </section>
     <div id="recent"></div>
+    <div id="recent-sentinel" class="scroll-sentinel" hidden>
+        <div class="loading-spinner loading-spinner--mini"></div>
+        <span>正在加载更多…</span>
+    </div>
     </div><!-- /recent-view -->
 
     <div id="dir-view" style="display:none">
@@ -959,6 +986,10 @@
         </div>
         <h2 id="dirTitle">根目录</h2>
         <div id="dirContent"></div>
+        <div id="dir-sentinel" class="scroll-sentinel" hidden>
+            <div class="loading-spinner loading-spinner--mini"></div>
+            <span>正在加载更多…</span>
+        </div>
     </div>
 </div>
 
@@ -1065,6 +1096,99 @@
         });
     }
     setupHeaderDropdowns();
+
+    // ===== 修改密码 / change password =====
+    const MIN_PWD_LEN = 6; // 与后端 AppConstants.Auth.MIN_PASSWORD_LENGTH 保持一致
+    document.getElementById('changePwdEntry').addEventListener('click', () => {
+        document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+        openChangePasswordModal();
+    });
+
+    function openChangePasswordModal() {
+        // 复用 notification.js 注入的 .modal-* 样式 / reuse modal classes from notification.js
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '10001';
+        overlay.innerHTML = `
+            <div class="modal" style="min-width:380px;">
+                <div class="modal-header"><h3 class="modal-title">修改密码</h3></div>
+                <div class="modal-body">
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                        <div>
+                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">当前密码</label>
+                            <input type="password" id="pwdCurrent" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="current-password" />
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">新密码（至少 ${MIN_PWD_LEN} 位）</label>
+                            <input type="password" id="pwdNew" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">确认新密码</label>
+                            <input type="password" id="pwdConfirm" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-default" id="pwdCancel">取消</button>
+                    <button class="modal-btn modal-btn-primary" id="pwdSubmit">确认修改</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        document.addEventListener('keydown', function esc(e) {
+            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+        });
+        document.getElementById('pwdCancel').addEventListener('click', close);
+
+        const submitBtn = document.getElementById('pwdSubmit');
+        const currentEl = document.getElementById('pwdCurrent');
+        const newEl = document.getElementById('pwdNew');
+        const confirmEl = document.getElementById('pwdConfirm');
+
+        // 回车提交 / submit on Enter
+        [currentEl, newEl, confirmEl].forEach(el => el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); submitBtn.click(); }
+        }));
+
+        currentEl.focus();
+        submitBtn.addEventListener('click', () => {
+            const current = currentEl.value;
+            const next = newEl.value;
+            const confirm = confirmEl.value;
+
+            if (!current || !next || !confirm) return Notify.warning('请填写所有字段');
+            if (next.length < MIN_PWD_LEN) return Notify.warning(`新密码至少 ${MIN_PWD_LEN} 位`);
+            if (next !== confirm) return Notify.warning('两次输入的新密码不一致');
+            if (next === current) return Notify.warning('新密码不能与当前密码相同');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+            fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword: current, newPassword: next })
+            })
+                .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                .then(({ ok, data }) => {
+                    if (ok && data.success) {
+                        close();
+                        Notify.success('密码修改成功');
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '确认修改';
+                        Notify.error(data.error || '修改失败');
+                    }
+                })
+                .catch(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '确认修改';
+                    Notify.error('网络错误,请重试');
+                });
+        });
+    }
 </script>
 <script>
 
@@ -1086,6 +1210,15 @@
     let currentMonth = null;
     let fileRequestSequence = 0;
     let currentXhr = null; // 用于保存当前的XMLHttpRequest对象，以便取消上传
+
+    // ============== 无限滚动分页状态 / infinite-scroll pagination state ==============
+    const PAGE_SIZE = 50;          // 与后端 DEFAULT_FILE_LIMIT 对齐 / align with backend default
+    let currentOffset = 0;         // 当前分页偏移(两视图共用) / current page offset (shared)
+    let currentHasMore = false;    // 是否还有更多 / more pages available
+    let isLoadingMore = false;     // 防止并发滚动加载 / guard against concurrent scroll loads
+    let recentObserver = null;     // #recent 的 IntersectionObserver
+    let dirObserver = null;        // #dirContent 的 IntersectionObserver
+    let dirFileGridEl = null;      // renderDir 缓存的 .dir-files 网格引用，供追加用 / cached grid for append
 
     // 统一处理 fetch 请求：若被重定向到 /login(会话过期)则跳转登录页 / Unified fetch wrapper
     function handleFetch(url, options = {}) {
@@ -1481,13 +1614,147 @@
         requestAnimationFrame(centerActiveTimelineNodes);
     }
 
+    // ============== 无限滚动分页 / infinite-scroll pagination ==============
+
+    /** 重置分页状态(切视图/年月/目录/存储后由各 fetch 统一调用) / reset pagination state */
+    function resetPagination() {
+        currentOffset = 0;
+        currentHasMore = false;
+        isLoadingMore = false;
+        hideSentinel('recent');
+        hideSentinel('dir');
+    }
+
+    function showSentinel(which) {
+        const el = document.getElementById(which === 'dir' ? 'dir-sentinel' : 'recent-sentinel');
+        if (el) el.hidden = false;
+    }
+
+    function hideSentinel(which) {
+        const el = document.getElementById(which === 'dir' ? 'dir-sentinel' : 'recent-sentinel');
+        if (el) el.hidden = true;
+    }
+
+    /** 追加文件到 #recent(不清空) / append files to #recent without clearing */
+    function appendFileList(files) {
+        if (!files || files.length === 0) return;
+        const empty = recentDiv.querySelector('.empty-state');
+        if (empty) empty.remove();
+        for (const file of files) {
+            const el = createFileElement(file);
+            if (el) recentDiv.appendChild(el);
+        }
+    }
+
+    /** 追加文件到目录视图网格(缺失则新建) / append files to the dir grid, creating it if missing */
+    function appendDirFiles(files) {
+        if (!files || files.length === 0) return;
+        if (!dirFileGridEl || !document.body.contains(dirFileGridEl)) {
+            dirFileGridEl = document.createElement('div');
+            dirFileGridEl.className = 'dir-files';
+            document.getElementById('dirContent').appendChild(dirFileGridEl);
+        }
+        for (const file of files) {
+            const el = createFileElement(file);
+            if (el) dirFileGridEl.appendChild(el);
+        }
+    }
+
+    /** 时间线视图：加载下一页 / timeline view: load next page */
+    function loadMoreFiles() {
+        if (isLoadingMore || !currentHasMore || currentView !== 'recent') return;
+        isLoadingMore = true;
+        showSentinel('recent');
+        let loaded = 0;
+        const requestId = fileRequestSequence; // 翻页不自增序号，便于被新的 page-1 请求作废
+        const snapYear = currentYear, snapMonth = currentMonth;
+        const params = new URLSearchParams({limit: String(PAGE_SIZE), offset: String(currentOffset)});
+        if (snapYear) params.set('year', snapYear);
+        if (snapMonth) params.set('month', snapMonth);
+        handleFetch('/list_files?' + params.toString()).then(r => {
+            if (!r.ok) throw new Error('加载更多失败');
+            return r.json();
+        }).then(data => {
+            // 过期则丢弃：被新 page-1 取代，或视图/年月已变 / drop if superseded or view/year/month changed
+            if (requestId !== fileRequestSequence || currentView !== 'recent'
+                    || snapYear !== currentYear || snapMonth !== currentMonth) return;
+            loaded = data.files ? data.files.length : 0;
+            appendFileList(data.files);
+            currentHasMore = !!data.hasMore;
+            currentOffset += loaded;
+        }).catch(err => {
+            if (requestId !== fileRequestSequence) return;
+            console.error('加载更多失败:', err);
+        }).finally(() => {
+            isLoadingMore = false;
+            if (!currentHasMore) {
+                hideSentinel('recent');
+            } else if (loaded > 0) {
+                // 哨兵仍在视口内(大屏/小卡)则继续加载，避免一屏装不满就停下
+                // keep loading if the sentinel is still on-screen (large viewport / small cards)
+                const s = document.getElementById('recent-sentinel');
+                if (s && s.getBoundingClientRect().top <= window.innerHeight + 300) loadMoreFiles();
+            }
+        });
+    }
+
+    /** 目录视图：加载下一页 / directory view: load next page */
+    function loadMoreDir() {
+        if (isLoadingMore || !currentHasMore || currentView !== 'directory') return;
+        const snapDir = dirPath.join('/');
+        isLoadingMore = true;
+        showSentinel('dir');
+        let loaded = 0;
+        const params = new URLSearchParams({path: snapDir, limit: String(PAGE_SIZE), offset: String(currentOffset)});
+        handleFetch('/list_dir?' + params.toString()).then(r => {
+            if (!r.ok) throw new Error('加载更多失败');
+            return r.json();
+        }).then(data => {
+            if (currentView !== 'directory' || snapDir !== dirPath.join('/')) return; // 已切目录则丢弃
+            loaded = data.files ? data.files.length : 0;
+            appendDirFiles(data.files);
+            currentHasMore = !!data.hasMore;
+            currentOffset += loaded;
+        }).catch(err => {
+            console.error('list_dir 加载更多失败:', err);
+        }).finally(() => {
+            isLoadingMore = false;
+            if (!currentHasMore) {
+                hideSentinel('dir');
+            } else if (loaded > 0) {
+                const s = document.getElementById('dir-sentinel');
+                if (s && s.getBoundingClientRect().top <= window.innerHeight + 300) loadMoreDir();
+            }
+        });
+    }
+
+    /** 初始化两个哨兵的 IntersectionObserver(启动时调一次) / wire up sentinels once at startup */
+    function initInfiniteScroll() {
+        const opts = {rootMargin: '300px'}; // 提前 300px 预取 / pre-fetch 300px before bottom
+        const rs = document.getElementById('recent-sentinel');
+        if (rs) {
+            recentObserver = new IntersectionObserver(entries => {
+                if (entries[0] && entries[0].isIntersecting && currentView === 'recent') loadMoreFiles();
+            }, opts);
+            recentObserver.observe(rs);
+        }
+        const ds = document.getElementById('dir-sentinel');
+        if (ds) {
+            dirObserver = new IntersectionObserver(entries => {
+                if (entries[0] && entries[0].isIntersecting && currentView === 'directory') loadMoreDir();
+            }, opts);
+            dirObserver.observe(ds);
+        }
+    }
+
     /**
      * 获取文件列表并显示
      */
     function fetchFiles() {
+        resetPagination();
         const requestId = ++fileRequestSequence;
-        const params = new URLSearchParams({limit: '50'});
-        let title = "最近上传的50个文件";
+        const params = new URLSearchParams({limit: String(PAGE_SIZE), offset: '0'});
+        let title = "最近上传的文件";
         if (currentYear) {
             params.set('year', currentYear);
             title = `${currentYear}年修改的文件`;
@@ -1508,6 +1775,9 @@
             if (requestId !== fileRequestSequence) return;
             renderTimeline(data.periods);
             renderFileList(data.files);
+            currentOffset = (data.files ? data.files.length : 0);
+            currentHasMore = !!data.hasMore;
+            if (currentHasMore) showSentinel('recent');
         }).catch(err => {
             if (requestId !== fileRequestSequence) return;
             console.error('获取文件列表失败:', err);
@@ -1747,6 +2017,7 @@
     document.getElementById('tab-dir').addEventListener('click', () => switchView('directory'));
 
     function switchView(v) {
+        resetPagination();
         currentView = v;
         document.getElementById('tab-recent').classList.toggle('active', v === 'recent');
         document.getElementById('tab-dir').classList.toggle('active', v === 'directory');
@@ -1757,11 +2028,19 @@
     }
 
     function fetchDir() {
+        resetPagination();
         const p = dirPath.join('/');
         renderBreadcrumb();
-        handleFetch('/list_dir?path=' + encodeURIComponent(p))
+        const params = new URLSearchParams({path: p, limit: String(PAGE_SIZE), offset: '0'});
+        handleFetch('/list_dir?' + params.toString())
             .then(r => r.json())
-            .then(data => renderDir(data))
+            .then(data => {
+                if (p !== dirPath.join('/')) return; // 已导航到其他目录则丢弃 / stale response
+                currentOffset = (data.files ? data.files.length : 0);
+                currentHasMore = !!data.hasMore;
+                renderDir(data);
+                if (currentHasMore) showSentinel('dir');
+            })
             .catch(err => console.error('list_dir failed:', err));
     }
 
@@ -1785,9 +2064,10 @@
     function renderDir(data) {
         const c = document.getElementById('dirContent');
         c.innerHTML = '';
+        dirFileGridEl = null; // innerHTML 已销毁旧网格，清空缓存 / clear cached grid ref
         const folders = data.folders || [];
         const files = data.files || [];
-        if (folders.length === 0 && files.length === 0) {
+        if (folders.length === 0 && files.length === 0 && !currentHasMore) {
             c.innerHTML = '<div class="dir-empty">📁 空文件夹</div>';
             return;
         }
@@ -1810,6 +2090,7 @@
                 if (el) fileGrid.appendChild(el);
             });
             c.appendChild(fileGrid);
+            dirFileGridEl = fileGrid; // 缓存网格引用，供 loadMoreDir 追加 / cache for append
         }
     }
 
@@ -1843,6 +2124,7 @@
         }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '创建失败')));
     });
 
+    initInfiniteScroll();
     fetchFiles();
 
 </script>

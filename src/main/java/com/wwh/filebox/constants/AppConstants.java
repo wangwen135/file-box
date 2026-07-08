@@ -23,6 +23,9 @@ public final class AppConstants {
         /** 默认管理员密码的BCrypt哈希值 */
         public static final String DEFAULT_ADMIN_PASSWORD_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
+        /** 密码最小长度 / Minimum password length (used by change-password & user create) */
+        public static final int MIN_PASSWORD_LENGTH = 6;
+
         /** Token Cookie名称 */
         public static final String TOKEN_COOKIE_NAME = "token";
 
@@ -82,6 +85,9 @@ public final class AppConstants {
         /** 文件列表允许的最大返回数量 */
         public static final int MAX_FILE_LIMIT = 1000;
 
+        /** 文件列表默认偏移量（分页起点） / Default page offset for file listings */
+        public static final int DEFAULT_FILE_OFFSET = 0;
+
         /** 文件遍历最大深度 */
         public static final int MAX_TRAVERSE_DEPTH = 3;
 
@@ -111,6 +117,16 @@ public final class AppConstants {
     public static final class Storage {
         /** 存储统计缓存TTL（5分钟，单位：毫秒） */
         public static final long STATS_CACHE_TTL_MS = 5L * 60 * 1000;
+
+        /** 文件目录遍历缓存TTL（45秒）：分页翻页时复用一次遍历结果，比统计缓存短，因上传/删除即主动失效
+         *  Catalog walk cache TTL (45s): lets pagination reuse one walk; shorter than the stats
+         *  cache because uploads/deletes invalidate it eagerly. */
+        public static final long SCAN_CACHE_TTL_MS = 45L * 1000;
+
+        /** 文件目录遍历缓存的安全阀：单个存储空间文件数超过此值则跳过缓存，保护 -Xmx384m 堆
+         *  Catalog walk cache safety cap: skip caching a storage space with more files than this,
+         *  to protect the -Xmx384m heap. */
+        public static final int SCAN_CACHE_MAX_ENTRIES = 200_000;
 
         /** 存储空间名称正则表达式 */
         public static final String STORAGE_NAME_PATTERN = "^[\\u4e00-\\u9fa5a-zA-Z0-9_-]+$";

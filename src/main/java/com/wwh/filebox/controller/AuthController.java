@@ -5,6 +5,7 @@ import com.wwh.filebox.model.LoginSession;
 import com.wwh.filebox.model.SystemConfig;
 import com.wwh.filebox.service.AuthService;
 import com.wwh.filebox.service.ConfigService;
+import com.wwh.filebox.service.UserService;
 import com.wwh.filebox.security.LoginAttemptManager;
 import com.wwh.filebox.security.SecureTokenGenerator;
 import org.slf4j.Logger;
@@ -37,6 +38,9 @@ public class AuthController {
 
     @Autowired
     private LoginAttemptManager loginAttemptService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * Default login endpoint (legacy support)
@@ -248,6 +252,74 @@ public class AuthController {
         // 经 token 鉴权的均为已登录用户,非匿名
         userInfo.put("isAnonymous", false);
         return ResponseEntity.ok(userInfo);
+    }
+
+    /**
+     * 修改当前登录用户密码 / Change the current user's password.
+     * 需校验当前密码,新密码需满足最小长度且与当前密码不同。
+     */
+    @PostMapping("/api/auth/change-password")
+    @ResponseBody
+    public ResponseEntity<?> changePassword(
+            @CookieValue(value = "token", required = false) String token,
+            @RequestBody Map<String, String> request) {
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\":\"未登录\"}");
+        }
+
+        LoginSession session = authService.getSession(token);
+        if (session == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\":\"登录已过期,请重新登录\"}");
+        }
+
+        String username = session.getUsername();
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        // 基础非空校验 / basic presence checks
+        if (currentPassword == null || currentPassword.isEmpty() ||
+            newPassword == null || newPassword.isEmpty()) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", "请填写当前密码和新密码");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        }
+
+        // 校验当前密码 / verify the current password
+        if (!userService.checkPassword(username, currentPassword)) {
+            logger.warn("Change password failed (wrong current password): {}", username);
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", "当前密码错误");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        }
+
+        // 新密码长度 / min length
+        if (newPassword.length() < AppConstants.Auth.MIN_PASSWORD_LENGTH) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", "新密码至少 " + AppConstants.Auth.MIN_PASSWORD_LENGTH + " 位");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        }
+
+        // 新密码不得与当前密码相同 / new password must differ
+        if (newPassword.equals(currentPassword)) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", "新密码不能与当前密码相同");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+        }
+
+        boolean ok = userService.changePassword(username, newPassword);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", ok);
+        if (!ok) {
+            result.put("error", "修改失败,请重试");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+
+        logger.info("User {} changed password successfully", username);
+        return ResponseEntity.ok(result);
     }
 
     /**
