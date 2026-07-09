@@ -1148,19 +1148,23 @@
     setupHeaderDropdowns();
 
     // ===== 修改密码 / change password =====
-    const MIN_PWD_LEN = 6; // 与后端 AppConstants.Auth.MIN_PASSWORD_LENGTH 保持一致
-    document.getElementById('changePwdEntry').addEventListener('click', () => {
-        document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
-        openChangePasswordModal();
-    });
+    const MIN_PWD_LEN = 6;
+    const changePwdEntry = document.getElementById('changePwdEntry');
+    if (changePwdEntry) {
+        changePwdEntry.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            document.querySelectorAll('.header-dropdown.open').forEach(w => w.classList.remove('open'));
+            openChangePasswordModal();
+        });
+    }
 
     function openChangePasswordModal() {
-        // 复用 notification.js 注入的 .modal-* 样式 / reuse modal classes from notification.js
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.style.zIndex = '10001';
         overlay.innerHTML = `
-            <div class="modal" style="min-width:380px;">
+            <div class="notify-modal" style="min-width:380px;">
                 <div class="modal-header"><h3 class="modal-title">修改密码</h3></div>
                 <div class="modal-body">
                     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -1179,18 +1183,22 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="modal-btn modal-btn-default" id="pwdCancel">取消</button>
-                    <button class="modal-btn modal-btn-primary" id="pwdSubmit">确认修改</button>
+                    <button type="button" class="modal-btn modal-btn-default" id="pwdCancel">取消</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="pwdSubmit">确认修改</button>
                 </div>
             </div>
         `;
         document.body.appendChild(overlay);
 
         const close = () => overlay.remove();
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-        document.addEventListener('keydown', function esc(e) {
-            if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
-        });
+        const onEsc = (event) => {
+            if (event.key === 'Escape') {
+                close();
+                document.removeEventListener('keydown', onEsc);
+            }
+        };
+        overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
+        document.addEventListener('keydown', onEsc);
         document.getElementById('pwdCancel').addEventListener('click', close);
 
         const submitBtn = document.getElementById('pwdSubmit');
@@ -1198,9 +1206,11 @@
         const newEl = document.getElementById('pwdNew');
         const confirmEl = document.getElementById('pwdConfirm');
 
-        // 回车提交 / submit on Enter
-        [currentEl, newEl, confirmEl].forEach(el => el.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); submitBtn.click(); }
+        [currentEl, newEl, confirmEl].forEach(el => el.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitBtn.click();
+            }
         }));
 
         currentEl.focus();
@@ -1235,7 +1245,7 @@
                 .catch(() => {
                     submitBtn.disabled = false;
                     submitBtn.textContent = '确认修改';
-                    Notify.error('网络错误,请重试');
+                    Notify.error('网络错误，请重试');
                 });
         });
     }
@@ -1388,7 +1398,7 @@
         }
         // 隐藏模态框
         document.getElementById('upload-modal-overlay').style.display = 'none';
-        
+
         document.getElementById('countdown-bar').style.display = 'none';;
     });
 
@@ -1447,7 +1457,7 @@
                 progressBar.style.width = percentComplete + '%';
                 progressPercentage.textContent = percentComplete + '%';
                 statusText.textContent = `正在上传文件【${filename}】...`;
-                
+
                 // 更新已上传大小和总大小
                 sizeInfo.textContent = `${formatFileSize(event.loaded)} / ${formatFileSize(event.total)}`;
 
@@ -1460,7 +1470,7 @@
                     const speed = (bytesDiff * 1000) / timeDiff;
                     speedInfo.textContent = `${formatFileSize(speed)}/s`;
                 }
-                
+
                 lastLoaded = event.loaded;
                 lastTime = currentTime;
             }
