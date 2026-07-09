@@ -1,26 +1,25 @@
 #!/bin/bash
+set -e
 
-# 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 进入该目录
-cd "$SCRIPT_DIR" || exit
-echo "当前目录已切换至: $(pwd)"
+cd "$SCRIPT_DIR"
 
-# Linux启动脚本
-JAR_NAME="file-box-0.1.2.jar"
-LOG_FILE="out.log"
+mkdir -p config data/default logs runtime/multipart-tmp
 
-# 检查jar文件是否存在
-if [ ! -f "$JAR_NAME" ]; then
-    echo "错误：找不到$JAR_NAME文件"
+JAR_NAME="$(ls file-box-*.jar 2>/dev/null | head -n 1)"
+LOG_FILE="logs/out.log"
+
+if [ -z "$JAR_NAME" ]; then
+    echo "Error: no file-box-*.jar found in $SCRIPT_DIR"
     exit 1
 fi
 
-# JVM 内存限制（防止多服务同跑时 OOM）
-JAVA_OPTS="-Xmx384m -Xms128m"
+JAVA_OPTS="${JAVA_OPTS:--Xmx384m -Xms128m}"
 
-# 启动应用
-nohup java $JAVA_OPTS -jar "$JAR_NAME" > "$LOG_FILE" 2>&1 &
+nohup java $JAVA_OPTS -jar "$JAR_NAME" "$@" > "$LOG_FILE" 2>&1 &
+PID=$!
 
-echo "应用已启动，日志输出到$LOG_FILE"
-echo "进程ID：$!"
+echo "File Box started."
+echo "Jar: $JAR_NAME"
+echo "Log: $LOG_FILE"
+echo "PID: $PID"

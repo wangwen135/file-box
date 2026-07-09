@@ -23,12 +23,23 @@ if "%JAR_NAME%"=="" (
     exit /b 1
 )
 
-set "LOG_FILE=logs\out.log"
-if "%JAVA_OPTS%"=="" set "JAVA_OPTS=-Xmx384m -Xms128m"
+:menu
+echo.
+echo File Box Management
+echo 1. Reset admin password
+echo 2. Show config file path
+echo 0. Exit
+set /p choice=Select:
 
-start "File Box Application" java %JAVA_OPTS% -jar "%JAR_NAME%" %* ^> "%LOG_FILE%" 2^>^&1
+if "%choice%"=="1" (
+    java -jar "%JAR_NAME%" --filebox.maintenance=reset-admin-password %*
+    goto menu
+)
+if "%choice%"=="2" (
+    echo %cd%\config\filebox.yml
+    goto menu
+)
+if "%choice%"=="0" exit /b 0
 
-echo File Box started.
-echo Jar: %JAR_NAME%
-echo Log: %LOG_FILE%
-pause
+echo Invalid selection.
+goto menu

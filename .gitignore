@@ -3,7 +3,7 @@
 
 # Logs
 *.log
-logs/
+/logs/
 *.log.*
 
 # Build outputs
@@ -36,13 +36,20 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
-.multipart-tmp/
+/.multipart-tmp/
+/runtime/
 *.swp
 *~
 
 # Runtime storage (用户上传的实际文件,不应入库 / actual uploaded files, not VCS)
-uploads/
-test-uploads/
+/uploads/
+/test-uploads/
+/data/
+
+# Local Spring override. Business config config/filebox.yml is tracked for dev sync.
+config/application.yml
+config/*.bak
+config/*.tmp
 
 # Archives and packages
 *.jar

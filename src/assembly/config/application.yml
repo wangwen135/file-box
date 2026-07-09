@@ -1,0 +1,9 @@
+server:
+  port: 8888
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+      location: ./runtime/multipart-tmp

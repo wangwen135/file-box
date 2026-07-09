@@ -14,5 +14,4 @@ spring:
       # Temp dir for multipart; MUST be on the same filesystem as the storage dir
       # so transferTo performs a rename. If ./uploads moves to a separate mount,
       # point this at a dir on that same mount.
-      location: ./.multipart-tmp
-
+      location: ./runtime/multipart-tmp

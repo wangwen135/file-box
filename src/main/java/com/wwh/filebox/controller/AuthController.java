@@ -7,7 +7,6 @@ import com.wwh.filebox.service.AuthService;
 import com.wwh.filebox.service.ConfigService;
 import com.wwh.filebox.service.UserService;
 import com.wwh.filebox.security.LoginAttemptManager;
-import com.wwh.filebox.security.SecureTokenGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,28 +60,6 @@ public class AuthController {
                     .body("登录失败次数过多，请" + remainingLockTime + "秒后重试");
         }
 
-        // Check if config exists
-        if (!configService.configExists()) {
-            // First login with default admin credentials
-            if (AppConstants.Auth.DEFAULT_ADMIN_USERNAME.equals(username) &&
-                AppConstants.Auth.DEFAULT_ADMIN_PASSWORD.equals(password)) {
-                // Create default config
-                SystemConfig defaultConfig = configService.createDefaultConfig(
-                    AppConstants.Auth.DEFAULT_ADMIN_USERNAME,
-                    AppConstants.Auth.DEFAULT_ADMIN_PASSWORD_HASH);
-                configService.saveConfig(defaultConfig);
-                configService.reload(); // Reload config after creating
-                logger.info("Default config created for admin user");
-
-                // Log the user in
-                String token = authService.login(username, password, true);
-                if (token != null) {
-                    setTokenCookie(response, token);
-                    return ResponseEntity.status(HttpStatus.FOUND).location(java.net.URI.create("/index.html")).build();
-                }
-            }
-        }
-
         // Try to login
         String token = authService.login(username, password, true);
 
@@ -128,30 +105,6 @@ public class AuthController {
             lockedResult.put("success", false);
             lockedResult.put("error", "登录失败次数过多，请" + remainingLockTime + "秒后重试");
             return ResponseEntity.status(HttpStatus.LOCKED).body(lockedResult);
-        }
-
-        // Check if config exists
-        if (!configService.configExists()) {
-            // First login with default admin credentials
-            if (AppConstants.Auth.DEFAULT_ADMIN_USERNAME.equals(username) &&
-                AppConstants.Auth.DEFAULT_ADMIN_PASSWORD.equals(password)) {
-                // Create default config
-                SystemConfig defaultConfig = configService.createDefaultConfig(
-                    AppConstants.Auth.DEFAULT_ADMIN_USERNAME,
-                    AppConstants.Auth.DEFAULT_ADMIN_PASSWORD_HASH);
-                configService.saveConfig(defaultConfig);
-                logger.info("Default config created for admin user");
-
-                // Log the user in
-                String token = authService.login(username, password, rememberMe);
-                if (token != null) {
-                    setTokenCookie(response, token);
-                    Map<String, Object> result = new HashMap<>();
-                    result.put("success", true);
-                    result.put("token", token);
-                    return ResponseEntity.ok(result);
-                }
-            }
         }
 
         // Try to login
