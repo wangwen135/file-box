@@ -6,28 +6,53 @@ file-box:
     description: 文件共享和管理工具
     anonymous-upload-enabled: false
   storage-spaces:
-    - name: default
-      path: ./uploads
-      max-size: 10GB
-      allow-anonymous: false
-    - name: test
-      path: ./test-uploads
-      max-size: 5GB
-      allow-anonymous: false
-    - name: opt-data
-      path: /opt/file-box/data
-      max-size: 2GB
-      allow-anonymous: true
+  - name: default
+    path: ./uploads
+    max-size: 10GB
+    allow-anonymous: false
+  - name: test
+    path: ./test-uploads
+    max-size: 5GB
+    allow-anonymous: false
+  - name: opt-data
+    path: /opt/file-box/data
+    max-size: 2GB
+    allow-anonymous: true
+  - name: anonymous
+    path: /opt/file-box/anonymous
+    max-size: 2GB
+    allow-anonymous: true
   users:
-    - username: admin
-      password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
-      role: ADMIN
-      storage-spaces: [default, test, opt-data]
-    - username: testuser
-      password: $2a$10$PbHqf/Ox1EQxcU1Wvmc7MurpVD1bCvcrAwvabssOzL208mL2FATSC
-      role: USER
-      storage-spaces: [default]
-    - username: aaa
-      password: $2a$10$8DYM4dyywOumXLY6BlKgc.RtSzJmRt3KOL5LIy9FF/0xMpKyDJHN.
-      role: USER
-      storage-spaces: [default, test]
+  - username: admin
+    password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
+    role: ADMIN
+    storage-spaces:
+    - default
+    - test
+    - opt-data
+    - anonymous
+  - username: testuser
+    password: $2a$10$PbHqf/Ox1EQxcU1Wvmc7MurpVD1bCvcrAwvabssOzL208mL2FATSC
+    role: USER
+    storage-spaces:
+    - default
+    - test
+    - opt-data
+  - username: aaa
+    password: $2a$10$8DYM4dyywOumXLY6BlKgc.RtSzJmRt3KOL5LIy9FF/0xMpKyDJHN.
+    role: USER
+    storage-spaces:
+    - default
+    - test
+  - username: abc
+    password: $2a$10$po/BYe.YbecdkZUGcpB.G.OtmvVACnqANluKLL9MULq.47PPhv/8e
+    role: USER
+    storage-spaces:
+    - default
+    - test
+    - opt-data
+  - username: tester
+    password: $2a$10$nwY5ZL7L1WfDCDF8yz7zv.1pv1ssK1FzNxpT3N66ue3cUeK3lhkzO
+    role: USER
+    storage-spaces: [
+      ]

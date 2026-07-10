@@ -1219,10 +1219,10 @@
             const next = newEl.value;
             const confirm = confirmEl.value;
 
-            if (!current || !next || !confirm) return Notify.warning('请填写所有字段');
-            if (next.length < MIN_PWD_LEN) return Notify.warning(`新密码至少 ${MIN_PWD_LEN} 位`);
-            if (next !== confirm) return Notify.warning('两次输入的新密码不一致');
-            if (next === current) return Notify.warning('新密码不能与当前密码相同');
+            if (!current || !next || !confirm) return Notify.warning('请填写所有字段', { position: 'top-center' });
+            if (next.length < MIN_PWD_LEN) return Notify.warning(`新密码至少 ${MIN_PWD_LEN} 位`, { position: 'top-center' });
+            if (next !== confirm) return Notify.warning('两次输入的新密码不一致', { position: 'top-center' });
+            if (next === current) return Notify.warning('新密码不能与当前密码相同', { position: 'top-center' });
 
             submitBtn.disabled = true;
             submitBtn.textContent = '提交中...';
@@ -1239,13 +1239,13 @@
                     } else {
                         submitBtn.disabled = false;
                         submitBtn.textContent = '确认修改';
-                        Notify.error(data.error || '修改失败');
+                        Notify.error(data.error || '修改失败', { position: 'top-center' });
                     }
                 })
                 .catch(() => {
                     submitBtn.disabled = false;
                     submitBtn.textContent = '确认修改';
-                    Notify.error('网络错误，请重试');
+                    Notify.error('网络错误，请重试', { position: 'top-center' });
                 });
         });
     }

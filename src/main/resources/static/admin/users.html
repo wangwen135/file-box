@@ -17,19 +17,19 @@
         </div>
         <nav class="admin-nav">
             <a href="/admin/dashboard.html" class="nav-item">
-                <span>📊</span>
+                <svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg>
                 <span>仪表盘</span>
             </a>
             <a href="/admin/storage.html" class="nav-item">
-                <span>💾</span>
+                <svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-storage"/></svg>
                 <span>存储管理</span>
             </a>
             <a href="/admin/users.html" class="nav-item active">
-                <span>👥</span>
+                <svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-users"/></svg>
                 <span>用户管理</span>
             </a>
             <a href="/admin/settings.html" class="nav-item">
-                <span>⚙️</span>
+                <svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-settings"/></svg>
                 <span>系统设置</span>
             </a>
         </nav>
@@ -77,7 +77,7 @@
                         <input type="text" id="username" class="input-field" placeholder="请输入用户名" required>
                     </div>
                     <div class="form-group" id="passwordField">
-                        <label class="form-label">密码</label>
+                        <label class="form-label" id="passwordLabel">密码</label>
                         <input type="password" id="password" class="input-field" placeholder="请输入密码" required>
                     </div>
                     <div class="form-group">
@@ -195,6 +195,8 @@
             document.getElementById('modalTitle').textContent = '新增用户';
             document.getElementById('userForm').reset();
             document.getElementById('editUsername').value = '';
+            document.getElementById('passwordLabel').textContent = '密码';
+            document.getElementById('password').placeholder = '请输入密码';
             document.getElementById('passwordField').style.display = 'block';
             document.getElementById('password').required = true;
             document.getElementById('confirmPassword').required = true;
@@ -209,9 +211,12 @@
             document.getElementById('username').value = username;
             document.getElementById('password').value = '';
             document.getElementById('confirmPassword').value = '';
+            // 编辑时密码留空则不修改 / when editing, leave blank to keep current password
+            document.getElementById('passwordLabel').textContent = '新密码（留空则不修改）';
+            document.getElementById('password').placeholder = '输入新密码，留空则不修改';
             document.getElementById('password').required = false;
             document.getElementById('confirmPassword').required = false;
-            document.getElementById('passwordField').style.display = 'none';
+            document.getElementById('passwordField').style.display = 'block';
 
             // Load user details
             fetch(`/api/admin/users/${username}`)
@@ -262,9 +267,13 @@
                 }
             });
 
-            // Validate password
-            if (!isEditing && password !== confirmPassword) {
+            // Validate password:新增必填;编辑时若填写了新密码则需与确认一致 / new user requires password; on edit, only validate match when a new password is entered
+            if (password && password !== confirmPassword) {
                 alert('两次输入的密码不一致');
+                return;
+            }
+            if (password && password.length < 6) {
+                alert('密码至少 6 位');
                 return;
             }
 

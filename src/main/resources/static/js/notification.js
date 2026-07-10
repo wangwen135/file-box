@@ -14,7 +14,9 @@
             style.textContent = `
                 .notification-container {
                     position: fixed;
-                    z-index: 9999;
+                    /* 高于所有 modal-overlay（默认 10000，修改密码弹窗 10001），保证提示永远在最上层
+                       above all modal overlays so toasts always render on top */
+                    z-index: 10010;
                     pointer-events: none;
                 }
                 .notification-container.top-right {
@@ -314,11 +316,14 @@
             document.head.appendChild(style);
         },
 
-        getContainer() {
-            let container = document.querySelector('.notification-container.' + this.config.position);
+        getContainer(position) {
+            // 支持单条 toast 指定位置；缺省回退到全局 config.position
+            // per-toast position override; falls back to global config
+            const pos = position || this.config.position;
+            let container = document.querySelector('.notification-container.' + pos);
             if (!container) {
                 container = document.createElement('div');
-                container.className = 'notification-container ' + this.config.position;
+                container.className = 'notification-container ' + pos;
                 document.body.appendChild(container);
             }
             return container;
@@ -332,7 +337,8 @@
                 message = '',
                 duration = this.config.duration,
                 showClose = true,
-                onClose
+                onClose,
+                position
             } = config;
 
             if (this.toasts.length >= this.config.maxCount) {
@@ -340,7 +346,7 @@
                 this.removeToast(oldestToast);
             }
 
-            const container = this.getContainer();
+            const container = this.getContainer(position);
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
 
