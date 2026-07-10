@@ -10,30 +10,37 @@
         const topbar = document.createElement('div');
         topbar.className = 'admin-topbar';
         topbar.innerHTML = `
-            <a href="/index.html" class="admin-topbar-link">
-                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-home"/></svg>
-                <span>返回上传页</span>
-            </a>
-            <div class="header-dropdown admin-user-menu" id="adminUserMenu">
-                <button class="hd-trigger hd-user" id="adminUserTrigger" type="button">
-                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
-                    <span id="currentUser">admin</span>
-                    <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
-                </button>
-                <div class="hd-menu" id="adminUserMenuList">
-                    <a class="hd-menu-item" id="adminChangePwdEntry" href="javascript:void(0);">
-                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-key"/></svg>
-                        <span>修改密码</span>
-                    </a>
-                    <a class="hd-menu-item hd-danger" href="/logout">
-                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>
-                        <span>退出登录</span>
-                    </a>
-                </div>
+            <div class="admin-topbar-brand">
+                <img class="admin-topbar-brand-logo" src="/images/logo.png" alt="File Box" onerror="this.style.display='none'"/>
+                <span class="admin-topbar-logo">File Box</span>
+                <span class="admin-topbar-subtitle">管理后台</span>
             </div>
-            <span id="theme-toggle-slot"></span>
+            <div class="admin-topbar-actions">
+                <a href="/index.html" class="admin-topbar-link">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-home"/></svg>
+                    <span>返回上传页</span>
+                </a>
+                <div class="header-dropdown admin-user-menu" id="adminUserMenu">
+                    <button class="hd-trigger hd-user" id="adminUserTrigger" type="button">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                        <span id="currentUser">admin</span>
+                        <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+                    </button>
+                    <div class="hd-menu" id="adminUserMenuList">
+                        <a class="hd-menu-item" id="adminChangePwdEntry" href="javascript:void(0);">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-key"/></svg>
+                            <span>修改密码</span>
+                        </a>
+                        <a class="hd-menu-item hd-danger" href="/logout">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>
+                            <span>退出登录</span>
+                        </a>
+                    </div>
+                </div>
+                <span id="theme-toggle-slot"></span>
+            </div>
         `;
-        main.insertBefore(topbar, main.firstChild);
+        document.body.insertBefore(topbar, document.body.firstChild);
     }
 
     function setupDropdowns() {
@@ -167,7 +174,44 @@
         });
     }
 
+    // 统一鉴权守卫:未登录跳登录页,非 ADMIN 跳首页 / Admin session guard: redirect to login if unauthenticated, to home if not admin
+    async function guardAdminAccess() {
+        try {
+            const response = await fetch('/api/auth/user');
+            if (!response.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            const data = await response.json();
+            const userEl = document.getElementById('currentUser');
+            if (userEl) {
+                userEl.textContent = data.username;
+            }
+            if (data.role !== 'ADMIN') {
+                window.location.href = '/index.html';
+            }
+        } catch (error) {
+            console.error('Failed to verify admin session:', error);
+        }
+    }
+
     injectAdminTopbar();
     setupDropdowns();
     setupPasswordEntry();
+    guardAdminAccess();
+
+    // 版本号单一来源：pom.xml → application.yml → /api/system/info
+    // Single source: pom.xml → application.yml → /api/system/info
+    function fillAppVersion() {
+        fetch('/api/system/info')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data || !data.version) return;
+                document.querySelectorAll('[data-app-version]').forEach(el => {
+                    el.textContent = 'v' + data.version;
+                });
+            })
+            .catch(() => {});
+    }
+    fillAppVersion();
 })();

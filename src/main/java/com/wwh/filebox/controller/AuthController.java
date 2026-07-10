@@ -140,6 +140,23 @@ public class AuthController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/api/auth/anonymous-login")
+    @ResponseBody
+    public ResponseEntity<?> anonymousLogin(HttpServletResponse response) {
+        String token = authService.loginAnonymous();
+        if (token == null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("error", "匿名访问未启用或没有可访问的匿名存储空间");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(result);
+        }
+
+        setTokenCookie(response, token);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/logout")
     public ResponseEntity<?> logout(@CookieValue(value = "token", required = false) String token) {
         if (token != null) {
@@ -168,6 +185,7 @@ public class AuthController {
         userInfo.put("role", session.getRole().name());
         userInfo.put("storageSpaces", session.getStorageSpaces());
         userInfo.put("currentStorageSpace", session.getCurrentStorageSpace());
+        userInfo.put("isAnonymous", "anonymous".equals(session.getUsername()));
 
         return ResponseEntity.ok(userInfo);
     }
@@ -202,8 +220,7 @@ public class AuthController {
         // 顶栏存储空间切换器需要可选列表与当前空间 / for the header storage-space switcher
         userInfo.put("storageSpaces", session.getStorageSpaces());
         userInfo.put("currentStorageSpace", session.getCurrentStorageSpace());
-        // 经 token 鉴权的均为已登录用户,非匿名
-        userInfo.put("isAnonymous", false);
+        userInfo.put("isAnonymous", "anonymous".equals(session.getUsername()));
         return ResponseEntity.ok(userInfo);
     }
 
@@ -305,8 +322,20 @@ public class AuthController {
     @ResponseBody
     public ResponseEntity<?> getAnonymousConfig() {
         SystemConfig config = configService.getConfig();
+        boolean anonymousEnabled = config != null && config.isAnonymousUploadEnabled();
+        boolean hasAnonymousStorage = false;
+        if (anonymousEnabled && config.getStorageSpaces() != null) {
+            for (SystemConfig.StorageSpaceConfig space : config.getStorageSpaces()) {
+                if (space.isAllowAnonymous()) {
+                    hasAnonymousStorage = true;
+                    break;
+                }
+            }
+        }
         Map<String, Object> configInfo = new HashMap<>();
-        configInfo.put("enabled", config != null && config.isAnonymousUploadEnabled());
+        configInfo.put("enabled", anonymousEnabled && hasAnonymousStorage);
+        configInfo.put("anonymous-upload-enabled", anonymousEnabled);
+        configInfo.put("hasAnonymousStorage", hasAnonymousStorage);
         configInfo.put("configExists", configService.configExists());
         return ResponseEntity.ok(configInfo);
     }
@@ -326,8 +355,7 @@ public class AuthController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("configExists", true);
-        result.put("name", config.getName());
-        result.put("description", config.getDescription());
+        result.put("shareNoticeEnabled", config.isShareNoticeEnabled());
         return ResponseEntity.ok(result);
     }
 

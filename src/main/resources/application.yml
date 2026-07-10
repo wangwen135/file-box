@@ -15,3 +15,8 @@ spring:
       # so transferTo performs a rename. If ./uploads moves to a separate mount,
       # point this at a dir on that same mount.
       location: ./runtime/multipart-tmp
+
+filebox:
+  # 版本号来自 pom.xml，由 Maven resource filtering 注入（@project.version@）
+  # Version injected from pom.xml via Maven resource filtering
+  version: @project.version@

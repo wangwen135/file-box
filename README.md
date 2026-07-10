@@ -136,3 +136,7 @@ or:
 ```bash
 FILEBOX_CONFIG=/path/to/filebox.yml java -jar file-box-<version>.jar
 ```
+
+## License
+
+This project is licensed under the Apache License, Version 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

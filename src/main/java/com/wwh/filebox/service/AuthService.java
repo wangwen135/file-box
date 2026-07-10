@@ -78,6 +78,29 @@ public class AuthService {
         return null;
     }
 
+    public String loginAnonymous() {
+        SystemConfig config = configService.getConfig();
+        if (config == null || !config.isAnonymousUploadEnabled() || config.getStorageSpaces() == null) {
+            return null;
+        }
+
+        List<String> anonymousSpaces = new ArrayList<>();
+        for (SystemConfig.StorageSpaceConfig space : config.getStorageSpaces()) {
+            if (space.isAllowAnonymous()) {
+                anonymousSpaces.add(space.getName());
+            }
+        }
+        if (anonymousSpaces.isEmpty()) {
+            return null;
+        }
+
+        String token = generateToken();
+        LoginSession session = new LoginSession("anonymous", Role.USER, anonymousSpaces.toArray(new String[0]), false);
+        sessions.put(token, session);
+        logger.info("Anonymous session created with {} storage space(s)", anonymousSpaces.size());
+        return token;
+    }
+
     /**
      * 获取用户的存储空间列表
      * ADMIN用户自动获取所有存储空间，普通用户获取分配的存储空间

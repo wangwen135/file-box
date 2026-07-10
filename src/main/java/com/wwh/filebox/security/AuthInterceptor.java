@@ -33,6 +33,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     // Paths that don't require authentication
     private static final String[] PUBLIC_PATHS = {
             "/api/auth/login",
+            "/api/auth/anonymous-login",
             "/api/auth/logout",
             "/api/auth/config",
             "/api/auth/anonymous-config",

@@ -33,6 +33,24 @@
                 <span>系统设置</span>
             </a>
         </nav>
+        <div class="admin-sidebar-footer">
+            <a class="info-row" href="https://github.com/wangwen135/file-box" target="_blank" rel="noopener noreferrer">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-github"/></svg>
+                <span>GitHub</span>
+            </a>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-tag"/></svg>
+                <span data-app-version>v0.0.0</span>
+            </div>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-scale"/></svg>
+                <span>Apache-2.0</span>
+            </div>
+            <a class="info-row" href="mailto:wangwen135@163.com" title="wangwen135@163.com">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span>by wwh</span>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content / 主内容 -->
@@ -49,13 +67,12 @@
         <!-- Basic Settings / 基础设置 -->
         <div class="card">
             <h3 class="section-title section-title--bordered">基础设置</h3>
-            <div class="form-group">
-                <label class="form-label">系统名称</label>
-                <input type="text" id="systemName" class="input-field" placeholder="File Box">
-            </div>
-            <div class="form-group">
-                <label class="form-label">系统描述</label>
-                <input type="text" id="systemDesc" class="input-field" placeholder="文件共享和管理工具">
+            <div class="setting-row">
+                <div>
+                    <p class="setting-row-title">首页访问提示</p>
+                    <p class="setting-row-desc">在上传页左上角展示可复制的局域网访问地址</p>
+                </div>
+                <div class="toggle-switch" id="shareNoticeToggle" onclick="toggleShareNotice()"></div>
             </div>
         </div>
 
@@ -93,27 +110,10 @@
     <script src="/js/admin-common.js"></script>
     <script>
         let settings = {
-            name: 'File Box',
-            description: '文件共享和管理工具',
+            shareNoticeEnabled: true,
             anonymousEnabled: false,
             anonymousUploadEnabled: false
         };
-
-        // Get current user info
-        async function getUserInfo() {
-            try {
-                const response = await fetch('/api/auth/user');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('currentUser').textContent = data.username;
-                    if (data.role !== 'ADMIN') {
-                        window.location.href = '/index.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to get user info:', error);
-            }
-        }
 
         // Load settings
         async function loadSettings() {
@@ -123,8 +123,7 @@
                 if (configResponse.ok) {
                     const config = await configResponse.json();
                     if (config.configExists) {
-                        settings.name = config.name || 'File Box';
-                        settings.description = config.description || '';
+                        settings.shareNoticeEnabled = config.shareNoticeEnabled !== false;
                     }
                 }
 
@@ -132,13 +131,12 @@
                 const anonResponse = await fetch('/api/auth/anonymous-config');
                 if (anonResponse.ok) {
                     const anonConfig = await anonResponse.json();
-                    settings.anonymousEnabled = anonConfig.enabled || false;
+                    settings.anonymousEnabled = anonConfig['anonymous-upload-enabled'] || false;
                     settings.anonymousUploadEnabled = anonConfig['anonymous-upload-enabled'] || false;
                 }
 
                 // Update UI
-                document.getElementById('systemName').value = settings.name;
-                document.getElementById('systemDesc').value = settings.description;
+                updateToggle('shareNoticeToggle', settings.shareNoticeEnabled);
                 updateToggle('anonymousToggle', settings.anonymousEnabled);
                 updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
             } catch (error) {
@@ -157,12 +155,21 @@
 
         function toggleAnonymous() {
             settings.anonymousEnabled = !settings.anonymousEnabled;
+            settings.anonymousUploadEnabled = settings.anonymousEnabled;
             updateToggle('anonymousToggle', settings.anonymousEnabled);
+            updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
         }
 
         function toggleAnonymousUpload() {
             settings.anonymousUploadEnabled = !settings.anonymousUploadEnabled;
+            settings.anonymousEnabled = settings.anonymousUploadEnabled;
+            updateToggle('anonymousToggle', settings.anonymousEnabled);
             updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
+        }
+
+        function toggleShareNotice() {
+            settings.shareNoticeEnabled = !settings.shareNoticeEnabled;
+            updateToggle('shareNoticeToggle', settings.shareNoticeEnabled);
         }
 
         function showAlert(message, type) {
@@ -179,8 +186,7 @@
             try {
                 // Save system config
                 const configData = {
-                    name: document.getElementById('systemName').value,
-                    description: document.getElementById('systemDesc').value
+                    shareNoticeEnabled: settings.shareNoticeEnabled
                 };
 
                 const configResponse = await fetch('/api/admin/config', {
@@ -201,7 +207,7 @@
                     body: JSON.stringify(anonData)
                 });
 
-                if (configResponse.ok || anonResponse.ok) {
+                if (configResponse.ok && anonResponse.ok) {
                     showAlert('设置已保存', 'success');
                 } else {
                     showAlert('保存失败', 'error');
@@ -212,7 +218,6 @@
         }
 
         // Initialize
-        getUserInfo();
         loadSettings();
     </script>
     <script src="/js/theme.js"></script>

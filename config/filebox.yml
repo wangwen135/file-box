@@ -2,17 +2,16 @@ file-box:
   anonymous:
     enabled: false
   system:
-    name: File Box
-    description: 文件共享和管理工具
     anonymous-upload-enabled: false
+    share-notice-enabled: true
   storage-spaces:
   - name: default
     path: ./uploads
-    max-size: 10GB
-    allow-anonymous: false
+    max-size: 1GB
+    allow-anonymous: true
   - name: test
     path: ./test-uploads
-    max-size: 5GB
+    max-size: 1GB
     allow-anonymous: false
   - name: opt-data
     path: /opt/file-box/data
@@ -54,5 +53,6 @@ file-box:
   - username: tester
     password: $2a$10$nwY5ZL7L1WfDCDF8yz7zv.1pv1ssK1FzNxpT3N66ue3cUeK3lhkzO
     role: USER
-    storage-spaces: [
-      ]
+    storage-spaces:
+    - default
+    - test

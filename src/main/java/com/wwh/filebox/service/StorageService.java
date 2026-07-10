@@ -98,6 +98,30 @@ public class StorageService {
     }
 
     /**
+     * 校验并准备存储目录：不存在则创建；无法创建或被普通文件占用则抛 IllegalStateException。
+     * Validate and prepare the storage directory: create it if missing; throw if it cannot be
+     * created or is occupied by a regular file. 注意 File.mkdirs() 失败时只返回 false、不抛异常，
+     * 必须显式检查返回值 —— 原先的 try/catch 是死代码，目录建不出来时配置仍会被保存。
+     */
+    private File ensureStorageDirectory(String path) {
+        File storageDir = new File(path);
+        if (storageDir.exists()) {
+            if (!storageDir.isDirectory()) {
+                // 路径被普通文件占用，无法作为目录使用 / a regular file blocks the path
+                throw new IllegalStateException("路径已被文件占用，无法作为存储目录：" + path);
+            }
+            return storageDir;
+        }
+        // mkdirs() 失败时只返回 false 而非抛异常，必须检查返回值 / mkdirs() returns false on failure
+        boolean created = storageDir.mkdirs();
+        if (!created || !storageDir.isDirectory()) {
+            throw new IllegalStateException("无法创建存储目录：" + path + "（请检查路径是否正确且有写入权限）");
+        }
+        logger.info("Created storage directory: {}", path);
+        return storageDir;
+    }
+
+    /**
      * Create storage space
      */
     public boolean createStorageSpace(String name, String path, String maxSize, boolean allowAnonymous) {
@@ -118,22 +142,12 @@ public class StorageService {
             return false;
         }
 
-        // Validate path and create directory if not exists
+        // Validate path; ensureStorageDirectory creates the dir if missing and throws if it can't
         if (path == null || path.trim().isEmpty()) {
             logger.warn("Path is empty");
             return false;
         }
-
-        File storageDir = new File(path);
-        if (!storageDir.exists()) {
-            try {
-                storageDir.mkdirs();
-                logger.info("Created storage directory: {}", path);
-            } catch (Exception e) {
-                logger.error("Failed to create storage directory: {}", path, e);
-                return false;
-            }
-        }
+        ensureStorageDirectory(path);
 
         SystemConfig.StorageSpaceConfig spaceConfig = new SystemConfig.StorageSpaceConfig();
         spaceConfig.setName(name);
@@ -171,22 +185,12 @@ public class StorageService {
             return false;
         }
 
-        // Validate path and create directory if not exists
+        // Validate path; ensureStorageDirectory creates the dir if missing and throws if it can't
         if (path == null || path.trim().isEmpty()) {
             logger.warn("Path is empty");
             return false;
         }
-
-        File storageDir = new File(path);
-        if (!storageDir.exists()) {
-            try {
-                storageDir.mkdirs();
-                logger.info("Created storage directory: {}", path);
-            } catch (Exception e) {
-                logger.error("Failed to create storage directory: {}", path, e);
-                return false;
-            }
-        }
+        ensureStorageDirectory(path);
 
         for (SystemConfig.StorageSpaceConfig spaceConfig : config.getStorageSpaces()) {
             if (spaceConfig.getName().equals(name)) {
@@ -328,6 +332,33 @@ public class StorageService {
         } else {
             statsCache.clear();
             lastStatsUpdate.clear();
+        }
+    }
+
+    /**
+     * 应用内增删文件后增量调整缓存用量，避免下次读统计时全量遍历。
+     * 冷缓存（statsCache 里无该空间）时直接 no-op —— 下次 getStorageStats() 自然全量遍历。
+     * 不刷新 lastStatsUpdate，保留 5 分钟 TTL 的定期对账，防止应用外改动导致漂移。
+     * Incrementally adjust cached usage after an app-driven file change, skipping a full
+     * re-walk on the next stats read. No-op when the space has no cached stats yet.
+     */
+    public void adjustUsedSize(String name, long deltaBytes, int deltaFiles) {
+        if (name == null) {
+            return;
+        }
+        StorageStats stats = statsCache.get(name);
+        if (stats == null) {
+            return; // 冷缓存：留给下次 getStorageStats() 全量遍历 / cold cache: walk fresh next time
+        }
+        // long 非原子，并发上传时对同一实例加锁防丢失自增 / long is non-atomic; guard concurrent uploads
+        synchronized (stats) {
+            stats.setUsedSize(Math.max(0, stats.getUsedSize() + deltaBytes));
+            long total = stats.getTotalSize();
+            stats.setFreeSize(Math.max(0, total - stats.getUsedSize()));
+            stats.setUsagePercentage(total > 0 ? (double) stats.getUsedSize() / total * 100 : 0);
+            if (deltaFiles != 0) {
+                stats.setFileCount(Math.max(0, stats.getFileCount() + deltaFiles));
+            }
         }
     }
 

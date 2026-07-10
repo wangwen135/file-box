@@ -173,9 +173,8 @@ public class FileBoxConfigStore {
 
     public static SystemConfig createDefaultConfig(String adminUsername, String adminPasswordHash) {
         SystemConfig config = new SystemConfig();
-        config.setName("File Box");
-        config.setDescription("File sharing and management tool");
         config.setAnonymousUploadEnabled(false);
+        config.setShareNoticeEnabled(true);
 
         SystemConfig.StorageSpaceConfig defaultSpace = new SystemConfig.StorageSpaceConfig();
         defaultSpace.setName("default");
@@ -208,11 +207,13 @@ public class FileBoxConfigStore {
 
         Map<String, Object> system = castMap(fileBox.get("system"));
         if (system != null) {
-            config.setName(stringValue(system.get("name")));
-            config.setDescription(stringValue(system.get("description")));
             Object anonymousUploadEnabled = firstPresent(system, "anonymous-upload-enabled", "anonymousUploadEnabled");
             if (anonymousUploadEnabled != null) {
                 config.setAnonymousUploadEnabled(Boolean.parseBoolean(String.valueOf(anonymousUploadEnabled)));
+            }
+            Object shareNoticeEnabled = firstPresent(system, "share-notice-enabled", "shareNoticeEnabled");
+            if (shareNoticeEnabled != null) {
+                config.setShareNoticeEnabled(Boolean.parseBoolean(String.valueOf(shareNoticeEnabled)));
             }
             config.setAllowedOrigins(stringValue(firstPresent(system, "allowed-origins", "allowedOrigins")));
         }
@@ -254,9 +255,6 @@ public class FileBoxConfigStore {
         }
         config.setUsers(users);
 
-        if (config.getName() == null || config.getName().trim().isEmpty()) {
-            config.setName("File Box");
-        }
         return config;
     }
 
@@ -270,9 +268,8 @@ public class FileBoxConfigStore {
         fileBox.put("anonymous", anonymous);
 
         Map<String, Object> system = new LinkedHashMap<String, Object>();
-        system.put("name", config.getName());
-        system.put("description", config.getDescription() != null ? config.getDescription() : "");
         system.put("anonymous-upload-enabled", config.isAnonymousUploadEnabled());
+        system.put("share-notice-enabled", config.isShareNoticeEnabled());
         if (config.getAllowedOrigins() != null && !config.getAllowedOrigins().trim().isEmpty()) {
             system.put("allowed-origins", config.getAllowedOrigins());
         }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -88,13 +89,24 @@ public class AdminController {
         // Active sessions
         int activeSessions = authService.getActiveSessionCount();
         dashboard.put("activeSessions", activeSessions);
-
-        // System config
-        SystemConfig config = configService.getConfig();
-        dashboard.put("systemName", config != null ? config.getName() : "File Box");
-        dashboard.put("systemDescription", config != null ? config.getDescription() : "");
+        dashboard.put("uptime", formatUptime(ManagementFactory.getRuntimeMXBean().getUptime()));
 
         return ResponseEntity.ok(dashboard);
+    }
+
+    private String formatUptime(long uptimeMillis) {
+        long totalSeconds = uptimeMillis / 1000;
+        long days = totalSeconds / 86400;
+        long hours = (totalSeconds % 86400) / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+
+        if (days > 0) {
+            return days + " 天 " + hours + " 小时";
+        }
+        if (hours > 0) {
+            return hours + " 小时 " + minutes + " 分钟";
+        }
+        return Math.max(minutes, 1) + " 分钟";
     }
 
     /**
@@ -138,13 +150,17 @@ public class AdminController {
         String maxSize = (String) request.get("maxSize");
         Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
 
-        boolean success = storageService.createStorageSpace(name, path, maxSize, allowAnonymous);
-
         Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
-
-        if (!success) {
-            response.put("error", "Failed to create storage space");
+        try {
+            boolean success = storageService.createStorageSpace(name, path, maxSize, allowAnonymous);
+            response.put("success", success);
+            if (!success) {
+                response.put("error", "创建存储空间失败：名称不合规或已存在");
+            }
+        } catch (IllegalStateException e) {
+            // 目录创建失败等带具体原因的异常 / failure carrying a specific reason (e.g. dir creation)
+            response.put("success", false);
+            response.put("error", e.getMessage());
         }
 
         return ResponseEntity.ok(response);
@@ -161,13 +177,16 @@ public class AdminController {
         String maxSize = (String) request.get("maxSize");
         Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
 
-        boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymous);
-
         Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
-
-        if (!success) {
-            response.put("error", "Failed to update storage space");
+        try {
+            boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymous);
+            response.put("success", success);
+            if (!success) {
+                response.put("error", "更新存储空间失败：名称不存在或路径无效");
+            }
+        } catch (IllegalStateException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
         }
 
         return ResponseEntity.ok(response);
@@ -299,7 +318,16 @@ public class AdminController {
      * Update system config
      */
     @PutMapping("/config")
-    public ResponseEntity<Map<String, Object>> updateConfig(@RequestBody SystemConfig config) {
+    public ResponseEntity<Map<String, Object>> updateConfig(@RequestBody Map<String, Object> request) {
+        SystemConfig config = configService.getConfig();
+        if (config == null) {
+            config = new SystemConfig();
+        }
+
+        if (request.containsKey("shareNoticeEnabled")) {
+            config.setShareNoticeEnabled(Boolean.parseBoolean(String.valueOf(request.get("shareNoticeEnabled"))));
+        }
+
         configService.saveConfig(config);
 
         Map<String, Object> response = new HashMap<>();

@@ -19,12 +19,13 @@
 .admin-layout {
     display: flex;
     min-height: 100vh;
+    padding-top: 56px;
 }
 
 /* 侧栏:宽度 + 纵向排列;背景/右边框沿用 theme.css 的 .sidebar */
 .admin-sidebar {
     width: 14rem;
-    min-height: 100vh;
+    min-height: calc(100vh - 56px);
     display: flex;
     flex-direction: column;
     color: var(--text-primary);
@@ -32,8 +33,7 @@
 }
 
 .admin-brand {
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
+    display: none;
 }
 .admin-brand h1 {
     font-size: 1.25rem;
@@ -46,27 +46,93 @@
 }
 
 .admin-nav {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     flex: 1;
 }
 
 .admin-sidebar-footer {
-    padding: 1.5rem;
+    padding: 0.9rem 1.25rem;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    text-decoration: none;
+}
+a.info-row { transition: color 0.2s ease; }
+a.info-row:hover { color: var(--primary); }
+.info-ico {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: currentColor;
 }
 
 /* 主内容区 / Main content area */
 .admin-main {
     flex: 1;
+    position: relative;
+    padding: 2rem;
+    min-width: 0; /* 允许内部网格收缩 / allow inner grids to shrink */
+}
 
 /* ============ 顶部工具栏 / Topbar ============ */
 .admin-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+    background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+    z-index: 1100;
+}
+.admin-topbar-brand,
+.admin-topbar-actions {
+    display: flex;
+    align-items: center;
+}
+.admin-topbar-brand {
+    gap: 10px;
+    min-width: 0;
+}
+.admin-topbar-brand-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.admin-topbar-logo {
+    color: var(--primary);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+.admin-topbar-subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1;
+    padding-left: 10px;
+    border-left: 1px solid var(--border-color);
+}
+.admin-topbar-actions {
     justify-content: flex-end;
     gap: 10px;
-    min-height: 36px;
-    margin-bottom: 1.25rem;
 }
 .admin-topbar .ico {
     width: 16px;
@@ -77,8 +143,10 @@
 .admin-topbar-link,
 .admin-topbar .hd-trigger {
     height: 32px;
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     padding: 0 10px;
     border: 1px solid var(--border-color);
@@ -87,8 +155,13 @@
     color: var(--text-primary);
     text-decoration: none;
     font-size: 13px;
-    line-height: 1;
+    line-height: 32px;
     cursor: pointer;
+}
+.admin-topbar-link span,
+.admin-topbar .hd-trigger span {
+    display: block;
+    line-height: 30px;
 }
 .admin-topbar-link:hover,
 .admin-topbar .hd-trigger:hover {
@@ -174,9 +247,6 @@
 .admin-topbar .theme-toggle.in-header svg {
     width: 18px;
     height: 18px;
-}
-    padding: 1rem 2rem 2rem;
-    min-width: 0; /* 允许内部网格收缩 / allow inner grids to shrink */
 }
 
 /* ============ 导航项 / Nav items ============ */
@@ -296,7 +366,7 @@
 .admin-layout .theme-toggle:not(.in-header) {
     width: 32px;
     height: 32px;
-    top: 18px;
+    top: 12px;
     right: 18px;
     font-size: 14px;
 }
@@ -344,6 +414,7 @@
     align-items: center;
 }
 .table-cells-5 { grid-template-columns: repeat(5, 1fr); }
+.table-cells-6 { grid-template-columns: repeat(6, 1fr); }
 .table-cells-4 { grid-template-columns: repeat(4, 1fr); }
 /* 允许单元格内容收缩(如长路径省略) / let cells shrink (e.g. ellipsis on long paths) */
 .table-cells > * {
@@ -372,6 +443,52 @@
     display: flex;
     gap: 0.5rem;
 }
+/* 匿名上传标记 / anonymous-upload badge — 启用时用红色 globe 图标警示 */
+.anon-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+.anon-badge .anon-ico {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+/* 启用:红色(沿用 --danger),提示该空间对所有人开放上传 */
+.anon-badge.anon-on {
+    color: var(--danger);
+}
+/* 未启用:弱化文字 / disabled — muted text */
+.anon-badge.anon-off {
+    color: var(--text-muted);
+}
+/* 存储空间胶囊列表 / storage-space capsule chips — 每个空间一个胶囊,可换行 */
+.storage-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+.storage-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    background: var(--primary-light);
+    color: var(--primary);
+    white-space: nowrap;
+}
+/* 无权限占位 / no spaces — muted dash */
+.storage-chips-empty {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
 .empty-state {
     padding: 2rem 1.5rem;
     text-align: center;
@@ -379,11 +496,15 @@
 }
 
 /* ============ 模态框 / Modal ============ */
-.modal-title {
+/* 用 .modal-content 限定提升优先级:notification.js 会注入同名 .modal-title{margin:0}
+   (优先级相同、运行时后加载,默认会覆盖此处),限定后优先级 (0,2,0) 高于注入的 (0,1,0)。
+   Qualify with .modal-content to raise specificity: notification.js injects a same-name
+   .modal-title{margin:0} (equal specificity, loaded later → wins otherwise). */
+.modal-content .modal-title {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem; /* 标题与首个表单项拉开间距 / separate title from first field */
 }
 /* theme.css .modal-content 已给背景/边框/圆角/最大宽度;补滚动与宽变体 */
 .modal-content {
@@ -552,6 +673,23 @@
     .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
+    .admin-topbar {
+        padding: 0 12px;
+    }
+
+    .admin-topbar-subtitle {
+        display: none;
+    }
+
+    .admin-topbar-actions {
+        gap: 6px;
+    }
+
+    .admin-topbar-link span,
+    .admin-user-menu .hd-user span {
+        display: none;
+    }
+
     .admin-layout {
         display: block;
         min-height: 100vh;
@@ -585,8 +723,8 @@
     }
 
     .admin-sidebar-footer {
-        display: flex;
-        align-items: center;
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 0.75rem;
         padding: 0.75rem 1rem 1rem;
         border-top: none;
@@ -644,6 +782,7 @@
     justify-content: center;
     font-size: 24px;
 }
+.stat-icon svg { width: 24px; height: 24px; }
 .stat-icon.blue   { background: var(--primary-light); color: var(--primary); }
 .stat-icon.green  { background: var(--success-bg);   color: var(--success); }
 .stat-icon.purple { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }

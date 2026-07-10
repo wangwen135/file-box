@@ -33,6 +33,24 @@
                 <span>系统设置</span>
             </a>
         </nav>
+        <div class="admin-sidebar-footer">
+            <a class="info-row" href="https://github.com/wangwen135/file-box" target="_blank" rel="noopener noreferrer">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-github"/></svg>
+                <span>GitHub</span>
+            </a>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-tag"/></svg>
+                <span data-app-version>v0.0.0</span>
+            </div>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-scale"/></svg>
+                <span>Apache-2.0</span>
+            </div>
+            <a class="info-row" href="mailto:wangwen135@163.com" title="wangwen135@163.com">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span>by wwh</span>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content / 主内容 -->
@@ -51,11 +69,10 @@
         <!-- Users Table / 用户表 -->
         <div class="table-container">
             <div class="table-header">
-                <div class="table-cells table-cells-5">
+                <div class="table-cells table-cells-4">
                     <div>用户名</div>
                     <div>角色</div>
                     <div>存储空间</div>
-                    <div>创建时间</div>
                     <div>操作</div>
                 </div>
             </div>
@@ -113,22 +130,6 @@
         let isEditing = false;
         let availableStorages = [];
 
-        // Get current user info
-        async function getUserInfo() {
-            try {
-                const response = await fetch('/api/auth/user');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('currentUser').textContent = data.username;
-                    if (data.role !== 'ADMIN') {
-                        window.location.href = '/index.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to get user info:', error);
-            }
-        }
-
         // Load users
         async function loadUsers() {
             try {
@@ -163,13 +164,12 @@
 
             container.innerHTML = userList.map(user => `
                 <div class="table-row">
-                    <div class="table-cells table-cells-5">
+                    <div class="table-cells table-cells-4">
                         <div class="cell-strong">${user.username}</div>
                         <div>
                             <span class="badge badge-${user.role.toLowerCase()}">${getRoleName(user.role)}</span>
                         </div>
-                        <div class="cell-muted">${user.storageSpaces?.join(', ') || '-'}</div>
-                        <div class="cell-muted">${formatDate(user.createdAt)}</div>
+                        <div>${renderStorageChips(user.storageSpaces)}</div>
                         <div class="row-actions">
                             <button onclick="editUser('${user.username}')" class="btn btn-sm btn-secondary">编辑</button>
                             <button onclick="deleteUser('${user.username}')" class="btn btn-sm btn-danger">删除</button>
@@ -184,10 +184,14 @@
             return names[role] || role;
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('zh-CN');
+        // 存储空间渲染为胶囊 / render storage spaces as capsule chips
+        function renderStorageChips(spaces) {
+            if (!spaces || spaces.length === 0) {
+                return '<span class="storage-chips-empty">-</span>';
+            }
+            return '<div class="storage-chips">' +
+                spaces.map(s => `<span class="storage-chip">${s}</span>`).join('') +
+                '</div>';
         }
 
         function openAddModal() {
@@ -336,7 +340,6 @@
         }
 
         // Initialize
-        getUserInfo();
         loadUsers();
         loadStorages();
     </script>

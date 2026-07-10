@@ -99,6 +99,49 @@
             margin: 0;
         }
 
+        .share-notice {
+            position: fixed;
+            top: 12px;
+            left: 14px;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: min(520px, calc(100vw - 28px));
+            color: var(--dark-text);
+            font-size: 13px;
+        }
+        .share-notice.hidden {
+            display: none;
+        }
+        .share-notice-label {
+            color: var(--secondary-color);
+            white-space: nowrap;
+        }
+        .share-notice-url {
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            color: var(--dark-text);
+        }
+        .share-copy-btn {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(74, 144, 226, 0.28);
+            border-radius: 7px;
+            background: rgba(74, 144, 226, 0.10);
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+        .share-copy-btn:hover {
+            background: rgba(74, 144, 226, 0.18);
+        }
+
         .logo-wrapper {
             width: 60px;
             height: 60px;
@@ -732,13 +775,20 @@
                 padding: 0 10px;
             }
 
+            /* 移动端:局域网地址只保留复制按钮 / mobile: keep only the copy button */
+            .share-notice-label,
+            .share-notice-url {
+                display: none;
+            }
+
             .header-controls {
                 position: static;
                 width: 100%;
-                justify-content: center;
+                justify-content: flex-end;
                 flex-wrap: wrap;
                 gap: 6px;
                 margin: 2px 0 10px;
+                padding: 0 10px;
             }
 
             .header-controls .hd-trigger,
@@ -817,6 +867,9 @@
             border-radius: 9px;
         }
         .view-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             border: none;
             background: transparent;
             color: var(--light-text);
@@ -843,7 +896,7 @@
         [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
 
         .dir-breadcrumb { padding: 8px 0; font-size: 14px; word-break: break-all; }
-        .dir-breadcrumb .crumb { cursor: pointer; color: #4a90e2; font-weight: 500; }
+        .dir-breadcrumb .crumb { cursor: pointer; color: #4a90e2; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
         .dir-breadcrumb .crumb:hover { text-decoration: underline; }
         .dir-breadcrumb .crumb-sep { margin: 0 6px; color: #999; }
         [data-theme="dark"] .dir-breadcrumb .crumb { color: #0ea5e9; }
@@ -859,10 +912,12 @@
         .folder-card:hover { background: rgba(74, 144, 226, 0.08); }
         [data-theme="dark"] .folder-card { border-color: #334155; }
         [data-theme="dark"] .folder-card:hover { background: rgba(14, 165, 233, 0.1); }
-        .folder-icon { font-size: 20px; }
+        .folder-icon { display: inline-flex; align-items: center; }
+        .folder-icon .ico { width: 20px; height: 20px; }
         .folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-ops, .file-row-ops { display: flex; gap: 4px; }
         .mini-btn {
+            display: inline-flex; align-items: center; justify-content: center;
             padding: 3px 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 5px;
             background: #fff; cursor: pointer; line-height: 1;
         }
@@ -902,6 +957,11 @@
             background-color: #1e293b;
             border-color: #334155;
         }
+        [data-theme="dark"] .share-copy-btn {
+            background: rgba(14, 165, 233, 0.14);
+            border-color: rgba(14, 165, 233, 0.35);
+            color: #38bdf8;
+        }
         [data-theme="dark"] .preview .file-ext { color: rgba(203, 213, 225, 0.4); }
         [data-theme="dark"] textarea,
         [data-theme="dark"] select,
@@ -924,6 +984,11 @@
 </head>
 
 <body>
+<div class="share-notice" id="shareNotice">
+    <span class="share-notice-label">局域网访问地址</span>
+    <span class="share-notice-url" id="shareNoticeUrl"></span>
+    <button class="share-copy-btn" id="shareCopyBtn" type="button" title="复制" aria-label="复制"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-copy"/></svg></button>
+</div>
 <div class="header-controls">
         <!-- 存储空间切换 / storage space switcher -->
         <div class="header-dropdown" id="storageSwitcher">
@@ -997,8 +1062,8 @@
     <div class="divider"></div>
 
     <div class="view-tabs">
-        <button id="tab-recent" class="view-tab active">最近上传</button>
-        <button id="tab-dir" class="view-tab">📁 目录浏览</button>
+        <button id="tab-recent" class="view-tab active"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-history"/></svg>最近上传</button>
+        <button id="tab-dir" class="view-tab"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder-tree"/></svg>目录浏览</button>
     </div>
 
     <div id="recent-view">
@@ -1045,6 +1110,53 @@
 
 <script src="js/notification.js"></script>
 <script>
+    const shareNoticeUrl = window.location.origin;
+    const shareNotice = document.getElementById('shareNotice');
+    document.getElementById('shareNoticeUrl').textContent = shareNoticeUrl;
+    document.getElementById('shareCopyBtn').addEventListener('click', async () => {
+        const copied = await copyTextToClipboard(shareNoticeUrl);
+        if (copied) {
+            Notify.success('访问地址已复制');
+        } else {
+            Notify.error('复制失败，请手动复制地址');
+        }
+    });
+
+    fetch('/api/auth/config')
+        .then(response => response.ok ? response.json() : null)
+        .then(config => {
+            if (config && config.shareNoticeEnabled === false) {
+                shareNotice.classList.add('hidden');
+            }
+        })
+        .catch(() => {});
+
+    async function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                // Fall through to legacy copy.
+            }
+        }
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        let copied = false;
+        try {
+            copied = document.execCommand('copy');
+        } catch (error) {
+            copied = false;
+        }
+        document.body.removeChild(textarea);
+        return copied;
+    }
+
     // 获取并显示用户组信息
     fetch('/api/user')
         .then(response => {
@@ -1845,7 +1957,7 @@
             // 显示错误状态
             recentDiv.innerHTML = `
                 <div style="text-align:center;color:#ff4444;padding:60px 40px;">
-                    <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                    <div style="margin-bottom:16px;"><svg style="width:48px;height:48px;" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-alert"/></svg></div>
                     <div style="font-size:16px;margin-bottom:8px;">加载失败</div>
                     <div style="font-size:13px;color:#999;">请检查网络连接后重试</div>
                 </div>
@@ -1880,7 +1992,7 @@
         emptyState.className = 'empty-state';
         emptyState.innerHTML = `
             <div style="text-align:center;color:#999;padding:60px 40px;">
-                <div style="font-size:48px;margin-bottom:16px;opacity:0.3;">📁</div>
+                <div style="margin-bottom:16px;opacity:0.3;"><svg style="width:48px;height:48px;" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg></div>
                 <div style="font-size:16px;margin-bottom:8px;">暂无上传文件</div>
                 <div style="font-size:13px;color:#bbb;">拖放文件到上方区域，或点击选择文件开始上传</div>
             </div>
@@ -2121,7 +2233,7 @@
         const bc = document.getElementById('dir-breadcrumb');
         bc.innerHTML = '';
         const root = document.createElement('span');
-        root.className = 'crumb'; root.textContent = '🏠 根目录';
+        root.className = 'crumb'; root.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-home"/></svg>根目录';
         root.onclick = () => { dirPath = []; fetchDir(); };
         bc.appendChild(root);
         dirPath.forEach((part, i) => {
@@ -2141,13 +2253,13 @@
         const folders = data.folders || [];
         const files = data.files || [];
         if (folders.length === 0 && files.length === 0 && !currentHasMore) {
-            c.innerHTML = '<div class="dir-empty">📁 空文件夹</div>';
+            c.innerHTML = '<div class="dir-empty"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg> 空文件夹</div>';
             return;
         }
         folders.forEach(f => {
             const card = document.createElement('div');
             card.className = 'folder-card';
-            const ic = document.createElement('span'); ic.className = 'folder-icon'; ic.textContent = '📁';
+            const ic = document.createElement('span'); ic.className = 'folder-icon'; ic.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg>';
             const nm = document.createElement('span'); nm.className = 'folder-name'; nm.textContent = f.name; nm.title = f.name;
             card.appendChild(ic); card.appendChild(nm);
             card.onclick = () => { dirPath.push(f.name); fetchDir(); };
@@ -2171,7 +2283,7 @@
         const ops = document.createElement('span');
         ops.className = 'folder-ops';
         const del = document.createElement('button');
-        del.className = 'mini-btn'; del.textContent = '🗑'; del.title = '删除文件夹';
+        del.className = 'mini-btn'; del.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-trash"/></svg>'; del.title = '删除文件夹';
         del.onclick = (e) => {
             e.stopPropagation();
             const rel = [...dirPath, name].join('/');

@@ -33,6 +33,24 @@
                 <span>系统设置</span>
             </a>
         </nav>
+        <div class="admin-sidebar-footer">
+            <a class="info-row" href="https://github.com/wangwen135/file-box" target="_blank" rel="noopener noreferrer">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-github"/></svg>
+                <span>GitHub</span>
+            </a>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-tag"/></svg>
+                <span data-app-version>v0.0.0</span>
+            </div>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-scale"/></svg>
+                <span>Apache-2.0</span>
+            </div>
+            <a class="info-row" href="mailto:wangwen135@163.com" title="wangwen135@163.com">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span>by wwh</span>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content / 主内容 -->
@@ -47,7 +65,7 @@
         <div class="stat-grid">
             <div class="stat-card">
                 <div class="stat-head">
-                    <div class="stat-icon blue">💾</div>
+                    <div class="stat-icon blue"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-database"/></svg></div>
                     <span class="stat-icon-label">存储空间</span>
                 </div>
                 <h3 class="stat-value" id="storageCount">0</h3>
@@ -55,7 +73,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-head">
-                    <div class="stat-icon green">👥</div>
+                    <div class="stat-icon green"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-users"/></svg></div>
                     <span class="stat-icon-label">用户数量</span>
                 </div>
                 <h3 class="stat-value" id="userCount">0</h3>
@@ -63,7 +81,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-head">
-                    <div class="stat-icon purple">📁</div>
+                    <div class="stat-icon purple"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-files"/></svg></div>
                     <span class="stat-icon-label">文件总数</span>
                 </div>
                 <h3 class="stat-value" id="fileCount">0</h3>
@@ -71,7 +89,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-head">
-                    <div class="stat-icon orange">📊</div>
+                    <div class="stat-icon orange"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-gauge"/></svg></div>
                     <span class="stat-icon-label">总容量</span>
                 </div>
                 <h3 class="stat-value" id="totalCapacity">0 GB</h3>
@@ -92,20 +110,16 @@
             <h3 class="section-title">系统信息</h3>
             <div class="sys-info-list">
                 <div class="sys-info-row">
-                    <span class="sys-info-key">系统名称</span>
-                    <span class="sys-info-val" id="systemName">File Box</span>
-                </div>
-                <div class="sys-info-row">
                     <span class="sys-info-key">版本</span>
-                    <span class="sys-info-val">v0.2.0</span>
+                    <span class="sys-info-val" data-app-version>—</span>
                 </div>
                 <div class="sys-info-row">
-                    <span class="sys-info-key">运行时间</span>
+                    <span class="sys-info-key">运行时长</span>
                     <span class="sys-info-val" id="uptime">-</span>
                 </div>
                 <div class="sys-info-row">
-                    <span class="sys-info-key">Java 版本</span>
-                    <span class="sys-info-val" id="javaVersion">-</span>
+                    <span class="sys-info-key">活跃会话</span>
+                    <span class="sys-info-val" id="activeSessions">-</span>
                 </div>
             </div>
         </div>
@@ -114,25 +128,17 @@
     <script src="/js/notification.js"></script>
     <script src="/js/admin-common.js"></script>
     <script>
-        // Get current user info
-        async function getUserInfo() {
-            try {
-                const response = await fetch('/api/auth/user');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('currentUser').textContent = data.username;
-                    if (data.role !== 'ADMIN') {
-                        window.location.href = '/index.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to get user info:', error);
-            }
-        }
-
         // Load dashboard data
         async function loadDashboard() {
             try {
+                const dashboardResponse = await fetch('/api/admin/dashboard');
+                if (dashboardResponse.ok) {
+                    const dashboardData = await dashboardResponse.json();
+                    document.getElementById('uptime').textContent = dashboardData.uptime || '-';
+                    document.getElementById('activeSessions').textContent =
+                        `${dashboardData.activeSessions || 0} 个`;
+                }
+
                 // Load storage spaces
                 const storageResponse = await fetch('/api/admin/storage');
                 if (storageResponse.ok) {
@@ -150,19 +156,19 @@
                         const statsResponse = await fetch(`/api/admin/storage/${space.name}/stats`);
                         if (statsResponse.ok) {
                             const stats = await statsResponse.json();
-                            totalUsed += stats.usedBytes || 0;
+                            totalUsed += stats.usedSize || 0;
                             totalFiles += stats.fileCount || 0;
 
                             const maxBytes = parseSize(space.maxSize);
                             totalCapacity += maxBytes;
 
-                            const percentage = maxBytes > 0 ? ((stats.usedBytes || 0) / maxBytes * 100).toFixed(1) : 0;
+                            const percentage = maxBytes > 0 ? ((stats.usedSize || 0) / maxBytes * 100).toFixed(1) : 0;
 
                             usageList.innerHTML += `
                                 <div class="usage-item">
                                     <div class="usage-row">
                                         <span class="usage-name">${space.name}</span>
-                                        <span class="usage-meta">${formatBytes(stats.usedBytes || 0)} / ${space.maxSize}</span>
+                                        <span class="usage-meta">${formatBytes(stats.usedSize || 0)} / ${space.maxSize}</span>
                                     </div>
                                     <div class="progress-bar">
                                         <div class="progress-fill" style="width: ${percentage}%"></div>
@@ -206,7 +212,6 @@
         }
 
         // Initialize
-        getUserInfo();
         loadDashboard();
     </script>
     <script src="/js/theme.js"></script>

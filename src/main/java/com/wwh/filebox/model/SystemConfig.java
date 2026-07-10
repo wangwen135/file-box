@@ -9,29 +9,12 @@ import java.util.List;
  */
 public class SystemConfig {
 
-    private String name;
-    private String description;
     private boolean anonymousUploadEnabled;
+    private boolean shareNoticeEnabled = true;
     private String allowedOrigins;
 
     private List<StorageSpaceConfig> storageSpaces = new ArrayList<>();
     private List<UserConfig> users = new ArrayList<>();
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 
     public boolean isAnonymousUploadEnabled() {
         return anonymousUploadEnabled;
@@ -39,6 +22,14 @@ public class SystemConfig {
 
     public void setAnonymousUploadEnabled(boolean anonymousUploadEnabled) {
         this.anonymousUploadEnabled = anonymousUploadEnabled;
+    }
+
+    public boolean isShareNoticeEnabled() {
+        return shareNoticeEnabled;
+    }
+
+    public void setShareNoticeEnabled(boolean shareNoticeEnabled) {
+        this.shareNoticeEnabled = shareNoticeEnabled;
     }
 
     public String getAllowedOrigins() {

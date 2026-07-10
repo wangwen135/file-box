@@ -249,6 +249,7 @@ body {
 }
 
 .progress-fill {
+    height: 100%; /* 撑满 8px 高的 .progress-bar;缺失则高度为 0、填充不可见 / fill the 8px track; without this the fill collapses to 0px and is invisible */
     background: linear-gradient(90deg, var(--primary) 0%, #22d3ee 100%);
     transition: width 0.5s ease;
 }

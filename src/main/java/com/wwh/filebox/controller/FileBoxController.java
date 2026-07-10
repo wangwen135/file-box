@@ -182,6 +182,11 @@ public class FileBoxController {
             f.transferTo(savePath.toAbsolutePath().normalize().toFile());
             Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
             logger.info("User {} uploaded file: {}", username, savePath.getFileName());
+            // 增量更新 stats 缓存：本次上传的字节数与文件数直接累加，避免下次读统计时全量遍历；
+            // 循环内即时更新，使后续文件的 hasEnoughSpace 能读到准确的剩余空间。
+            // Bump cached stats by this file so the next read avoids a full walk, and so the
+            // capacity check for the next file in this batch sees the up-to-date free space.
+            storageService.adjustUsedSize(storageSpaceName, f.getSize(), 1);
         }
 
         // 上传改变了文件集，作废该存储空间的遍历缓存 / uploads changed the file set; drop the cached walk
@@ -227,9 +232,18 @@ public class FileBoxController {
         Files.createDirectories(uploadDir);
         String filename = AppConstants.FileUpload.PASTE_FILE_PREFIX + DateTimeFormatter.getCurrentTimestamp() + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION;
         Path savePath = uploadDir.resolve(filename);
-        Files.write(savePath, ((String) body.get("text")).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE_NEW);
+        byte[] content = ((String) body.get("text")).getBytes(StandardCharsets.UTF_8);
+        // 文本上传同样做容量判断，避免粘贴文本绕过存储空间配额
+        // Text uploads must respect the storage quota too (previously unchecked).
+        if (!storageService.hasEnoughSpace(storageSpace.getName(), content.length)) {
+            logger.warn("Text upload failed for user {}: Storage space {} is full", username, storageSpace.getName());
+            return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
+        }
+        Files.write(savePath, content, StandardOpenOption.CREATE_NEW);
         Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
         logger.info("User {} uploaded text file: {}", username, filename);
+        // 增量更新 stats 缓存 / bump cached stats incrementally
+        storageService.adjustUsedSize(storageSpace.getName(), content.length, 1);
 
         // 文本上传改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
         fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
@@ -285,8 +299,9 @@ public class FileBoxController {
 
         if (Files.exists(targetPath) && Files.isRegularFile(targetPath) && !Files.isSymbolicLink(targetPath)) {
             Files.delete(targetPath);
-            // 删除改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
+            // 删除改变了文件集，作废该存储空间的遍历缓存与统计缓存 / drop the cached walk and stats for this space
             fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+            storageService.clearStatsCache(storageSpace.getName());
             logger.info("User {} successfully deleted file: {}", username, filePath);
             return ResponseEntity.ok("文件删除成功");
         } else {
@@ -889,8 +904,9 @@ public class FileBoxController {
             logger.warn("delete_folder failed {}: {}", folderPath, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除文件夹失败");
         }
-        // 删除文件夹改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
+        // 删除文件夹改变了文件集，作废该存储空间的遍历缓存与统计缓存 / drop the cached walk and stats for this space
         fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+        storageService.clearStatsCache(storageSpace.getName());
         logger.info("User {} deleted folder: {}", session.getUsername(), folderPath);
         return ResponseEntity.ok("文件夹删除成功");
     }

@@ -75,3 +75,4 @@ node_modules/
 target/
 # AI dev script (local only)
 dev-restart.sh
+/.docs/

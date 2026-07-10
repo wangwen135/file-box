@@ -33,6 +33,24 @@
                 <span>系统设置</span>
             </a>
         </nav>
+        <div class="admin-sidebar-footer">
+            <a class="info-row" href="https://github.com/wangwen135/file-box" target="_blank" rel="noopener noreferrer">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-github"/></svg>
+                <span>GitHub</span>
+            </a>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-tag"/></svg>
+                <span data-app-version>v0.0.0</span>
+            </div>
+            <div class="info-row">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-scale"/></svg>
+                <span>Apache-2.0</span>
+            </div>
+            <a class="info-row" href="mailto:wangwen135@163.com" title="wangwen135@163.com">
+                <svg class="info-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-user"/></svg>
+                <span>by wwh</span>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content / 主内容 -->
@@ -51,11 +69,12 @@
         <!-- Storage Table / 存储空间表 -->
         <div class="table-container">
             <div class="table-header">
-                <div class="table-cells table-cells-5">
+                <div class="table-cells table-cells-6">
                     <div>名称</div>
                     <div>路径</div>
                     <div>容量限制</div>
                     <div>使用情况</div>
+                    <div>匿名上传</div>
                     <div>操作</div>
                 </div>
             </div>
@@ -111,22 +130,6 @@
     <script>
         let isEditing = false;
 
-        // Get current user info
-        async function getUserInfo() {
-            try {
-                const response = await fetch('/api/auth/user');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('currentUser').textContent = data.username;
-                    if (data.role !== 'ADMIN') {
-                        window.location.href = '/index.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to get user info:', error);
-            }
-        }
-
         // Load storage spaces
         async function loadStorage() {
             try {
@@ -147,9 +150,9 @@
                 return;
             }
 
-            container.innerHTML = storageList.map(space => `
-                <div class="table-row">
-                    <div class="table-cells table-cells-5">
+            container.innerHTML = storageList.map((space, index) => `
+                <div class="table-row" data-row-index="${index}">
+                    <div class="table-cells table-cells-6">
                         <div class="cell-strong">${space.name}</div>
                         <div class="cell-muted-mono">${space.path}</div>
                         <div class="cell-muted">${space.maxSize}</div>
@@ -158,6 +161,11 @@
                                 <div class="progress-fill" style="width: 0%"></div>
                             </div>
                             <span class="progress-text">加载中...</span>
+                        </div>
+                        <div class="anon-cell">
+                            ${space.allowAnonymous
+                                ? '<span class="anon-badge anon-on" title="已启用匿名上传"><svg class="ico anon-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-globe"/></svg>已开启</span>'
+                                : '<span class="anon-badge anon-off">未开启</span>'}
                         </div>
                         <div class="row-actions">
                             <button onclick="editStorage('${space.name}')" class="btn btn-sm btn-secondary">编辑</button>
@@ -168,25 +176,35 @@
             `).join('');
 
             // Load stats for each storage
-            storageList.forEach(async (space) => {
+            storageList.forEach(async (space, index) => {
+                // 按索引精确选中本行；原先用 nth-child 会误选到第一行内部单元格，
+                // 导致除第一行外全部停留在「加载中...」、进度条宽度恒为 0%。
+                // Select this row by its render-time index. The old nth-child selector
+                // mistakenly matched inner cells of the first row, so every row after the
+                // first stayed on "加载中..." with a 0% bar.
+                const row = container.querySelector(`.table-row[data-row-index="${index}"]`);
+                const progressBar = row && row.querySelector('.progress-fill');
+                const progressText = row && row.querySelector('.progress-text');
                 try {
                     const statsResponse = await fetch(`/api/admin/storage/${space.name}/stats`);
+                    let usedBytes = 0;
+                    let percentage = 0;
                     if (statsResponse.ok) {
                         const stats = await statsResponse.json();
+                        usedBytes = stats.usedSize || 0;
                         const maxBytes = parseSize(space.maxSize);
-                        const percentage = maxBytes > 0 ? ((stats.usedBytes || 0) / maxBytes * 100).toFixed(1) : 0;
-
-                        // Update the progress bar and text
-                        const storageDiv = container.querySelector(`div:nth-child(${storageList.indexOf(space) + 1})`);
-                        if (storageDiv) {
-                            const progressBar = storageDiv.querySelector('.progress-fill');
-                            const progressText = storageDiv.querySelector('.progress-text');
-                            if (progressBar) progressBar.style.width = percentage + '%';
-                            if (progressText) progressText.textContent = `${formatBytes(stats.usedBytes || 0)} / ${space.maxSize}`;
-                        }
+                        percentage = maxBytes > 0 ? (usedBytes / maxBytes * 100) : 0;
                     }
+                    // 拉取失败（如目录不存在返回 404）给兜底文案，避免长期停留「加载中...」
+                    // Fallback text when stats can't be loaded (e.g. 404 for a missing dir).
+                    const labelText = statsResponse.ok
+                        ? `${formatBytes(usedBytes)} / ${space.maxSize}`
+                        : '—';
+                    if (progressBar) progressBar.style.width = percentage.toFixed(1) + '%';
+                    if (progressText) progressText.textContent = labelText;
                 } catch (error) {
                     console.error('Failed to load stats for', space.name, error);
+                    if (progressText) progressText.textContent = '—';
                 }
             });
         }
@@ -246,12 +264,19 @@
                     body: JSON.stringify(data)
                 });
 
-                if (response.ok) {
+                if (!response.ok) {
+                    const error = await response.text();
+                    alert('保存失败：' + error);
+                    return;
+                }
+                // 后端即使逻辑失败也返回 HTTP 200 + {success,error}，需按 success 判断
+                // Backend returns HTTP 200 with {success,error} even on logical failure.
+                const result = await response.json();
+                if (result.success) {
                     closeModal();
                     loadStorage();
                 } else {
-                    const error = await response.text();
-                    alert('保存失败：' + error);
+                    alert('保存失败：' + (result.error || '未知错误'));
                 }
             } catch (error) {
                 alert('保存失败：' + error.message);
@@ -259,7 +284,15 @@
         }
 
         async function deleteStorage(name) {
-            if (!confirm(`确定要删除存储空间 "${name}" 吗？\n\n注意：此操作不会删除物理文件，只会删除配置。`)) {
+            const confirmed = await Notify.confirm({
+                title: '删除存储空间',
+                content: `确定要删除存储空间 <strong>${name}</strong> 吗？<br><br><span class="text-muted">此操作只会删除配置，不会删除物理文件。</span>`,
+                okText: '删除',
+                cancelText: '取消',
+                okType: 'danger',
+                width: 420
+            });
+            if (!confirmed) {
                 return;
             }
 
@@ -297,7 +330,6 @@
         }
 
         // Initialize
-        getUserInfo();
         loadStorage();
     </script>
     <script src="/js/theme.js"></script>
