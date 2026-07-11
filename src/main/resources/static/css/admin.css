@@ -592,6 +592,45 @@ a.info-row:hover { color: var(--primary); }
     accent-color: var(--primary);
 }
 
+/* users 页:角色权限对比表 / role permission comparison table */
+.role-table {
+    width: 100%;
+    margin-top: 0.5rem;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.role-table th,
+.role-table td {
+    padding: 0.4rem 0.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+.role-table thead th {
+    font-weight: 600;
+    background: rgba(127, 127, 127, 0.06);
+}
+.role-table tbody th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.role-table tbody tr:last-child th,
+.role-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.role-table .ico {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+.role-table .perm-yes { color: #22c55e; }
+.role-table .perm-no { color: var(--text-muted); opacity: 0.4; }
+
 /* ============ Settings: 开关 / Toggle switch ============ */
 .toggle-switch {
     position: relative;
@@ -620,6 +659,10 @@ a.info-row:hover { color: var(--primary); }
 .toggle-switch.on::after {
     transform: translateX(24px);
 }
+.toggle-switch.saving {
+    pointer-events: none;
+    opacity: 0.65;
+}
 .setting-row {
     display: flex;
     align-items: center;
@@ -628,12 +671,54 @@ a.info-row:hover { color: var(--primary); }
 }
 .setting-row-title {
     color: var(--text-primary);
-    font-weight: 500;
-    margin-bottom: 0.25rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
 }
 .setting-row-desc {
     color: var(--text-muted);
     font-size: 0.875rem;
+}
+.setting-address {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.3rem;
+    font-size: 0.8125rem;
+}
+.setting-address-label {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.setting-address-url {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-primary);
+}
+.setting-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--primary);
+    cursor: pointer;
+}
+.setting-copy-btn:hover { background: rgba(74, 144, 226, 0.18); }
+.setting-copy-btn .ico {
+    width: 16px;
+    height: 16px;
+}
+.setting-note {
+    margin-top: 0.85rem;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
 }
 
 /* ============ Settings: 警告条 / Alert ============ */

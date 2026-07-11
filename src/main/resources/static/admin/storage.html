@@ -266,7 +266,7 @@
 
                 if (!response.ok) {
                     const error = await response.text();
-                    alert('保存失败：' + error);
+                    Notify.error('保存失败：' + error, { position: 'top-center' });
                     return;
                 }
                 // 后端即使逻辑失败也返回 HTTP 200 + {success,error}，需按 success 判断
@@ -276,10 +276,10 @@
                     closeModal();
                     loadStorage();
                 } else {
-                    alert('保存失败：' + (result.error || '未知错误'));
+                    Notify.error('保存失败：' + (result.error || '未知错误'), { position: 'top-center' });
                 }
             } catch (error) {
-                alert('保存失败：' + error.message);
+                Notify.error('保存失败：' + error.message, { position: 'top-center' });
             }
         }
 
@@ -303,12 +303,13 @@
 
                 if (response.ok) {
                     loadStorage();
+                    Notify.success('存储空间已删除');
                 } else {
                     const error = await response.text();
-                    alert('删除失败：' + error);
+                    Notify.error('删除失败：' + error, { position: 'top-center' });
                 }
             } catch (error) {
-                alert('删除失败：' + error.message);
+                Notify.error('删除失败：' + error.message, { position: 'top-center' });
             }
         }
 

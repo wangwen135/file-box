@@ -312,6 +312,38 @@
                     background: #ffc53d;
                     border-color: #ffc53d;
                 }
+
+                /* 输入框模态:prompt / form / 输入框 modal: prompt & form */
+                .modal-hint {
+                    margin-bottom: 12px;
+                    color: #595959;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    word-break: break-word;
+                }
+                .modal-field {
+                    margin-bottom: 14px;
+                }
+                .modal-field:last-of-type {
+                    margin-bottom: 0;
+                }
+                .modal-field-label {
+                    display: block;
+                    margin-bottom: 6px;
+                    color: #262626;
+                    font-size: 13px;
+                }
+                .modal-input {
+                    display: block;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .modal-error {
+                    margin-top: 8px;
+                    color: #ff4d4f;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
             `;
             document.head.appendChild(style);
         },
@@ -547,6 +579,231 @@
                 okBtn.addEventListener('click', close);
                 overlay.addEventListener('click', (e) => {
                     if (e.target === overlay) close();
+                });
+            });
+        },
+
+        /**
+         * 单字段输入模态(原生 prompt 的替代) / single-line input modal (prompt replacement)
+         * resolve(value) 确定;resolve(null) 取消/ESC/点遮罩
+         */
+        prompt(options) {
+            return new Promise((resolve) => {
+                const config = typeof options === 'string' ? { content: options } : options;
+                const {
+                    title = '请输入',
+                    content = '',
+                    placeholder = '',
+                    defaultValue = '',
+                    okText = '确定',
+                    cancelText = '取消',
+                    okType = 'primary',
+                    width = 400,
+                    maxLength,
+                    selectOnFocus = true,
+                    validate
+                } = config;
+
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+
+                const modal = document.createElement('div');
+                modal.className = 'notify-modal';
+                if (width) modal.style.minWidth = width + 'px';
+
+                const contentHTML = content ? `<div class="modal-hint">${content}</div>` : '';
+                const maxLenAttr = maxLength ? `maxlength="${maxLength}"` : '';
+
+                modal.innerHTML = `
+                    <div class="modal-header">
+                        <h3 class="modal-title">${title}</h3>
+                    </div>
+                    <div class="modal-body">
+                        ${contentHTML}
+                        <input class="input-field modal-input" type="text" ${maxLenAttr}
+                               placeholder="${placeholder}" autocomplete="off" />
+                        <div class="modal-error" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="modal-btn modal-btn-default">${cancelText}</button>
+                        <button class="modal-btn modal-btn-${okType}">${okText}</button>
+                    </div>
+                `;
+
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+
+                const input = modal.querySelector('.modal-input');
+                const errorEl = modal.querySelector('.modal-error');
+                const okBtn = modal.querySelector('.modal-btn-' + okType);
+                const cancelBtn = modal.querySelector('.modal-btn-default');
+
+                if (defaultValue) input.value = defaultValue;
+
+                const close = (result) => {
+                    document.removeEventListener('keydown', handleKeydown);
+                    overlay.classList.add('closing');
+                    overlay.addEventListener('animationend', () => {
+                        if (overlay.parentNode) document.body.removeChild(overlay);
+                    });
+                    resolve(result);
+                };
+
+                const showError = (msg) => {
+                    errorEl.textContent = msg || '';
+                    errorEl.style.display = msg ? 'block' : 'none';
+                };
+
+                const submit = () => {
+                    const val = input.value;
+                    if (typeof validate === 'function') {
+                        const err = validate(val);
+                        if (err) {
+                            showError(err);
+                            input.focus();
+                            return;
+                        }
+                    }
+                    showError('');
+                    close(val);
+                };
+
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape' || e.key === 'Esc') close(null);
+                };
+
+                document.addEventListener('keydown', handleKeydown);
+                okBtn.addEventListener('click', submit);
+                cancelBtn.addEventListener('click', () => close(null));
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                });
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) close(null);
+                });
+
+                requestAnimationFrame(() => {
+                    input.focus();
+                    if (selectOnFocus && input.value) input.select();
+                });
+            });
+        },
+
+        /**
+         * 多字段表单模态 / multi-field form modal
+         * onSubmit(values) 返回错误字符串(模态内展示、不关闭)或 null(关闭并 resolve values)
+         * resolve(values) 确定;resolve(null) 取消/ESC/点遮罩
+         */
+        form(options) {
+            return new Promise((resolve) => {
+                const {
+                    title = '请填写',
+                    fields = [],
+                    okText = '确定',
+                    cancelText = '取消',
+                    okType = 'primary',
+                    width = 400,
+                    onSubmit
+                } = options || {};
+
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+
+                const modal = document.createElement('div');
+                modal.className = 'notify-modal';
+                if (width) modal.style.minWidth = width + 'px';
+
+                const fieldsHTML = fields.map(f => `
+                    <div class="modal-field">
+                        <label class="modal-field-label">${f.label || ''}</label>
+                        <input class="input-field modal-input" type="${f.type || 'text'}"
+                               name="${f.name || ''}"
+                               placeholder="${f.placeholder || ''}"
+                               value="${f.value || ''}"
+                               ${f.autoComplete ? `autocomplete="${f.autoComplete}"` : ''} />
+                    </div>
+                `).join('');
+
+                modal.innerHTML = `
+                    <div class="modal-header">
+                        <h3 class="modal-title">${title}</h3>
+                    </div>
+                    <div class="modal-body">
+                        ${fieldsHTML}
+                        <div class="modal-error" style="display:none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="modal-btn modal-btn-default">${cancelText}</button>
+                        <button class="modal-btn modal-btn-${okType}">${okText}</button>
+                    </div>
+                `;
+
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+
+                const inputs = modal.querySelectorAll('.modal-input');
+                const errorEl = modal.querySelector('.modal-error');
+                const okBtn = modal.querySelector('.modal-btn-' + okType);
+                const cancelBtn = modal.querySelector('.modal-btn-default');
+
+                const close = (result) => {
+                    document.removeEventListener('keydown', handleKeydown);
+                    overlay.classList.add('closing');
+                    overlay.addEventListener('animationend', () => {
+                        if (overlay.parentNode) document.body.removeChild(overlay);
+                    });
+                    resolve(result);
+                };
+
+                const showError = (msg) => {
+                    errorEl.textContent = msg || '';
+                    errorEl.style.display = msg ? 'block' : 'none';
+                };
+
+                const submit = async () => {
+                    const values = {};
+                    inputs.forEach(inp => { values[inp.name] = inp.value; });
+                    showError('');
+                    if (typeof onSubmit === 'function') {
+                        okBtn.disabled = true;
+                        const origText = okBtn.textContent;
+                        okBtn.textContent = '处理中…';
+                        try {
+                            const err = await onSubmit(values);
+                            if (err) {
+                                showError(err);
+                                okBtn.disabled = false;
+                                okBtn.textContent = origText;
+                                return;
+                            }
+                        } catch (e) {
+                            showError(e && e.message ? e.message : '操作失败');
+                            okBtn.disabled = false;
+                            okBtn.textContent = origText;
+                            return;
+                        }
+                        okBtn.disabled = false;
+                        okBtn.textContent = origText;
+                    }
+                    close(values);
+                };
+
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape' || e.key === 'Esc') close(null);
+                };
+
+                document.addEventListener('keydown', handleKeydown);
+                okBtn.addEventListener('click', submit);
+                cancelBtn.addEventListener('click', () => close(null));
+                inputs.forEach(inp => inp.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+                }));
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) close(null);
+                });
+
+                requestAnimationFrame(() => {
+                    if (inputs.length > 0) inputs[0].focus();
                 });
             });
         },

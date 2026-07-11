@@ -105,12 +105,28 @@ public class UserService {
 
     /**
      * Update user
-     * Only updates password if a non-empty password is provided
+     * Only updates password if a non-empty password is provided.
+     * Renames the user when newUsername is non-empty, differs from the current
+     * name, and does not collide with another existing user.
+     * 仅当传入非空 password 时更新密码;newUsername 非空、与现名不同且不与他人冲突时才改名。
      */
-    public boolean updateUser(String username, String password, Role role, String[] storageSpaces) {
+    public boolean updateUser(String username, String password, Role role, String[] storageSpaces, String newUsername) {
         SystemConfig config = configService.getConfig();
         if (config == null || config.getUsers() == null) {
             return false;
+        }
+
+        // 是否需要改名 / whether a rename is requested (trim 后判断)
+        String trimmedNew = newUsername == null ? "" : newUsername.trim();
+        boolean rename = !trimmedNew.isEmpty() && !trimmedNew.equals(username);
+        if (rename) {
+            // 新用户名不能与已有用户冲突 / new name must not collide with another user
+            for (SystemConfig.UserConfig u : config.getUsers()) {
+                if (u.getUsername().equals(trimmedNew)) {
+                    logger.warn("Rename failed for {}: user {} already exists", username, trimmedNew);
+                    return false;
+                }
+            }
         }
 
         for (SystemConfig.UserConfig userConfig : config.getUsers()) {
@@ -121,9 +137,12 @@ public class UserService {
                 }
                 userConfig.setRole(role.name());
                 userConfig.setStorageSpaces(java.util.Arrays.asList(storageSpaces));
+                if (rename) {
+                    userConfig.setUsername(trimmedNew);
+                }
 
                 configService.saveConfig(config);
-                logger.info("User {} updated", username);
+                logger.info("User {} updated{}", username, rename ? " (renamed to " + trimmedNew + ")" : "");
                 return true;
             }
         }

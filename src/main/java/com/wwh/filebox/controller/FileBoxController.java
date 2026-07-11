@@ -394,27 +394,8 @@ public class FileBoxController {
         return ResponseEntity.ok(resp);
     }
 
-    @GetMapping("/uploads/{year}/{month}/{filename:.+}")
-    public void serveFile(HttpServletRequest request,
-                          HttpServletResponse response,
-                          @PathVariable String year,
-                          @PathVariable String month,
-                          @PathVariable String filename) throws IOException {
-        // 验证filename不为空
-        if (filename == null || filename.trim().isEmpty()) {
-            logger.warn("Invalid file path request: filename is null or empty");
-            writeError(response, HttpStatus.BAD_REQUEST.value(), "无效的文件路径");
-            return;
-        }
-        // 解析路径(含穿越校验)后委托统一流式方法 / Resolve (with traversal check) then delegate
-        Path target = resolveServedPath(request, response, Paths.get(year, month, filename));
-        if (target == null) return;
-        serveResolvedFile(target, request, response);
-    }
-
     /**
-     * 按相对路径下载文件(目录视图用) / Serve a file by storage-relative path (used by directory view).
-     * 与 /uploads/{year}/{month}/{filename} 共用 {@link #serveResolvedFile},仅路径来源不同。
+     * 按相对路径下载文件(列表与目录视图均通过此接口) / Serve a file by storage-relative path (both list & dir views).
      */
     @GetMapping("/api/file")
     public void serveByPath(HttpServletRequest request,
@@ -602,36 +583,8 @@ public class FileBoxController {
         response.getOutputStream().write(bytes);
     }
 
-    private Map<String, Object> buildRecord(Path fullPath, String y, String m) {
-        Map<String, Object> map = new HashMap<>();
-        try {
-            File f = fullPath.toFile();
-            long mtime = f.lastModified();
-            String mtimeS = DateTimeFormatter.formatFileTime(new Date(mtime));
-            String filename = fullPath.getFileName().toString();
-            String ftype = FileUtils.getFileTypeCategory(filename);
-            long fileSize = f.length();
-            String content = null;
-            if ("text".equals(ftype)) {
-                content = readTextPreview(fullPath);
-            }
-            map.put("year", y);
-            map.put("month", m);
-            map.put("filename", filename);
-            map.put("url", "/uploads/" + y + "/" + m + "/" + filename);
-            map.put("time", mtimeS);
-            map.put("type", ftype);
-            map.put("size", fileSize);
-            map.put("content", content);
-        } catch (Exception e) {
-            logger.warn("Error building file record: {}", e.getMessage(), e);
-        }
-        return map;
-    }
-
     /**
-     * 为目录视图构建文件记录(url 走 /api/file?path=<rel>) / Build a file record for the directory view.
-     * 与 buildRecord 的区别:文件可位于任意深度的自定义文件夹,url 用 /api/file?path=。
+     * 构建文件记录(列表与目录视图共用),url 走 /api/file?path=<rel> / Build a file record (shared by list & dir views).
      */
     private Map<String, Object> buildDirRecord(Path fullPath, String relPath) {
         Map<String, Object> map = new HashMap<>();
@@ -830,15 +783,16 @@ public class FileBoxController {
     }
 
     /**
-     * 新建文件夹(可多级)。仅 ADMIN。 / Create a folder (nested allowed). ADMIN only.
+     * 新建文件夹(可多级)。ADMIN 或 MANAGER。 / Create a folder (nested allowed). ADMIN or MANAGER.
      * POST /create_folder  body: {"path": "<relpath>"}
      */
     @PostMapping("/create_folder")
     @ResponseBody
     public ResponseEntity<?> createFolder(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         LoginSession session = getSession(request);
-        if (session == null || session.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可创建文件夹");
+        Role role = session == null ? null : session.getRole();
+        if (role != Role.ADMIN && role != Role.MANAGER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无创建文件夹权限");
         }
         String path = body == null ? null : (String) body.get("path");
         Path target = resolveWithinStorage(request, path);
@@ -858,13 +812,14 @@ public class FileBoxController {
         return ResponseEntity.ok("OK");
     }
 
-    /** Rename one directory without moving it to another parent. ADMIN only. */
+    /** Rename one directory without moving it to another parent. ADMIN or MANAGER. */
     @PostMapping("/rename_folder")
     @ResponseBody
     public ResponseEntity<?> renameFolder(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         LoginSession session = getSession(request);
-        if (session == null || session.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可重命名文件夹");
+        Role role = session == null ? null : session.getRole();
+        if (role != Role.ADMIN && role != Role.MANAGER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无重命名文件夹权限");
         }
 
         String path = body == null ? null : Objects.toString(body.get("path"), null);
@@ -917,15 +872,16 @@ public class FileBoxController {
     }
 
     /**
-     * 递归删除文件夹。仅 ADMIN。 / Recursively delete a folder. ADMIN only.
+     * 递归删除文件夹。ADMIN 或 MANAGER。 / Recursively delete a folder. ADMIN or MANAGER.
      * DELETE /delete_folder?path=<relpath>
      */
     @DeleteMapping("/delete_folder")
     @ResponseBody
     public ResponseEntity<?> deleteFolder(@RequestParam("path") String folderPath, HttpServletRequest request) throws IOException {
         LoginSession session = getSession(request);
-        if (session == null || session.getRole() != Role.ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可删除文件夹");
+        Role role = session == null ? null : session.getRole();
+        if (role != Role.ADMIN && role != Role.MANAGER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无删除文件夹权限");
         }
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "delete_folder");
         if (storageSpace == null) {

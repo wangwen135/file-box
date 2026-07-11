@@ -1,14 +1,14 @@
 file-box:
   anonymous:
-    enabled: false
+    enabled: true
   system:
-    anonymous-upload-enabled: false
+    anonymous-upload-enabled: true
     share-notice-enabled: true
   storage-spaces:
   - name: default
     path: ./uploads
     max-size: 1GB
-    allow-anonymous: true
+    allow-anonymous: false
   - name: test
     path: ./test-uploads
     max-size: 1GB
@@ -16,7 +16,7 @@ file-box:
   - name: opt-data
     path: /opt/file-box/data
     max-size: 2GB
-    allow-anonymous: true
+    allow-anonymous: false
   - name: anonymous
     path: /opt/file-box/anonymous
     max-size: 2GB
@@ -24,7 +24,7 @@ file-box:
   - name: shared
     path: /opt/file-box/shared
     max-size: 1GB
-    allow-anonymous: true
+    allow-anonymous: false
   users:
   - username: admin
     password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
@@ -35,29 +35,28 @@ file-box:
     - opt-data
     - anonymous
     - shared
-  - username: testuser
-    password: $2a$10$PbHqf/Ox1EQxcU1Wvmc7MurpVD1bCvcrAwvabssOzL208mL2FATSC
+  - username: manager
+    password: $2a$10$CXh4tIvgLAXnYPIWDQGoaONfMVttGM42aEdup7zLgRoA2JJe/I06a
+    role: MANAGER
+    storage-spaces:
+    - default
+    - test
+    - opt-data
+    - anonymous
+    - shared
+  - username: user
+    password: $2a$10$9xN45k/0AKvyoWCK/DengOT0dcfV382ctJhJo3COoG2ncgPMLjmne
     role: USER
     storage-spaces:
     - default
     - test
     - opt-data
-  - username: aaa
-    password: $2a$10$8DYM4dyywOumXLY6BlKgc.RtSzJmRt3KOL5LIy9FF/0xMpKyDJHN.
-    role: USER
-    storage-spaces:
-    - default
-    - test
-  - username: abc
-    password: $2a$10$po/BYe.YbecdkZUGcpB.G.OtmvVACnqANluKLL9MULq.47PPhv/8e
+    - anonymous
+    - shared
+  - username: use2
+    password: $2a$10$09iCbH7p6Z4DVXFXkk5rC.PxPOpXrgu5GftRKYAJPuWBUEM/k1chi
     role: USER
     storage-spaces:
     - default
     - test
     - opt-data
-  - username: tester
-    password: $2a$10$nwY5ZL7L1WfDCDF8yz7zv.1pv1ssK1FzNxpT3N66ue3cUeK3lhkzO
-    role: USER
-    storage-spaces:
-    - default
-    - test

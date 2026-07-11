@@ -103,11 +103,13 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">角色</label>
-                        <select id="role" class="input-field" required onchange="onRoleChange()">
+                        <select id="role" class="input-field" required>
                             <option value="USER">普通用户 (User)</option>
                             <option value="MANAGER">管理员 (Manager)</option>
                             <option value="ADMIN">超级管理员 (Admin)</option>
                         </select>
+                        <!-- 角色权限对比 / role permission comparison -->
+                        <div id="roleTable"></div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">存储空间权限</label>
@@ -129,6 +131,35 @@
     <script>
         let isEditing = false;
         let availableStorages = [];
+
+        // 角色权限对比矩阵 / role permission matrix
+        const ROLE_HEADERS = ['能力', '普通用户', '管理员', '超级管理员'];
+        const ROLE_PERMISSIONS = [
+            { label: '上传/下载/浏览',                perms: [true,  true,  true] },
+            { label: '删除文件',                      perms: [false, true,  true] },
+            { label: '管理文件夹(新建/重命名/删除)',   perms: [false, true,  true] },
+            { label: '进入后台管理',                  perms: [false, false, true] },
+            { label: '自动拥有全部存储空间',          perms: [false, false, true] }
+        ];
+
+        // 渲染角色权限对比表 / render the role permission comparison table
+        function renderRoleTable() {
+            const wrap = document.getElementById('roleTable');
+            if (!wrap) return;
+            const icon = yes => yes
+                ? '<svg class="ico perm-yes" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-check"/></svg>'
+                : '<svg class="ico perm-no" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-minus"/></svg>';
+            let html = '<table class="role-table"><thead><tr>' +
+                ROLE_HEADERS.map(h => '<th>' + h + '</th>').join('') +
+                '</tr></thead><tbody>';
+            ROLE_PERMISSIONS.forEach(row => {
+                html += '<tr><th>' + row.label + '</th>' +
+                    row.perms.map(p => '<td>' + icon(p) + '</td>').join('') +
+                    '</tr>';
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+        }
 
         // Load users
         async function loadUsers() {
@@ -232,10 +263,6 @@
             document.getElementById('userModal').classList.add('show');
         }
 
-        function onRoleChange() {
-            // Could add role-specific logic here
-        }
-
         function renderStorageCheckboxes(selectedStorages) {
             const container = document.getElementById('storageCheckboxes');
             if (availableStorages.length === 0) {
@@ -273,11 +300,11 @@
 
             // Validate password:新增必填;编辑时若填写了新密码则需与确认一致 / new user requires password; on edit, only validate match when a new password is entered
             if (password && password !== confirmPassword) {
-                alert('两次输入的密码不一致');
+                Notify.warning('两次输入的密码不一致', { position: 'top-center' });
                 return;
             }
             if (password && password.length < 6) {
-                alert('密码至少 6 位');
+                Notify.warning('密码至少 6 位', { position: 'top-center' });
                 return;
             }
 
@@ -301,45 +328,56 @@
                     body: JSON.stringify(data)
                 });
 
-                if (response.ok) {
+                // 后端即使逻辑失败也返回 HTTP 200 + {success,error}，需按 success 判断
+                // Backend returns HTTP 200 with {success,error} even on logical failure.
+                const result = await response.json();
+                if (result.success) {
                     closeModal();
                     loadUsers();
                 } else {
-                    const error = await response.text();
-                    alert('保存失败：' + error);
+                    Notify.error('保存失败：' + (result.error || '未知错误'), { position: 'top-center' });
                 }
             } catch (error) {
-                alert('保存失败：' + error.message);
+                Notify.error('保存失败：' + error.message, { position: 'top-center' });
             }
         }
 
         async function deleteUser(username) {
             if (username === 'admin') {
-                alert('不能删除默认管理员账号');
+                Notify.warning('不能删除默认管理员账号', { position: 'top-center' });
                 return;
             }
 
-            if (!confirm(`确定要删除用户 "${username}" 吗？`)) {
-                return;
-            }
+            const ok = await Notify.confirm({
+                title: '确认删除',
+                content: `确定要删除用户 "${username}" 吗？`,
+                okText: '确定删除',
+                cancelText: '取消',
+                okType: 'danger'
+            });
+            if (!ok) return;
 
             try {
                 const response = await fetch(`/api/admin/users/${username}`, {
                     method: 'DELETE'
                 });
 
-                if (response.ok) {
+                // 后端即使逻辑失败也返回 HTTP 200 + {success,error}，需按 success 判断
+                // Backend returns HTTP 200 with {success,error} even on logical failure.
+                const result = await response.json();
+                if (result.success) {
                     loadUsers();
+                    Notify.success('用户已删除');
                 } else {
-                    const error = await response.text();
-                    alert('删除失败：' + error);
+                    Notify.error('删除失败：' + (result.error || '未知错误'), { position: 'top-center' });
                 }
             } catch (error) {
-                alert('删除失败：' + error.message);
+                Notify.error('删除失败：' + error.message, { position: 'top-center' });
             }
         }
 
         // Initialize
+        renderRoleTable();
         loadUsers();
         loadStorages();
     </script>

@@ -55,7 +55,7 @@ Each session tracks a **current storage space** (`LoginSession.currentStorageSpa
 
 There is no metadata DB. `FileCatalogService` walks the storage directory on demand and builds the view purely from filesystem attributes (size, mtime). Two listing paradigms coexist:
 
-- `/list_files` (+ `/list_periods`) — legacy **time-based** view: files filtered by mtime year/month, sorted newest-first. The `/uploads/{year}/{month}/{filename}` URL is the legacy serving path.
+- `/list_files` (+ `/list_periods`) — **time-based** view: files filtered by mtime year/month, sorted newest-first. Serves via `/api/file?path=` like the directory view (the legacy `/uploads/{year}/{month}/{filename}` serving path has been removed).
 - `/list_dir` + `/api/file?path=` — **directory** view that navigates the real folder tree and serves any file by storage-relative path.
 
 Both are backed by a **per-storage-root walk cache** (45s TTL, `SCAN_CACHE_TTL_MS`) so pagination reuses one walk. There is a 200k-entry safety cap (`SCAN_CACHE_MAX_ENTRIES`) to protect the small heap. **Upload/delete calls must invalidate the cache** via `fileCatalogService.invalidateScanCache(...)` — every mutating endpoint already does this; new ones must too. Separately, `StorageService` caches usage stats (5min TTL, `STATS_CACHE_TTL_MS`).
@@ -68,7 +68,7 @@ When adding any endpoint that touches the filesystem, follow the existing contra
 - **Symlinks**: reject any path where a component below the storage root is a symbolic link (`containsSymbolicLink`). Symlinks are also skipped during walks and directory listings.
 - **Errors**: write status + body directly (`writeError`). Do **not** use `response.sendError(...)` — `CustomErrorController` maps `/error` to `/index.html`, which turns errors into unintended 302 redirects.
 - **Upload writes**: call `f.transferTo(absoluteFile)` (the `File` overload with an **absolute** path). `transferTo(Path)` always streams a copy; the `File` overload with an absolute path lets Tomcat do an atomic rename. This requires the multipart temp dir (`runtime/multipart-tmp`) to be on the **same filesystem** as the storage dir — see the comment in `application.yml` if a storage path ever moves to a separate mount.
-- **Role gating**: `delete_file` requires `ADMIN` or `MANAGER`; `create_folder`/`delete_folder` require `ADMIN`. Regular `USER`s can upload but not delete.
+- **Role gating**: `delete_file`, `create_folder`, `rename_folder`, `delete_folder` all require `ADMIN` or `MANAGER`. Regular `USER`s can upload but cannot delete files or manage folders. The admin backend (`/admin/**`, `/api/admin/**`) and the "后台管理" entry remain `ADMIN`-only; `MANAGER` never reaches the admin panel.
 
 ## Conventions
 

@@ -64,45 +64,34 @@
         <!-- Alert / 提示条 -->
         <div id="alert" class="alert" style="display: none;"></div>
 
-        <!-- Basic Settings / 基础设置 -->
+        <!-- Share notice setting / 首页访问提示设置 -->
         <div class="card">
-            <h3 class="section-title section-title--bordered">基础设置</h3>
             <div class="setting-row">
                 <div>
                     <p class="setting-row-title">首页访问提示</p>
                     <p class="setting-row-desc">在上传页左上角展示可复制的局域网访问地址</p>
+                    <div class="setting-address">
+                        <span class="setting-address-label">局域网访问地址</span>
+                        <span class="setting-address-url" id="shareNoticeUrl"></span>
+                        <button class="setting-copy-btn" id="shareCopyBtn" type="button" title="复制访问地址" aria-label="复制访问地址">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-copy"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="toggle-switch" id="shareNoticeToggle" onclick="toggleShareNotice()"></div>
             </div>
         </div>
 
-        <!-- Anonymous Access / 匿名访问 -->
+        <!-- Anonymous access setting / 匿名访问设置 -->
         <div class="card">
-            <h3 class="section-title section-title--bordered">匿名访问</h3>
             <div class="setting-row">
                 <div>
                     <p class="setting-row-title">启用匿名访问</p>
-                    <p class="setting-row-desc">允许未登录用户访问匿名存储空间</p>
+                    <p class="setting-row-desc">允许未登录用户访问并上传文件到匿名存储空间</p>
+                    <p class="setting-note">需要至少有一个存储空间启用“允许匿名访问”，匿名用户才能进入并使用该空间。</p>
                 </div>
                 <div class="toggle-switch" id="anonymousToggle" onclick="toggleAnonymous()"></div>
             </div>
-        </div>
-
-        <!-- Anonymous Upload / 匿名上传 -->
-        <div class="card">
-            <h3 class="section-title section-title--bordered">匿名上传</h3>
-            <div class="setting-row">
-                <div>
-                    <p class="setting-row-title">启用匿名上传</p>
-                    <p class="setting-row-desc">允许匿名用户上传文件到匿名空间</p>
-                </div>
-                <div class="toggle-switch" id="anonymousUploadToggle" onclick="toggleAnonymousUpload()"></div>
-            </div>
-        </div>
-
-        <!-- Save Button / 保存按钮 -->
-        <div class="form-actions-right">
-            <button onclick="saveSettings()" class="btn">保存设置</button>
         </div>
     </main>
 
@@ -111,8 +100,7 @@
     <script>
         let settings = {
             shareNoticeEnabled: true,
-            anonymousEnabled: false,
-            anonymousUploadEnabled: false
+            anonymousEnabled: false
         };
 
         // Load settings
@@ -132,13 +120,11 @@
                 if (anonResponse.ok) {
                     const anonConfig = await anonResponse.json();
                     settings.anonymousEnabled = anonConfig['anonymous-upload-enabled'] || false;
-                    settings.anonymousUploadEnabled = anonConfig['anonymous-upload-enabled'] || false;
                 }
 
                 // Update UI
                 updateToggle('shareNoticeToggle', settings.shareNoticeEnabled);
                 updateToggle('anonymousToggle', settings.anonymousEnabled);
-                updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
@@ -153,69 +139,102 @@
             }
         }
 
-        function toggleAnonymous() {
+        async function toggleAnonymous() {
+            const previous = settings.anonymousEnabled;
             settings.anonymousEnabled = !settings.anonymousEnabled;
-            settings.anonymousUploadEnabled = settings.anonymousEnabled;
             updateToggle('anonymousToggle', settings.anonymousEnabled);
-            updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
+            await autoSave(
+                'anonymousToggle',
+                '/api/admin/anonymous',
+                { enabled: settings.anonymousEnabled },
+                () => {
+                    settings.anonymousEnabled = previous;
+                    updateToggle('anonymousToggle', previous);
+                }
+            );
         }
 
-        function toggleAnonymousUpload() {
-            settings.anonymousUploadEnabled = !settings.anonymousUploadEnabled;
-            settings.anonymousEnabled = settings.anonymousUploadEnabled;
-            updateToggle('anonymousToggle', settings.anonymousEnabled);
-            updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
-        }
-
-        function toggleShareNotice() {
+        async function toggleShareNotice() {
+            const previous = settings.shareNoticeEnabled;
             settings.shareNoticeEnabled = !settings.shareNoticeEnabled;
             updateToggle('shareNoticeToggle', settings.shareNoticeEnabled);
+            await autoSave(
+                'shareNoticeToggle',
+                '/api/admin/config',
+                { shareNoticeEnabled: settings.shareNoticeEnabled },
+                () => {
+                    settings.shareNoticeEnabled = previous;
+                    updateToggle('shareNoticeToggle', previous);
+                }
+            );
         }
 
         function showAlert(message, type) {
-            const alert = document.getElementById('alert');
-            alert.textContent = message;
-            alert.className = 'alert ' + (type === 'success' ? 'alert-success' : 'alert-error');
-            alert.style.display = 'block';
-            setTimeout(() => {
-                alert.style.display = 'none';
-            }, 3000);
-        }
-
-        async function saveSettings() {
-            try {
-                // Save system config
-                const configData = {
-                    shareNoticeEnabled: settings.shareNoticeEnabled
-                };
-
-                const configResponse = await fetch('/api/admin/config', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(configData)
-                });
-
-                // Save anonymous config
-                const anonData = {
-                    enabled: settings.anonymousEnabled,
-                    'anonymous-upload-enabled': settings.anonymousUploadEnabled
-                };
-
-                const anonResponse = await fetch('/api/admin/anonymous', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(anonData)
-                });
-
-                if (configResponse.ok && anonResponse.ok) {
-                    showAlert('设置已保存', 'success');
-                } else {
-                    showAlert('保存失败', 'error');
-                }
-            } catch (error) {
-                showAlert('保存失败：' + error.message, 'error');
+            // 统一走 Notify 通用提示 / route through the shared Notify component
+            if (type === 'success') {
+                Notify.success(message);
+            } else {
+                Notify.error(message, { position: 'top-center' });
             }
         }
+
+        async function autoSave(toggleId, url, data, rollback) {
+            const toggle = document.getElementById(toggleId);
+            toggle.classList.add('saving');
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    throw new Error('服务器返回 ' + response.status);
+                }
+                showAlert('设置已自动保存', 'success');
+            } catch (error) {
+                rollback();
+                showAlert('自动保存失败：' + error.message, 'error');
+            } finally {
+                toggle.classList.remove('saving');
+            }
+        }
+
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (error) {
+                    // Fall through to the legacy copy method.
+                }
+            }
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
+            document.body.removeChild(textarea);
+            return copied;
+        }
+
+        const shareNoticeUrl = window.location.origin;
+        document.getElementById('shareNoticeUrl').textContent = shareNoticeUrl;
+        document.getElementById('shareCopyBtn').addEventListener('click', async () => {
+            const copied = await copyTextToClipboard(shareNoticeUrl);
+            if (copied) {
+                Notify.success('访问地址已复制');
+            } else {
+                Notify.error('复制失败，请手动复制地址');
+            }
+        });
 
         // Initialize
         loadSettings();

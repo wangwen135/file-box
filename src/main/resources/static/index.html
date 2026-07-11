@@ -132,9 +132,9 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(74, 144, 226, 0.28);
+            border: none;
             border-radius: 7px;
-            background: rgba(74, 144, 226, 0.10);
+            background: transparent;
             color: var(--primary-color);
             cursor: pointer;
         }
@@ -348,6 +348,26 @@
         .header-dropdown.open .hd-trigger { background: rgba(74, 144, 226, 0.22); border-color: var(--secondary-color); }
         .header-dropdown.open .hd-trigger .caret { transform: rotate(180deg); }
 
+        /* 存储空间胶囊(复用于删除确认弹窗等) / storage-space chip (reused in delete-confirm etc.) */
+        .storage-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            border-radius: 999px;
+            padding: 3px 10px;
+            border: 1px solid transparent;
+            background: rgba(74, 144, 226, 0.10);
+            color: var(--secondary-color);
+            vertical-align: middle;
+        }
+        [data-theme="dark"] .storage-chip {
+            background: rgba(14, 165, 233, 0.16);
+            border-color: var(--secondary-color);
+        }
+
         /* 用户名 / username(管理员略加粗,无特殊标记 / admin: slightly bold, no marker) */
         .header-controls #user-info.admin { font-weight: 600; }
 
@@ -385,6 +405,16 @@
         .hd-menu-item.hd-danger { color: var(--danger); }
         .hd-menu-item.hd-danger:hover { background: var(--danger-bg); color: var(--danger); }
         .hd-menu-sep { height: 1px; background: var(--border-color); margin: 4px 2px; }
+        .hd-menu-info {
+            display: flex;
+            align-items: center;
+            padding: 7px 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: nowrap;
+            cursor: default;
+        }
+        .hd-menu-info-value { color: var(--text-primary); font-weight: 600; }
 
         /* 主题切换:32px 同高圆钮 / theme toggle: same-height round icon button */
         .header-controls .theme-toggle,
@@ -804,6 +834,15 @@
             }
         }
 
+        /* 中等宽度下，完整访问地址会侵入居中的品牌区域，仅保留复制入口。 */
+        @media (max-width: 900px) {
+            .share-notice-label,
+            .share-notice-url {
+                display: none;
+            }
+            .share-notice { max-width: 28px; }
+        }
+
         .loading-spinner--mini {
             display: inline-block;
             width: 20px;
@@ -938,13 +977,16 @@
             display: inline-flex;
             padding: 3px;
             gap: 2px;
-            margin: 14px 0 4px;
+            margin: 4px 0 4px;
             background: #e9ecef;
             border-radius: 9px;
         }
         .view-tab {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            width: auto;
+            flex: 0 0 auto;
             gap: 5px;
             border: none;
             background: transparent;
@@ -952,6 +994,7 @@
             padding: 7px 18px;
             border-radius: 7px;
             font-size: 13px;
+            white-space: nowrap;
             cursor: pointer;
             transition: color 0.15s ease, background 0.15s ease;
         }
@@ -1020,22 +1063,31 @@
 
         .dir-header-actions { flex: 0 0 auto; }
         .dir-header-actions .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             margin: 0;
+            min-height: 30px;
+            padding: 4px 9px;
             white-space: nowrap;
-            border: 1px solid rgba(74, 144, 226, .28);
+            border: 1px solid rgba(74, 144, 226, .22);
+            border-radius: 7px;
             background: rgba(74, 144, 226, .08);
-            color: var(--primary-color);
+            color: var(--dark-text);
+            font-size: 13px;
+            line-height: 20px;
             box-shadow: none;
         }
-        .dir-header-actions .btn:hover { background: rgba(74, 144, 226, .15); }
+        .dir-header-actions .btn:hover { transform: none; background: rgba(74, 144, 226, .15); box-shadow: none; }
         [data-theme="dark"] .dir-header {
             background: rgba(15, 23, 42, .55);
             border-color: #334155;
             box-shadow: 0 2px 12px rgba(0, 0, 0, .22);
         }
         @media (max-width: 600px) {
-            .dir-header { align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
-            .dir-header-actions .btn { width: auto; padding: 8px 12px; }
+            .dir-header { align-items: center; gap: 10px; margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
+            .dir-header-actions .btn { width: auto; padding: 4px 9px; }
+            .view-tab { width: auto; white-space: nowrap; }
         }
 
         .folder-card {
@@ -1092,8 +1144,8 @@
             border-color: #334155;
         }
         [data-theme="dark"] .share-copy-btn {
-            background: rgba(14, 165, 233, 0.14);
-            border-color: rgba(14, 165, 233, 0.35);
+            background: transparent;
+            border: none;
             color: #38bdf8;
         }
         [data-theme="dark"] .preview .file-ext { color: rgba(203, 213, 225, 0.4); }
@@ -1142,11 +1194,14 @@
                 <svg class="ico caret" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
             </button>
             <div class="hd-menu" id="userMenuList">
+                <div class="hd-menu-info"><span class="hd-menu-info-value" id="currentRole">—</span></div>
+                <div class="hd-menu-sep"></div>
                 <!-- 仅管理员可见 / ADMIN only -->
                 <a class="hd-menu-item" id="adminEntry" href="/admin/dashboard.html" style="display:none;"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg>后台管理</a>
                 <div class="hd-menu-sep" id="adminSep" style="display:none;"></div>
                 <a class="hd-menu-item" id="changePwdEntry" href="javascript:void(0);"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-key"/></svg>修改密码</a>
-                <a class="hd-menu-item hd-danger" href="/logout"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>退出登录</a>
+                <a class="hd-menu-item hd-danger" id="logoutEntry" href="/logout"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-logout"/></svg>退出登录</a>
+                <a class="hd-menu-item" id="loginEntry" href="/logout" style="display:none;"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-login"/></svg>去登录</a>
             </div>
         </div>
 
@@ -1299,14 +1354,26 @@
             // 用户名(管理员加 ★ 样式) / username (admin gets star styling)
             const userInfoElement = document.getElementById('user-info');
             userInfoElement.textContent = data.username;
+            const roleNames = { admin: '超级管理员', manager: '管理员', user: '普通用户' };
+            document.getElementById('currentRole').textContent = data.isAnonymous
+                ? '匿名用户'
+                : (roleNames[data.role] || data.role || '—');
+            if (data.isAnonymous) {
+                document.getElementById('changePwdEntry').style.display = 'none';
+                document.getElementById('logoutEntry').style.display = 'none';
+                document.getElementById('loginEntry').style.display = '';
+            }
             if (data.role === 'admin') {
                 userInfoElement.classList.add('admin');
                 userInfoElement.title = '管理员用户';
-                const nfb = document.getElementById('newFolderBtn');
-                if (nfb) nfb.style.display = ''; // 目录浏览里仅 ADMIN 显示新建/重命名/移动/删除
-                // 管理员菜单显示“后台管理” / show admin-panel item for ADMIN
+                // 管理员菜单显示“后台管理” / show admin-panel item for ADMIN only
                 document.getElementById('adminEntry').style.display = '';
                 document.getElementById('adminSep').style.display = '';
+            }
+            // ADMIN 与 MANAGER 均可在目录浏览里新建/重命名/删除文件夹 / folder ops for ADMIN & MANAGER
+            if (data.role === 'admin' || data.role === 'manager') {
+                const nfb = document.getElementById('newFolderBtn');
+                if (nfb) nfb.style.display = '';
             }
 
             // 存储空间切换器 / storage space switcher
@@ -1354,10 +1421,10 @@
             if (resp.ok) {
                 window.location.reload(); // 切换后刷新以重载文件列表 / reload to refresh file list
             } else {
-                alert('切换存储空间失败');
+                Notify.error('切换存储空间失败', { position: 'top-center' });
             }
         } catch (e) {
-            alert('切换存储空间失败:' + e.message);
+            Notify.error('切换存储空间失败：' + e.message, { position: 'top-center' });
         }
     }
 
@@ -1428,11 +1495,25 @@
         `;
         document.body.appendChild(overlay);
 
-        const close = () => overlay.remove();
+        let closed = false;
+        let passwordToast = null;
+        const showPasswordToast = (type, message) => {
+            if (passwordToast) Notify.removeToast(passwordToast);
+            passwordToast = Notify[type](message, { position: 'top-center' });
+        };
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onEsc);
+            if (passwordToast) {
+                Notify.removeToast(passwordToast);
+                passwordToast = null;
+            }
+            overlay.remove();
+        };
         const onEsc = (event) => {
             if (event.key === 'Escape') {
                 close();
-                document.removeEventListener('keydown', onEsc);
             }
         };
         overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
@@ -1457,10 +1538,10 @@
             const next = newEl.value;
             const confirm = confirmEl.value;
 
-            if (!current || !next || !confirm) return Notify.warning('请填写所有字段', { position: 'top-center' });
-            if (next.length < MIN_PWD_LEN) return Notify.warning(`新密码至少 ${MIN_PWD_LEN} 位`, { position: 'top-center' });
-            if (next !== confirm) return Notify.warning('两次输入的新密码不一致', { position: 'top-center' });
-            if (next === current) return Notify.warning('新密码不能与当前密码相同', { position: 'top-center' });
+            if (!current || !next || !confirm) return showPasswordToast('warning', '请填写所有字段');
+            if (next.length < MIN_PWD_LEN) return showPasswordToast('warning', `新密码至少 ${MIN_PWD_LEN} 位`);
+            if (next !== confirm) return showPasswordToast('warning', '两次输入的新密码不一致');
+            if (next === current) return showPasswordToast('warning', '新密码不能与当前密码相同');
 
             submitBtn.disabled = true;
             submitBtn.textContent = '提交中...';
@@ -1468,22 +1549,24 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword: current, newPassword: next })
-            })
+                })
                 .then(r => r.json().then(data => ({ ok: r.ok, data })))
                 .then(({ ok, data }) => {
+                    if (closed) return;
                     if (ok && data.success) {
                         close();
                         Notify.success('密码修改成功');
                     } else {
                         submitBtn.disabled = false;
                         submitBtn.textContent = '确认修改';
-                        Notify.error(data.error || '修改失败', { position: 'top-center' });
+                        showPasswordToast('error', data.error || '修改失败');
                     }
                 })
                 .catch(() => {
+                    if (closed) return;
                     submitBtn.disabled = false;
                     submitBtn.textContent = '确认修改';
-                    Notify.error('网络错误，请重试', { position: 'top-center' });
+                    showPasswordToast('error', '网络错误，请重试');
                 });
         });
     }
@@ -2174,8 +2257,8 @@
         // 添加文件信息
         addFileInfo(previewDiv, file);
 
-        // 添加删除按钮（仅管理员）
-        if (window.currentRole === 'admin') {
+        // 添加删除按钮（ADMIN 与 MANAGER）/ add delete button (ADMIN & MANAGER)
+        if (window.currentRole === 'admin' || window.currentRole === 'manager') {
             addDeleteButton(previewDiv, file, a);
         }
 
@@ -2297,13 +2380,19 @@
         deleteBtn.onclick = (e) => {
             e.stopPropagation();
             e.preventDefault();
+            // 存储空间根的相对路径(两个列表视图均返回此字段),唯一标识文件,可区分不同目录下的同名文件
+            // storage-root-relative path (returned by both list views); uniquely identifies the file, disambiguating same-name files in different dirs
+            const filePath = file.path;
             Notify.confirm({
                 title: '确认删除',
-                content: `确定要删除文件：${escapeHtml(file.filename)}`,
+                content: `确定要删除文件：` +
+                    `<div style="margin-top:8px;display:flex;align-items:center;flex-wrap:wrap;">` +
+                    `<span class="storage-chip"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-database"/></svg>${escapeHtml(window.currentStorageSpace || '存储空间')}</span>` +
+                    `<span style="word-break:break-all;min-width:0;">/${escapeHtml(filePath)}</span>` +
+                    `</div>`,
                 okType: 'danger'
             }).then(result => {
                 if (result) {
-                    const filePath = file.path || file.url.replace(/^\/uploads/, '');
                     deleteFile(filePath, linkElement);
                 }
             });
@@ -2409,7 +2498,7 @@
             const nm = document.createElement('span'); nm.className = 'folder-name'; nm.textContent = f.name; nm.title = f.name;
             card.appendChild(ic); card.appendChild(nm);
             card.onclick = () => { dirPath.push(f.name); fetchDir(); };
-            if (window.currentRole === 'admin') appendFolderOps(card, f.name);
+            if (window.currentRole === 'admin' || window.currentRole === 'manager') appendFolderOps(card, f.name);
             c.appendChild(card);
         });
         // 文件:网格排列,与"最近上传"一致 / files in a grid matching the recent view

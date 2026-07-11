@@ -263,6 +263,7 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> updateUser(
             @PathVariable String username,
             @RequestBody Map<String, Object> request) {
+        String newUsername = (String) request.get("username");
         String password = (String) request.get("password");
         String roleStr = (String) request.get("role");
         @SuppressWarnings("unchecked")
@@ -271,13 +272,13 @@ public class AdminController {
         Role role = Role.fromString(roleStr);
         String[] storageSpaces = storageSpacesList != null ? storageSpacesList.toArray(new String[0]) : new String[0];
 
-        boolean success = userService.updateUser(username, password, role, storageSpaces);
+        boolean success = userService.updateUser(username, password, role, storageSpaces, newUsername);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
 
         if (!success) {
-            response.put("error", "Failed to update user");
+            response.put("error", "更新失败，用户名可能已存在或用户不存在");
         }
 
         return ResponseEntity.ok(response);
@@ -396,7 +397,10 @@ public class AdminController {
     @PutMapping("/anonymous")
     public ResponseEntity<Map<String, Object>> updateAnonymous(@RequestBody Map<String, Object> request) {
         Boolean enabled = (Boolean) request.get("enabled");
-        Boolean anonymousUploadEnabled = (Boolean) request.get("anonymous-upload-enabled");
+        // 兼容旧版管理页提交的字段；新版统一使用 enabled。
+        if (enabled == null) {
+            enabled = (Boolean) request.get("anonymous-upload-enabled");
+        }
 
         SystemConfig config = configService.getConfig();
         if (config == null) {
@@ -405,9 +409,6 @@ public class AdminController {
 
         if (enabled != null) {
             config.setAnonymousUploadEnabled(enabled);
-        }
-        if (anonymousUploadEnabled != null) {
-            config.setAnonymousUploadEnabled(anonymousUploadEnabled);
         }
 
         configService.saveConfig(config);

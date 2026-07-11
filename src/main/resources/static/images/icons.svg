@@ -21,6 +21,11 @@
         <polyline points="16 17 21 12 16 7"/>
         <line x1="21" x2="9" y1="12" y2="12"/>
     </symbol>
+    <symbol id="ico-login" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" x2="3" y1="12" y2="12"/>
+    </symbol>
     <symbol id="ico-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -81,6 +86,14 @@
         <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
         <path d="M12 9v4"/>
         <path d="M12 17h.01"/>
+    </symbol>
+    <!-- 勾选/有权限 / check (allowed) — Lucide "check" -->
+    <symbol id="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+    <!-- 减号/无权限 / minus (not allowed) — Lucide "minus" -->
+    <symbol id="ico-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
     </symbol>
     <symbol id="ico-files" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 7h-3a2 2 0 0 1-2-2V2"/>
