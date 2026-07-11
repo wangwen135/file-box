@@ -858,6 +858,64 @@ public class FileBoxController {
         return ResponseEntity.ok("OK");
     }
 
+    /** Rename one directory without moving it to another parent. ADMIN only. */
+    @PostMapping("/rename_folder")
+    @ResponseBody
+    public ResponseEntity<?> renameFolder(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        LoginSession session = getSession(request);
+        if (session == null || session.getRole() != Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("仅管理员可重命名文件夹");
+        }
+
+        String path = body == null ? null : Objects.toString(body.get("path"), null);
+        String newName = body == null ? null : Objects.toString(body.get("newName"), null);
+        if (path == null || path.trim().isEmpty() || newName == null) {
+            return ResponseEntity.badRequest().body("文件夹路径和新名称不能为空");
+        }
+        newName = newName.trim();
+        if (newName.isEmpty() || newName.equals(".") || newName.equals("..")
+                || newName.contains("/") || newName.contains("\\")) {
+            return ResponseEntity.badRequest().body("文件夹名称无效");
+        }
+
+        StorageSpace storageSpace = validateAndGetStorageSpace(request, "rename_folder");
+        if (storageSpace == null) {
+            return ResponseEntity.badRequest().body("无效的存储空间");
+        }
+        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path source = resolveWithin(basePath, path);
+        if (source == null || source.equals(basePath)) {
+            return ResponseEntity.badRequest().body("不能重命名存储根目录");
+        }
+        if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)
+                || !Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)
+                || Files.isSymbolicLink(source)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("文件夹不存在");
+        }
+
+        Path target = source.getParent().resolve(newName).toAbsolutePath().normalize();
+        if (!target.startsWith(basePath) || containsSymbolicLink(basePath, target.getParent())) {
+            return ResponseEntity.badRequest().body("目标路径无效");
+        }
+        if (source.equals(target)) {
+            return ResponseEntity.ok("OK");
+        }
+        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("已存在同名项目");
+        }
+
+        try {
+            Files.move(source, target);
+        } catch (IOException e) {
+            logger.warn("rename_folder failed {} -> {}: {}", path, newName, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("重命名文件夹失败");
+        }
+        fileCatalogService.invalidateScanCache(basePath);
+        storageService.clearStatsCache(storageSpace.getName());
+        logger.info("User {} renamed folder {} to {}", session.getUsername(), path, newName);
+        return ResponseEntity.ok("OK");
+    }
+
     /**
      * 递归删除文件夹。仅 ADMIN。 / Recursively delete a folder. ADMIN only.
      * DELETE /delete_folder?path=<relpath>

@@ -459,16 +459,18 @@
 
         /* ===== 最近文件横向时间轴 / Horizontal modified-time timeline ===== */
         .time-timeline {
-            max-width: 1120px;
-            margin: 0 auto 18px;
-            padding: 10px 14px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 0 18px;
+            padding: 10px 4px;
             border: 1px solid #dfe5ec;
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.72);
             box-shadow: 0 2px 10px rgba(30, 41, 59, 0.05);
         }
-        .timeline-row { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 48px; }
-        .timeline-row + .timeline-row { margin-top: 4px; }
+        .timeline-row { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 48px; }
+        .timeline-year-row { transform: translateY(3px); }
+        .timeline-row + .timeline-row { margin-top: 2px; }
         .timeline-row[hidden] { display: none; }
         .timeline-row-label {
             flex: 0 0 84px;
@@ -481,13 +483,20 @@
             border-right: 1px solid #dfe5ec;
         }
         .timeline-month-row {
-            padding-top: 5px;
-            border-top: 1px dashed #dfe5ec;
+            min-height: 46px;
+            margin-left: 34px;
+            padding-left: 26px;
         }
-        .timeline-month-row .timeline-row-label {
-            color: var(--light-text);
-            font-size: 12px;
-            font-weight: 500;
+        .timeline-month-row::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: -14px;
+            width: 20px;
+            height: 31px;
+            border-left: 2px solid rgba(74, 144, 226, .38);
+            border-bottom: 2px solid rgba(74, 144, 226, .38);
+            border-bottom-left-radius: 12px;
         }
         .timeline-scroll {
             width: 30px;
@@ -503,7 +512,7 @@
             line-height: 1;
         }
         .timeline-scroll:hover { color: var(--primary-color); border-color: var(--primary-color); }
-        .timeline-scroll.is-hidden { visibility: hidden; pointer-events: none; }
+        .timeline-scroll.is-hidden { display: none; }
         .timeline-scroll:disabled { opacity: .38; cursor: default; }
         .timeline-viewport {
             flex: 1;
@@ -516,9 +525,11 @@
         }
         .timeline-track {
             display: flex;
+            align-items: flex-start;
             width: max-content;
             min-width: 100%;
-            padding: 2px 10px 6px;
+            /*padding: 2px 10px 6px;*/
+            padding: 4px;
         }
         .timeline-node {
             position: relative;
@@ -546,6 +557,7 @@
         }
         .timeline-node::after {
             content: "";
+            box-sizing: border-box;
             position: absolute;
             top: 4px;
             left: 50%;
@@ -558,11 +570,16 @@
             box-shadow: 0 0 0 1px #aab7c4;
             transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
         }
+        #yearTimeline > .timeline-node:first-child::before { left: 50%; }
         .timeline-node:hover { color: var(--dark-text); }
         .timeline-node:hover::after { transform: scale(1.15); background: var(--primary-color); }
         .timeline-node.active { color: var(--primary-color); font-weight: 700; }
         .timeline-node.active::before { background: rgba(74, 144, 226, .42); }
         .timeline-node.active::after {
+            top: 2px;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
             background: var(--primary-color);
             box-shadow: 0 0 0 2px var(--primary-color), 0 0 0 5px rgba(74, 144, 226, .15);
         }
@@ -570,26 +587,86 @@
             outline: 2px solid var(--primary-color);
             outline-offset: 2px;
         }
-        /* 月份使用紧凑胶囊节点，与年份的圆点轨道形成层级区分。 */
-        .timeline-month-row .timeline-viewport {
-            padding: 3px;
-            border-radius: 9px;
-            background: rgba(74, 144, 226, .065);
+        .timeline-period-group {
+            position: relative;
+            flex: 0 0 auto;
+            min-width: 76px;
         }
-        .timeline-month-row .timeline-track { padding: 0 4px; gap: 4px; }
-        .timeline-month-row .timeline-node {
+        .timeline-period-group > .timeline-node { width: 100%; }
+        .timeline-period-group.expanded {
+            width: max-content;
+            min-width: 0;
+            padding-bottom: 0;
+        }
+        .timeline-period-group.expanded::before {
+            content: "";
+            position: absolute;
+            left: 100px;
+            right: 24px;
+            top: 27px;
+            height: 2px;
+            background: rgba(74, 144, 226, .42);
+        }
+        .timeline-period-group.expanded > .timeline-node {
+            width: 76px;
+            position: relative;
+            z-index: 2;
+        }
+        .timeline-month-branch {
+            position: absolute;
+            left: 100px;
+            top: 0;
+            display: flex;
+            width: max-content;
+            padding-left: 0;
+        }
+        .timeline-curve {
+            position: absolute;
+            top: 9px;
+            width: 24px;
+            height: 20px;
+            color: rgba(74, 144, 226, .42);
+            pointer-events: none;
+        }
+        .timeline-curve svg { display: block; width: 100%; height: 100%; overflow: visible; }
+        .timeline-curve path { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .timeline-curve-left { left: 76px; }
+        .timeline-curve-right { right: 0; }
+        .timeline-month-branch .timeline-node {
             min-width: 58px;
-            padding: 7px 12px;
-            border-radius: 7px;
+            min-height: 46px;
+            padding: 3px 8px 25px;
             font-size: 12px;
         }
-        .timeline-month-row .timeline-node::before,
-        .timeline-month-row .timeline-node::after { display: none; }
-        .timeline-month-row .timeline-node:hover { background: rgba(74, 144, 226, .10); }
-        .timeline-month-row .timeline-node.active {
-            background: var(--primary-color);
-            color: #fff;
-            box-shadow: 0 2px 6px rgba(74, 144, 226, .22);
+        .timeline-month-branch .timeline-node::before { display: none; }
+        .timeline-month-branch .timeline-node::after {
+            top: 24px;
+            width: 9px;
+            height: 9px;
+            margin-left: -4.5px;
+            border-width: 2px;
+        }
+        .timeline-month-branch .timeline-node.active::after {
+            top: 22px;
+            width: 13px;
+            height: 13px;
+            margin-left: -6.5px;
+        }
+        /* 月份使用紧凑胶囊节点，与年份的圆点轨道形成层级区分。 */
+        .timeline-month-row .timeline-track { padding: 2px 10px 4px; }
+        .timeline-month-row .timeline-node {
+            min-width: 62px;
+            min-height: 40px;
+            padding: 23px 9px 3px;
+            font-size: 12px;
+        }
+        .timeline-month-row .timeline-node::before { top: 8px; height: 2px; }
+        .timeline-month-row .timeline-node::after {
+            top: 4px;
+            width: 9px;
+            height: 9px;
+            margin-left: -4.5px;
+            border-width: 2px;
         }
         [data-theme="dark"] .time-timeline {
             background: rgba(15, 23, 42, .55);
@@ -597,15 +674,14 @@
             box-shadow: 0 2px 12px rgba(0, 0, 0, .22);
         }
         [data-theme="dark"] .timeline-row-label { border-right-color: #334155; }
-        [data-theme="dark"] .timeline-month-row { border-top-color: #334155; }
+        [data-theme="dark"] .timeline-month-row::before { border-color: rgba(14, 165, 233, .48); }
         [data-theme="dark"] .timeline-scroll { background: #1e293b; border-color: #475569; color: #cbd5e1; }
         [data-theme="dark"] .timeline-node::before { background: #475569; }
         [data-theme="dark"] .timeline-node::after { border-color: #172033; background: #64748b; box-shadow: 0 0 0 1px #64748b; }
         [data-theme="dark"] .timeline-node.active::before { background: rgba(14, 165, 233, .5); }
         [data-theme="dark"] .timeline-node.active::after { background: #0ea5e9; box-shadow: 0 0 0 2px #0ea5e9, 0 0 0 5px rgba(14, 165, 233, .16); }
-        [data-theme="dark"] .timeline-month-row .timeline-viewport { background: rgba(14, 165, 233, .09); }
-        [data-theme="dark"] .timeline-month-row .timeline-node:hover { background: rgba(14, 165, 233, .14); }
-        [data-theme="dark"] .timeline-month-row .timeline-node.active { background: #0ea5e9; color: #07111f; }
+        [data-theme="dark"] .timeline-period-group.expanded::before { background: rgba(14, 165, 233, .5); }
+        [data-theme="dark"] .timeline-curve { color: rgba(14, 165, 233, .5); }
 
         /* 模态框样式 */
         #upload-modal-overlay {
@@ -850,11 +926,11 @@
             }
 
             .time-timeline { margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
-            .timeline-row-label { flex-basis: 66px; padding-right: 7px; font-size: 12px; }
             .timeline-scroll { display: none; }
             .timeline-track { padding-left: 2px; padding-right: 2px; }
             .timeline-node { min-width: 68px; padding: 26px 9px 4px; }
-            .timeline-month-row .timeline-node { min-width: 54px; padding: 7px 9px; }
+            .timeline-month-row { margin-left: 18px; padding-left: 20px; }
+            .timeline-month-row .timeline-node { min-width: 54px; padding: 23px 8px 3px; }
         }
 
         /* ===== 视图切换:分段控件 / Segmented control ===== */
@@ -892,17 +968,75 @@
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
         }
 
-        #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 10px; }
+        #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 14px; }
         [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
 
-        .dir-breadcrumb { padding: 8px 0; font-size: 14px; word-break: break-all; }
-        .dir-breadcrumb .crumb { cursor: pointer; color: #4a90e2; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+        .dir-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 40px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 0 18px;
+            padding: 10px 14px;
+            border: 1px solid #dfe5ec;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 2px 10px rgba(30, 41, 59, 0.05);
+        }
+        .dir-breadcrumb {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            min-width: 0;
+            padding: 8px 0;
+            font-size: 14px;
+            line-height: 20px;
+            word-break: break-all;
+        }
+        .dir-breadcrumb .crumb {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 20px;
+            line-height: 20px;
+            cursor: pointer;
+            color: #4a90e2;
+            font-weight: 500;
+        }
+        .dir-breadcrumb .crumb .ico { display: block; flex: 0 0 auto; }
+        .dir-breadcrumb .storage-root-crumb {
+            padding: 4px 9px;
+            border: 1px solid rgba(74, 144, 226, .22);
+            border-radius: 7px;
+            background: rgba(74, 144, 226, .08);
+            font-weight: 650;
+        }
         .dir-breadcrumb .crumb:hover { text-decoration: underline; }
-        .dir-breadcrumb .crumb-sep { margin: 0 6px; color: #999; }
+        .dir-breadcrumb .crumb-sep { display: inline-flex; align-items: center; min-height: 20px; margin: 0 6px; color: #999; line-height: 20px; }
         [data-theme="dark"] .dir-breadcrumb .crumb { color: #0ea5e9; }
 
-        .dir-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
-        .dir-hint { color: #999; font-size: 12px; }
+        .dir-header-actions { flex: 0 0 auto; }
+        .dir-header-actions .btn {
+            margin: 0;
+            white-space: nowrap;
+            border: 1px solid rgba(74, 144, 226, .28);
+            background: rgba(74, 144, 226, .08);
+            color: var(--primary-color);
+            box-shadow: none;
+        }
+        .dir-header-actions .btn:hover { background: rgba(74, 144, 226, .15); }
+        [data-theme="dark"] .dir-header {
+            background: rgba(15, 23, 42, .55);
+            border-color: #334155;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .22);
+        }
+        @media (max-width: 600px) {
+            .dir-header { align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
+            .dir-header-actions .btn { width: auto; padding: 8px 12px; }
+        }
 
         .folder-card {
             display: flex; align-items: center; gap: 10px; padding: 12px 14px;
@@ -1062,28 +1196,19 @@
     <div class="divider"></div>
 
     <div class="view-tabs">
-        <button id="tab-recent" class="view-tab active"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-history"/></svg>最近上传</button>
+        <button id="tab-recent" class="view-tab active"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-history"/></svg>时间线浏览</button>
         <button id="tab-dir" class="view-tab"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder-tree"/></svg>目录浏览</button>
     </div>
 
     <div id="recent-view">
-    <h2 id="uploadsTitle">最近上传的50个文件</h2>
+    <h2 id="uploadsTitle" hidden>最近上传的50个文件</h2>
     <section id="timeTimeline" class="time-timeline" aria-label="按文件修改时间筛选">
         <div class="timeline-row timeline-year-row" aria-label="年份">
-            <div class="timeline-row-label" title="按文件修改时间筛选">时间筛选</div>
             <button class="timeline-scroll" type="button" data-target="yearTimelineViewport" data-direction="-1" aria-label="向前浏览年份">‹</button>
             <div id="yearTimelineViewport" class="timeline-viewport" tabindex="0">
                 <div id="yearTimeline" class="timeline-track" role="tablist" aria-label="选择年份"></div>
             </div>
             <button class="timeline-scroll" type="button" data-target="yearTimelineViewport" data-direction="1" aria-label="向后浏览年份">›</button>
-        </div>
-        <div id="monthTimelineRow" class="timeline-row timeline-month-row" aria-label="月份" hidden>
-            <div class="timeline-row-label">月份</div>
-            <button class="timeline-scroll" type="button" data-target="monthTimelineViewport" data-direction="-1" aria-label="向前浏览月份">‹</button>
-            <div id="monthTimelineViewport" class="timeline-viewport" tabindex="0">
-                <div id="monthTimeline" class="timeline-track" role="tablist" aria-label="选择月份"></div>
-            </div>
-            <button class="timeline-scroll" type="button" data-target="monthTimelineViewport" data-direction="1" aria-label="向后浏览月份">›</button>
         </div>
     </section>
     <div id="recent"></div>
@@ -1094,12 +1219,12 @@
     </div><!-- /recent-view -->
 
     <div id="dir-view" style="display:none">
-        <div id="dir-breadcrumb" class="dir-breadcrumb"></div>
-        <div class="dir-toolbar">
-            <button id="newFolderBtn" class="btn" style="display:none">＋ 新建文件夹</button>
-            <span class="dir-hint">提示：上传文件会进入当前文件夹，根目录上传则直接保存在根目录</span>
+        <div class="dir-header">
+            <div id="dir-breadcrumb" class="dir-breadcrumb"></div>
+            <div class="dir-header-actions">
+                <button id="newFolderBtn" class="btn" style="display:none">＋ 新建文件夹</button>
+            </div>
         </div>
-        <h2 id="dirTitle">根目录</h2>
         <div id="dirContent"></div>
         <div id="dir-sentinel" class="scroll-sentinel" hidden>
             <div class="loading-spinner loading-spinner--mini"></div>
@@ -1169,6 +1294,7 @@
         .then(data => {
             window.currentRole = data.role;
             window.isAnonymous = data.isAnonymous || false;
+            window.currentStorageSpace = data.currentStorageSpace || data.groupName || '';
 
             // 用户名(管理员加 ★ 样式) / username (admin gets star styling)
             const userInfoElement = document.getElementById('user-info');
@@ -1760,28 +1886,45 @@
     function renderTimeline(periods) {
         const safePeriods = Array.isArray(periods) ? periods : [];
         const yearTrack = document.getElementById('yearTimeline');
-        const monthTrack = document.getElementById('monthTimeline');
-        const monthRow = document.getElementById('monthTimelineRow');
         yearTrack.innerHTML = '';
-        monthTrack.innerHTML = '';
 
         yearTrack.appendChild(createTimelineNode('最近', currentYear === null,
             () => selectTimeline(null, null)));
         safePeriods.forEach(period => {
-            yearTrack.appendChild(createTimelineNode(period.year, currentYear === period.year,
+            const group = document.createElement('div');
+            const expanded = currentYear === period.year;
+            group.className = 'timeline-period-group' + (expanded ? ' expanded' : '');
+            group.appendChild(createTimelineNode(period.year, expanded,
                 () => selectTimeline(period.year, null)));
-        });
 
-        const selectedPeriod = safePeriods.find(period => period.year === currentYear);
-        monthRow.hidden = !selectedPeriod;
-        if (selectedPeriod) {
-            monthTrack.appendChild(createTimelineNode('全年', currentMonth === null,
-                () => selectTimeline(currentYear, null)));
-            (selectedPeriod.months || []).forEach(month => {
-                monthTrack.appendChild(createTimelineNode(month + '月', currentMonth === month,
-                    () => selectTimeline(currentYear, month)));
-            });
-        }
+            if (expanded) {
+                const leftCurve = document.createElement('span');
+                leftCurve.className = 'timeline-curve timeline-curve-left';
+                leftCurve.setAttribute('aria-hidden', 'true');
+                leftCurve.innerHTML = '<svg viewBox="0 0 24 20" preserveAspectRatio="none"><path d="M0 1 C12 1 12 19 24 19"/></svg>';
+                group.appendChild(leftCurve);
+
+                const rightCurve = document.createElement('span');
+                rightCurve.className = 'timeline-curve timeline-curve-right';
+                rightCurve.setAttribute('aria-hidden', 'true');
+                rightCurve.innerHTML = '<svg viewBox="0 0 24 20" preserveAspectRatio="none"><path d="M0 19 C12 19 12 1 24 1"/></svg>';
+                group.appendChild(rightCurve);
+
+                const branch = document.createElement('div');
+                branch.className = 'timeline-month-branch';
+                branch.setAttribute('role', 'tablist');
+                branch.setAttribute('aria-label', period.year + '年月份');
+                const months = period.months || [];
+                group.style.width = (124 + months.length * 58) + 'px';
+                months.forEach(month => {
+                    const monthLabel = parseInt(month, 10) + '月';
+                    branch.appendChild(createTimelineNode(monthLabel, currentMonth === month,
+                        () => selectTimeline(period.year, month)));
+                });
+                group.appendChild(branch);
+            }
+            yearTrack.appendChild(group);
+        });
 
         requestAnimationFrame(centerActiveTimelineNodes);
     }
@@ -2233,7 +2376,11 @@
         const bc = document.getElementById('dir-breadcrumb');
         bc.innerHTML = '';
         const root = document.createElement('span');
-        root.className = 'crumb'; root.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-home"/></svg>根目录';
+        root.className = 'crumb storage-root-crumb';
+        root.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-database"/></svg>';
+        const rootName = document.createElement('span');
+        rootName.textContent = window.currentStorageSpace || '存储空间';
+        root.appendChild(rootName);
         root.onclick = () => { dirPath = []; fetchDir(); };
         bc.appendChild(root);
         dirPath.forEach((part, i) => {
@@ -2243,7 +2390,6 @@
             c.onclick = () => { dirPath = dirPath.slice(0, i + 1); fetchDir(); };
             bc.appendChild(c);
         });
-        document.getElementById('dirTitle').textContent = dirPath.length ? dirPath.join(' / ') : '根目录';
     }
 
     function renderDir(data) {
@@ -2282,6 +2428,15 @@
     function appendFolderOps(card, name) {
         const ops = document.createElement('span');
         ops.className = 'folder-ops';
+        const rename = document.createElement('button');
+        rename.className = 'mini-btn';
+        rename.textContent = '✎';
+        rename.title = '重命名文件夹';
+        rename.setAttribute('aria-label', '重命名文件夹 ' + name);
+        rename.onclick = (e) => {
+            e.stopPropagation();
+            openRenameFolderModal(name);
+        };
         const del = document.createElement('button');
         del.className = 'mini-btn'; del.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-trash"/></svg>'; del.title = '删除文件夹';
         del.onclick = (e) => {
@@ -2295,19 +2450,172 @@
                     .then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '删除失败')));
             });
         };
+        ops.appendChild(rename);
         ops.appendChild(del);
         card.appendChild(ops);
     }
 
-    document.getElementById('newFolderBtn').addEventListener('click', () => {
-        const name = window.prompt('新建文件夹(可用 / 创建多级, 如 "项目A/子"):');
-        if (!name) return;
-        const full = dirPath.length ? dirPath.join('/') + '/' + name : name;
-        handleFetch('/create_folder', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: full})
-        }).then(r => r.ok ? fetchDir() : r.text().then(t => Notify.error(t || '创建失败')));
-    });
+    function openRenameFolderModal(oldName) {
+        if (document.getElementById('renameFolderModal')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'renameFolderModal';
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="notify-modal" role="dialog" aria-modal="true" aria-labelledby="renameFolderTitle">
+                <div class="modal-header"><h3 id="renameFolderTitle" class="modal-title">重命名文件夹</h3></div>
+                <div class="modal-body">
+                    <label for="renameFolderName" style="display:block;margin-bottom:8px;color:#262626;font-size:14px;">新名称</label>
+                    <input id="renameFolderName" class="input-field" type="text" maxlength="255"
+                           autocomplete="off" style="background:#fff;color:#262626;border-color:#d9d9d9;" />
+                    <div id="renameFolderError" style="display:none;margin-top:8px;color:#ff4d4f;font-size:12px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-btn modal-btn-default" id="renameFolderCancel">取消</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="renameFolderSubmit">保存</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const input = overlay.querySelector('#renameFolderName');
+        const errorEl = overlay.querySelector('#renameFolderError');
+        const submitBtn = overlay.querySelector('#renameFolderSubmit');
+        input.value = oldName;
+        const close = () => {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+        };
+        const onKeydown = event => { if (event.key === 'Escape') close(); };
+        const submit = async () => {
+            const newName = input.value.trim();
+            if (!newName) {
+                errorEl.textContent = '请输入文件夹名称';
+                errorEl.style.display = 'block';
+                input.focus();
+                return;
+            }
+            if (newName === oldName) {
+                close();
+                return;
+            }
+            if (newName.includes('/') || newName.includes('\\')) {
+                errorEl.textContent = '文件夹名称不能包含 / 或 \\';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '保存中…';
+            const path = [...dirPath, oldName].join('/');
+            try {
+                const response = await handleFetch('/rename_folder', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path, newName})
+                });
+                if (!response.ok) throw new Error(await response.text() || '重命名失败');
+                close();
+                fetchDir();
+                Notify.success('文件夹已重命名');
+            } catch (error) {
+                errorEl.textContent = error.message || '重命名失败';
+                errorEl.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '保存';
+            }
+        };
+        overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+        overlay.querySelector('#renameFolderCancel').addEventListener('click', close);
+        submitBtn.addEventListener('click', submit);
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') { event.preventDefault(); submit(); }
+        });
+        document.addEventListener('keydown', onKeydown);
+        requestAnimationFrame(() => { input.focus(); input.select(); });
+    }
+
+    document.getElementById('newFolderBtn').addEventListener('click', openCreateFolderModal);
+
+    function openCreateFolderModal() {
+        if (document.getElementById('createFolderModal')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'createFolderModal';
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="notify-modal" role="dialog" aria-modal="true" aria-labelledby="createFolderTitle">
+                <div class="modal-header">
+                    <h3 id="createFolderTitle" class="modal-title">新建文件夹</h3>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom:16px;padding:10px 12px;border-radius:7px;background:#f5f8fc;color:#595959;font-size:13px;">
+                        将在 <strong id="newFolderParentPath" style="color:#1890ff;word-break:break-all;"></strong> 目录下新建文件夹
+                    </div>
+                    <label for="newFolderName" style="display:block;margin-bottom:8px;color:#262626;font-size:14px;">文件夹名称</label>
+                    <input id="newFolderName" class="input-field" type="text" maxlength="255"
+                           placeholder="例如：项目 A 或 项目 A/资料"
+                           autocomplete="off" style="background:#fff;color:#262626;border-color:#d9d9d9;" />
+                    <div style="margin-top:8px;color:#8c8c8c;font-size:12px;">可以使用“/”一次创建多级文件夹</div>
+                    <div id="newFolderError" style="display:none;margin-top:8px;color:#ff4d4f;font-size:12px;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-btn modal-btn-default" id="newFolderCancel">取消</button>
+                    <button type="button" class="modal-btn modal-btn-primary" id="newFolderSubmit">创建</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+
+        const input = overlay.querySelector('#newFolderName');
+        const parentPathEl = overlay.querySelector('#newFolderParentPath');
+        const errorEl = overlay.querySelector('#newFolderError');
+        const submitBtn = overlay.querySelector('#newFolderSubmit');
+        parentPathEl.textContent = dirPath.length ? '/' + dirPath.join('/') + '/' : '/';
+        const close = () => {
+            document.removeEventListener('keydown', onKeydown);
+            overlay.remove();
+        };
+        const onKeydown = (event) => {
+            if (event.key === 'Escape') close();
+        };
+        const submit = () => {
+            const name = input.value.trim();
+            if (!name) {
+                errorEl.textContent = '请输入文件夹名称';
+                errorEl.style.display = 'block';
+                input.focus();
+                return;
+            }
+
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = '创建中…';
+            const full = dirPath.length ? dirPath.join('/') + '/' + name : name;
+            handleFetch('/create_folder', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: full})
+            }).then(async r => {
+                if (!r.ok) throw new Error(await r.text() || '创建失败');
+                close();
+                fetchDir();
+                Notify.success('文件夹创建成功');
+            }).catch(error => {
+                errorEl.textContent = error.message || '创建失败';
+                errorEl.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '创建';
+            });
+        };
+
+        overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+        overlay.querySelector('#newFolderCancel').addEventListener('click', close);
+        submitBtn.addEventListener('click', submit);
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submit();
+            }
+        });
+        document.addEventListener('keydown', onKeydown);
+        requestAnimationFrame(() => input.focus());
+    }
 
     initInfiniteScroll();
     fetchFiles();

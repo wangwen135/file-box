@@ -21,6 +21,10 @@ file-box:
     path: /opt/file-box/anonymous
     max-size: 2GB
     allow-anonymous: true
+  - name: shared
+    path: /opt/file-box/shared
+    max-size: 1GB
+    allow-anonymous: true
   users:
   - username: admin
     password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
@@ -30,6 +34,7 @@ file-box:
     - test
     - opt-data
     - anonymous
+    - shared
   - username: testuser
     password: $2a$10$PbHqf/Ox1EQxcU1Wvmc7MurpVD1bCvcrAwvabssOzL208mL2FATSC
     role: USER
