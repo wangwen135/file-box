@@ -1,0 +1,54 @@
+# 发布流水线 / Release pipeline
+# 推送 V* 形式的 tag(如 V2.0)时触发:构建(jar + release.tar.gz)并发布 GitHub Release。
+# Triggered by pushing a V* tag (e.g. V2.0): builds the jar + release tarball and publishes a GitHub Release.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'V*'
+
+# 创建 Release / 上传资源需要写权限 / needs write access to create the release & upload assets
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码 / Checkout
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 8 / Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+
+      - name: 构建(含测试)/ Build with Maven
+        run: mvn -B -V package
+
+      - name: 读取版本号并暂存产物 / Read version & stage artifacts
+        id: ver
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # tag V2.0 -> 显示名 v2.0,与既有 Release "v0.1.1" 的小写风格一致
+          # tag V2.0 -> display name v2.0, matching the lowercase style of existing "v0.1.1" releases
+          echo "display=v${GITHUB_REF_NAME#V}" >> "$GITHUB_OUTPUT"
+          mkdir -p staging
+          cp "target/file-box-${VERSION}.jar" staging/
+          cp "target/file-box-${VERSION}-release.tar.gz" staging/
+          echo "=== staged artifacts ==="
+          ls -la staging/
+
+      - name: 创建 Release 并上传产物 / Create release & upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: File Box ${{ steps.ver.outputs.display }}
+          # 由 GitHub 根据 tag 间的提交/PR 自动生成发布说明 / auto-generate notes from commits/PRs since last release
+          generate_release_notes: true
+          files: |
+            staging/file-box-*.jar
+            staging/file-box-*-release.tar.gz
