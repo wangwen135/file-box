@@ -119,10 +119,20 @@
 
         body {
             display: flex;
-            justify-content: center;
+            flex-direction: column; /* 纵向排列:登录区在上、页脚始终跟在其后 / column layout: login card on top, footer always right below it */
             align-items: center;
+            min-height: 100dvh;     /* 动态视口高度:手机弹出输入法时随可视区收缩,避免页脚盖住输入框 / dynamic viewport shrinks with the on-screen keyboard so the footer never overlays the inputs */
             padding: 20px;
             transition: background 0.3s ease;
+        }
+
+        /* 登录区:占满剩余高度并居中卡片,从而把页脚顶到页面底部 / grows to fill leftover height and centers the card, pushing the footer to the page bottom */
+        .login-main {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .login-container {
@@ -200,8 +210,10 @@
         }
 
         .footer-credit {
-            position: fixed;
-            bottom: 10px;
+            flex-shrink: 0;     /* 保持在文档流末尾:小屏时随内容向下滚动,而不是压在输入框上 / stays at the end of flow — on small screens it scrolls down with the content instead of overlapping the inputs */
+            width: 100%;
+            margin-top: 1rem;
+            padding-bottom: 4px;
             font-size: 0.9rem;
             text-align: center;
         }
@@ -260,36 +272,38 @@
 </head>
 
 <body>
-    <div class="login-container">
-        <div class="logo-container">
-            <img src="images/logo.png" alt="文件盒子 Logo" class="logo" onerror="this.style.display='none'">
+    <main class="login-main">
+        <div class="login-container">
+            <div class="logo-container">
+                <img src="images/logo.png" alt="文件盒子 Logo" class="logo" onerror="this.style.display='none'">
+            </div>
+            <h1>文件盒子</h1>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                </div>
+
+                <button type="submit">登录</button>
+
+                <div class="error-message-container">
+                    <p id="errorMessage" class="error-message"></p>
+                </div>
+
+                <div class="anonymous-access-container" id="anonymousAccessDiv">
+                    <button type="button" id="anonymousAccessBtn" class="anonymous-access-btn">匿名访问</button>
+                </div>
+            </form>
+
+            <p class="login-footer-text">请输入密码以访问文件盒子服务</p>
         </div>
-        <h1>文件盒子</h1>
-
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">用户名</label>
-                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">密码</label>
-                <input type="password" id="password" name="password" placeholder="请输入密码" required>
-            </div>
-
-            <button type="submit">登录</button>
-
-            <div class="error-message-container">
-                <p id="errorMessage" class="error-message"></p>
-            </div>
-
-            <div class="anonymous-access-container" id="anonymousAccessDiv">
-                <button type="button" id="anonymousAccessBtn" class="anonymous-access-btn">匿名访问</button>
-            </div>
-        </form>
-
-        <p class="login-footer-text">请输入密码以访问文件盒子服务</p>
-    </div>
+    </main>
 
     <div class="footer-credit">Core: XD | Implementation: WWH</div>
 

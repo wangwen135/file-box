@@ -100,7 +100,7 @@
         }
 
         .share-notice {
-            position: fixed;
+            position: absolute; /* 跟随页面滚动(与右侧 .header-controls 一致),而非钉在窗口 / scroll with the page like .header-controls, not pinned to the viewport */
             top: 12px;
             left: 14px;
             z-index: 30;
@@ -290,18 +290,22 @@
             border-radius: 50%;
             width: 24px;
             height: 24px;
-            font-size: 14px;
             cursor: pointer;
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 10;
-            line-height: 1;
             transition: all 0.2s ease;
         }
 
-        .preview:hover .delete-btn {
+        .delete-btn .ico {
+            width: 14px;
+            height: 14px;
             display: block;
+        }
+
+        .preview:hover .delete-btn {
+            display: flex;
         }
 
         .delete-btn:hover {
@@ -775,9 +779,12 @@
         }
 
         #upload-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             font-size: 16px;
             color: #333;
-            text-align: center;
             margin-bottom: 15px;
         }
 
@@ -932,13 +939,25 @@
             .delete-btn {
                 width: 28px;
                 height: 28px;
-                font-size: 16px;
                 padding: 0px;
             }
-            #recent {
+
+            .delete-btn .ico {
+                width: 16px;
+                height: 16px;
+            }
+            #recent,
+            .dir-files {
                 justify-content: space-around;
             }
-            #recent a {
+            /* 目录视图与时间线共用同一文件块工厂 createFileElement(),移动端
+               宽度与间距都必须与 #recent 完全一致:
+               - <a> 钉死 ~50% 宽,长文件名/文本在块内换行,而不是把块撑成整行;
+               - justify-content: space-around 让两块之间的视觉间距与 #recent 相同。
+               dir-view shares createFileElement() with #recent, so on mobile both the
+               item width and the container's justify-content must match exactly. */
+            #recent a,
+            .dir-files a {
                 width: calc(50% - 10px);
             }
 
@@ -1402,7 +1421,7 @@
 
         menu.innerHTML = spaceList.map(name => `
             <div class="hd-menu-item${name === current ? ' active' : ''}" data-space="${name}">
-                ${name === current ? '✓ ' : ''}${name}
+                ${name === current ? '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-check"/></svg>' : ''}${name}
             </div>
         `).join('');
         menu.querySelectorAll('.hd-menu-item').forEach(el => {
@@ -1474,16 +1493,16 @@
                 <div class="modal-body">
                     <div style="display:flex;flex-direction:column;gap:14px;">
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">当前密码</label>
-                            <input type="password" id="pwdCurrent" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="current-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">当前密码</label>
+                            <input type="password" id="pwdCurrent" class="input-field" autocomplete="current-password" />
                         </div>
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">新密码（至少 ${MIN_PWD_LEN} 位）</label>
-                            <input type="password" id="pwdNew" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">新密码（至少 ${MIN_PWD_LEN} 位）</label>
+                            <input type="password" id="pwdNew" class="input-field" autocomplete="new-password" />
                         </div>
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">确认新密码</label>
-                            <input type="password" id="pwdConfirm" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">确认新密码</label>
+                            <input type="password" id="pwdConfirm" class="input-field" autocomplete="new-password" />
                         </div>
                     </div>
                 </div>
@@ -1802,7 +1821,7 @@
             if (currentXhr.status >= 200 && currentXhr.status < 300) {
                 progressBar.style.width = '100%';
                 progressPercentage.textContent = '100%';
-                statusText.textContent = `✓ 上传成功！`;
+                statusText.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-check"/></svg>上传成功！';
                 statusText.style.color = '#52c41a';
 
                 // 触发倒计时动画
@@ -1842,7 +1861,7 @@
                     errorMsg = '请求错误，请重新登录';
                 }
 
-                statusText.textContent = `✗ ${errorMsg}`;
+                statusText.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-x"/></svg>' + errorMsg;
                 statusText.style.color = '#ff4d4f';
                 progressPercentage.textContent = 'Error';
                 progressBar.style.backgroundColor = '#ff4d4f';
@@ -1857,7 +1876,7 @@
 
         // 监听上传错误
         currentXhr.addEventListener('error', () => {
-            statusText.textContent = '✗ 网络错误，请检查连接';
+            statusText.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-x"/></svg>网络错误，请检查连接';
             statusText.style.color = '#ff4d4f';
             progressPercentage.textContent = 'Error';
             progressBar.style.backgroundColor = '#ff4d4f';
@@ -1870,7 +1889,7 @@
 
         // 监听上传被取消
         currentXhr.addEventListener('abort', () => {
-            statusText.textContent = '× 上传已取消';
+            statusText.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-x"/></svg>上传已取消';
             statusText.style.color = '#999';
             progressPercentage.textContent = 'Cancelled';
             progressBar.style.backgroundColor = '#999';
@@ -1909,7 +1928,9 @@
             else {
                 Notify.success("文本上传成功");
                 textpaste.value = "";
-                fetchFiles();
+                // 按当前视图刷新:目录模式刷目录列表,否则刷时间线 / refresh the active view (dir or timeline)
+                if (typeof currentView !== 'undefined' && currentView === 'directory') fetchDir();
+                else fetchFiles();
             }
         });
     }
@@ -2373,7 +2394,7 @@
     function addDeleteButton(container, file, linkElement) {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = '×';
+        deleteBtn.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-trash"/></svg>';
         deleteBtn.title = '删除文件';
         deleteBtn.setAttribute('aria-label', '删除文件: ' + escapeHtml(file.filename));
 
@@ -2519,7 +2540,7 @@
         ops.className = 'folder-ops';
         const rename = document.createElement('button');
         rename.className = 'mini-btn';
-        rename.textContent = '✎';
+        rename.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-pencil"/></svg>';
         rename.title = '重命名文件夹';
         rename.setAttribute('aria-label', '重命名文件夹 ' + name);
         rename.onclick = (e) => {
@@ -2553,10 +2574,10 @@
             <div class="notify-modal" role="dialog" aria-modal="true" aria-labelledby="renameFolderTitle">
                 <div class="modal-header"><h3 id="renameFolderTitle" class="modal-title">重命名文件夹</h3></div>
                 <div class="modal-body">
-                    <label for="renameFolderName" style="display:block;margin-bottom:8px;color:#262626;font-size:14px;">新名称</label>
+                    <label for="renameFolderName" style="display:block;margin-bottom:8px;color:var(--text-primary);font-size:14px;">新名称</label>
                     <input id="renameFolderName" class="input-field" type="text" maxlength="255"
-                           autocomplete="off" style="background:#fff;color:#262626;border-color:#d9d9d9;" />
-                    <div id="renameFolderError" style="display:none;margin-top:8px;color:#ff4d4f;font-size:12px;"></div>
+                           autocomplete="off" />
+                    <div id="renameFolderError" style="display:none;margin-top:8px;color:var(--danger);font-size:12px;"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="modal-btn modal-btn-default" id="renameFolderCancel">取消</button>
@@ -2635,15 +2656,15 @@
                     <h3 id="createFolderTitle" class="modal-title">新建文件夹</h3>
                 </div>
                 <div class="modal-body">
-                    <div style="margin-bottom:16px;padding:10px 12px;border-radius:7px;background:#f5f8fc;color:#595959;font-size:13px;">
-                        将在 <strong id="newFolderParentPath" style="color:#1890ff;word-break:break-all;"></strong> 目录下新建文件夹
+                    <div style="margin-bottom:16px;padding:10px 12px;border-radius:7px;background:var(--primary-light);color:var(--text-secondary);font-size:13px;">
+                        将在 <strong id="newFolderParentPath" style="color:var(--primary);word-break:break-all;"></strong> 目录下新建文件夹
                     </div>
-                    <label for="newFolderName" style="display:block;margin-bottom:8px;color:#262626;font-size:14px;">文件夹名称</label>
+                    <label for="newFolderName" style="display:block;margin-bottom:8px;color:var(--text-primary);font-size:14px;">文件夹名称</label>
                     <input id="newFolderName" class="input-field" type="text" maxlength="255"
                            placeholder="例如：项目 A 或 项目 A/资料"
-                           autocomplete="off" style="background:#fff;color:#262626;border-color:#d9d9d9;" />
-                    <div style="margin-top:8px;color:#8c8c8c;font-size:12px;">可以使用“/”一次创建多级文件夹</div>
-                    <div id="newFolderError" style="display:none;margin-top:8px;color:#ff4d4f;font-size:12px;"></div>
+                           autocomplete="off" />
+                    <div style="margin-top:8px;color:var(--text-muted);font-size:12px;">可以使用“/”一次创建多级文件夹</div>
+                    <div id="newFolderError" style="display:none;margin-top:8px;color:var(--danger);font-size:12px;"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="modal-btn modal-btn-default" id="newFolderCancel">取消</button>

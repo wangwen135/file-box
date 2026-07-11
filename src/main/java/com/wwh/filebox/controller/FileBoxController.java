@@ -604,6 +604,7 @@ public class FileBoxController {
                 map.put("url", "/api/file?path=" + relPath); // UTF-8 始终可用,理论上不会走到
             }
             map.put("time", DateTimeFormatter.formatFileTime(new Date(f.lastModified())));
+            map.put("timeMillis", f.lastModified()); // 原始毫秒,供目录视图排序用(格式化字符串不宜排序) / raw millis for dir-view sorting (formatted string is not sortable)
             map.put("type", ftype);
             map.put("size", f.length());
             map.put("content", content);
@@ -611,6 +612,22 @@ public class FileBoxController {
             logger.warn("Error building dir record: {}", e.getMessage(), e);
         }
         return map;
+    }
+
+    /**
+     * 目录视图文件排序:mtime 倒序(最新在前),与 /list_files 一致;
+     * 同 mtime 按文件名(大小写不敏感)做 tiebreaker,保证分页结果确定、稳定。
+     * Directory-view file order: newest mtime first (matches /list_files);
+     * filename tiebreaker keeps paging deterministic and stable.
+     */
+    static void sortDirRecordsByTimeDesc(List<Map<String, Object>> files) {
+        files.sort(
+                Comparator.comparing(
+                        (Map<String, Object> m) -> (Long) m.get("timeMillis"),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(
+                                m -> (String) m.get("filename"),
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
     }
 
     /** Read only the small prefix needed by the UI instead of loading a whole text file into heap. */
@@ -763,9 +780,9 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("读取目录失败");
         }
         folders.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("name"), (String) b.get("name")));
-        // 文件按名排序(确定性强，分页稳定)；注意这与 /list_files 的 mtime 倒序不同，为既有行为。
-        // Files sorted by name (deterministic, stable for paging); differs from /list_files' mtime order — pre-existing.
-        files.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare((String) a.get("filename"), (String) b.get("filename")));
+        // 文件按 mtime 倒序(最新在前),与 /list_files 一致;同时间按文件名做 tiebreaker 保证分页稳定。
+        // Files by mtime descending (newest first), matching /list_files; filename tiebreaker keeps paging stable.
+        sortDirRecordsByTimeDesc(files);
 
         // 对文件做 offset/limit 分页(文件夹不分页) / paginate files only (folders are not paginated)
         int totalFiles = files.size();

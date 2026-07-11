@@ -52,7 +52,7 @@
                     max-width: 450px;
                     margin-bottom: 10px;
                     padding: 14px 20px;
-                    background: #fff;
+                    background: var(--bg-card);
                     border-radius: 8px;
                     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
                     display: flex;
@@ -67,38 +67,44 @@
                 }
                 
                 .toast.success {
-                    border-left: 4px solid #52c41a;
+                    border-left: 4px solid var(--success);
                 }
                 .toast.success .toast-icon {
-                    color: #52c41a;
+                    color: var(--success);
                 }
                 
                 .toast.error {
-                    border-left: 4px solid #ff4d4f;
+                    border-left: 4px solid var(--danger);
                 }
                 .toast.error .toast-icon {
-                    color: #ff4d4f;
+                    color: var(--danger);
                 }
                 
                 .toast.warning {
-                    border-left: 4px solid #faad14;
+                    border-left: 4px solid var(--warning);
                 }
                 .toast.warning .toast-icon {
-                    color: #faad14;
+                    color: var(--warning);
                 }
                 
                 .toast.info {
-                    border-left: 4px solid #1890ff;
+                    border-left: 4px solid var(--primary);
                 }
                 .toast.info .toast-icon {
-                    color: #1890ff;
+                    color: var(--primary);
                 }
                 
                 .toast-icon {
                     flex-shrink: 0;
-                    font-size: 20px;
-                    line-height: 1;
+                    display: inline-flex;
+                    align-items: center;
                     margin-top: 2px;
+                }
+
+                .toast-icon .ico {
+                    width: 20px;
+                    height: 20px;
+                    display: block;
                 }
                 
                 .toast-content {
@@ -109,14 +115,14 @@
                 .toast-title {
                     font-size: 14px;
                     font-weight: 500;
-                    color: #262626;
+                    color: var(--text-primary);
                     margin-bottom: 4px;
                     line-height: 1.4;
                 }
                 
                 .toast-message {
                     font-size: 13px;
-                    color: #595959;
+                    color: var(--text-secondary);
                     line-height: 1.5;
                     word-break: break-word;
                     white-space: pre-wrap;
@@ -132,17 +138,22 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: #8c8c8c;
-                    font-size: 16px;
+                    color: var(--text-muted);
                     line-height: 1;
                     padding: 0;
                     border-radius: 4px;
                     transition: all 0.2s;
                 }
+
+                .toast-close .ico {
+                    width: 16px;
+                    height: 16px;
+                    display: block;
+                }
                 
                 .toast-close:hover {
-                    background: rgba(0, 0, 0, 0.06);
-                    color: #262626;
+                    background: var(--bg-hover);
+                    color: var(--text-primary);
                 }
                 
                 @keyframes toast-slide-in {
@@ -222,7 +233,7 @@
                 }
                 
                 .notify-modal {
-                    background: #fff;
+                    background: var(--bg-card);
                     border-radius: 12px;
                     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
                     min-width: 400px;
@@ -233,20 +244,20 @@
                 
                 .modal-header {
                     padding: 20px 24px 16px;
-                    border-bottom: 1px solid #f0f0f0;
+                    border-bottom: 1px solid var(--border-light);
                 }
                 
                 .modal-title {
                     font-size: 18px;
                     font-weight: 500;
-                    color: #262626;
+                    color: var(--text-primary);
                     margin: 0;
                     line-height: 1.4;
                 }
                 
                 .modal-body {
                     padding: 24px;
-                    color: #595959;
+                    color: var(--text-secondary);
                     font-size: 14px;
                     line-height: 1.6;
                 }
@@ -270,30 +281,30 @@
                 }
                 
                 .modal-btn-default {
-                    background: #fff;
-                    border-color: #d9d9d9;
-                    color: #262626;
+                    background: var(--bg-card);
+                    border-color: var(--border-color);
+                    color: var(--text-primary);
                 }
                 
                 .modal-btn-default:hover {
-                    color: #1890ff;
-                    border-color: #1890ff;
+                    color: var(--primary);
+                    border-color: var(--primary);
                 }
                 
                 .modal-btn-primary {
-                    background: #1890ff;
-                    border-color: #1890ff;
+                    background: var(--primary);
+                    border-color: var(--primary);
                     color: #fff;
                 }
                 
                 .modal-btn-primary:hover {
-                    background: #40a9ff;
-                    border-color: #40a9ff;
+                    background: var(--primary-hover);
+                    border-color: var(--primary-hover);
                 }
                 
                 .modal-btn-danger {
-                    background: #ff4d4f;
-                    border-color: #ff4d4f;
+                    background: var(--danger);
+                    border-color: var(--danger);
                     color: #fff;
                 }
                 
@@ -303,8 +314,8 @@
                 }
                 
                 .modal-btn-warning {
-                    background: #faad14;
-                    border-color: #faad14;
+                    background: var(--warning);
+                    border-color: var(--warning);
                     color: #fff;
                 }
                 
@@ -316,7 +327,7 @@
                 /* 输入框模态:prompt / form / 输入框 modal: prompt & form */
                 .modal-hint {
                     margin-bottom: 12px;
-                    color: #595959;
+                    color: var(--text-secondary);
                     font-size: 13px;
                     line-height: 1.6;
                     word-break: break-word;
@@ -330,7 +341,7 @@
                 .modal-field-label {
                     display: block;
                     margin-bottom: 6px;
-                    color: #262626;
+                    color: var(--text-primary);
                     font-size: 13px;
                 }
                 .modal-input {
@@ -340,7 +351,7 @@
                 }
                 .modal-error {
                     margin-top: 8px;
-                    color: #ff4d4f;
+                    color: var(--danger);
                     font-size: 12px;
                     line-height: 1.4;
                 }
@@ -383,14 +394,15 @@
             toast.className = `toast ${type}`;
 
             const icons = {
-                success: '✓',
-                error: '✕',
-                warning: '⚠',
-                info: 'ℹ'
+                success: 'ico-check',
+                error: 'ico-x',
+                warning: 'ico-alert',
+                info: 'ico-info'
             };
 
-            const iconHTML = `<span class="toast-icon">${icons[type] || icons.info}</span>`;
-            const closeHTML = showClose ? `<button class="toast-close">&times;</button>` : '';
+            const iconName = icons[type] || icons.info;
+            const iconHTML = `<span class="toast-icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#${iconName}"/></svg></span>`;
+            const closeHTML = showClose ? `<button class="toast-close" aria-label="关闭"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-x"/></svg></button>` : '';
             const titleHTML = title ? `<div class="toast-title">${title}</div>` : '';
 
             toast.innerHTML = `
@@ -545,7 +557,7 @@
                 modal.className = 'notify-modal';
                 if (width) modal.style.minWidth = width + 'px';
 
-                const iconHTML = type === 'error' ? '<span style="font-size: 48px; display: block; text-align: center; color: #ff4d4f;">✕</span>' : '';
+                const iconHTML = type === 'error' ? '<span style="display: block; text-align: center; color: var(--danger);"><svg style="width:48px;height:48px;display:inline-block;" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-x"/></svg></span>' : '';
                 const titleHTML = iconHTML ? '' : `<h3 class="modal-title">${title}</h3>`;
 
                 modal.innerHTML = `

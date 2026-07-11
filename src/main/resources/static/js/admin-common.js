@@ -89,16 +89,16 @@
                 <div class="modal-body">
                     <div style="display:flex;flex-direction:column;gap:14px;">
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">当前密码</label>
-                            <input type="password" id="pwdCurrent" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="current-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">当前密码</label>
+                            <input type="password" id="pwdCurrent" class="input-field" autocomplete="current-password" />
                         </div>
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">新密码（至少 ${MIN_PWD_LEN} 位）</label>
-                            <input type="password" id="pwdNew" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">新密码（至少 ${MIN_PWD_LEN} 位）</label>
+                            <input type="password" id="pwdNew" class="input-field" autocomplete="new-password" />
                         </div>
                         <div>
-                            <label style="display:block;margin-bottom:6px;color:#262626;font-size:13px;">确认新密码</label>
-                            <input type="password" id="pwdConfirm" class="input-field" style="background:#fff;color:#262626;border-color:#d9d9d9;" autocomplete="new-password" />
+                            <label style="display:block;margin-bottom:6px;color:var(--text-primary);font-size:13px;">确认新密码</label>
+                            <input type="password" id="pwdConfirm" class="input-field" autocomplete="new-password" />
                         </div>
                     </div>
                 </div>
