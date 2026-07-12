@@ -218,6 +218,17 @@ public class StorageService {
 
         boolean removed = config.getStorageSpaces().removeIf(space -> space.getName().equals(name));
         if (removed) {
+            // 同步移除各用户对该存储空间的引用，否则用户列表里仍会展示已删除的空间
+            // Remove the deleted space from every user's assigned list, otherwise the
+            // user list keeps showing a storage space that no longer exists.
+            if (config.getUsers() != null) {
+                for (SystemConfig.UserConfig user : config.getUsers()) {
+                    if (user.getStorageSpaces() != null) {
+                        user.getStorageSpaces().removeIf(name::equals);
+                    }
+                }
+            }
+
             configService.saveConfig(config);
             logger.info("Storage space {} deleted", name);
 

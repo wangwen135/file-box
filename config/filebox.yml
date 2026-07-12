@@ -9,10 +9,6 @@ file-box:
     path: ./uploads
     max-size: 1GB
     allow-anonymous: false
-  - name: test
-    path: ./test-uploads
-    max-size: 1GB
-    allow-anonymous: false
   - name: opt-data
     path: /opt/file-box/data
     max-size: 2GB
@@ -31,7 +27,6 @@ file-box:
     role: ADMIN
     storage-spaces:
     - default
-    - test
     - opt-data
     - anonymous
     - shared
@@ -40,7 +35,6 @@ file-box:
     role: MANAGER
     storage-spaces:
     - default
-    - test
     - opt-data
     - anonymous
     - shared
@@ -49,14 +43,6 @@ file-box:
     role: USER
     storage-spaces:
     - default
-    - test
     - opt-data
     - anonymous
     - shared
-  - username: use2
-    password: $2a$10$09iCbH7p6Z4DVXFXkk5rC.PxPOpXrgu5GftRKYAJPuWBUEM/k1chi
-    role: USER
-    storage-spaces:
-    - default
-    - test
-    - opt-data

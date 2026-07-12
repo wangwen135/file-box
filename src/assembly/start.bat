@@ -25,6 +25,9 @@ if "%JAR_NAME%"=="" (
 
 set "LOG_FILE=logs\out.log"
 if "%JAVA_OPTS%"=="" set "JAVA_OPTS=-Xmx384m -Xms128m"
+REM 默认生产 profile:关闭控制台日志(只写 logs\filebox.log),避免 out.log 重复捕获整份日志。
+REM Default prod profile: console logging off (file only), so out.log doesn't duplicate the full log.
+if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=prod"
 
 start "File Box Application" java %JAVA_OPTS% -jar "%JAR_NAME%" %* ^> "%LOG_FILE%" 2^>^&1
 

@@ -131,7 +131,7 @@ public class FileBoxConfigStore {
             admin.setPassword(passwordEncoder.encode(password));
             admin.setRole("ADMIN");
             if (admin.getStorageSpaces() == null || admin.getStorageSpaces().isEmpty()) {
-                admin.setStorageSpaces(Arrays.asList("default"));
+                admin.setStorageSpaces(new ArrayList<>(Arrays.asList("default")));
             }
         }
 

@@ -91,7 +91,11 @@ public class UserService {
         userConfig.setUsername(username);
         userConfig.setPassword(passwordEncoder.encode(password));
         userConfig.setRole(role.name());
-        userConfig.setStorageSpaces(java.util.Arrays.asList(storageSpaces));
+        // 必须用可变 List：StorageService.createStorageSpace 会向 admin 的列表 add 新空间，
+        // Arrays.asList 返回定长列表，add 会抛 UnsupportedOperationException。
+        // Must use a mutable list: createStorageSpace adds new spaces to admin lists;
+        // Arrays.asList is fixed-size and throws on add.
+        userConfig.setStorageSpaces(new ArrayList<>(java.util.Arrays.asList(storageSpaces)));
 
         if (config.getUsers() == null) {
             config.setUsers(new ArrayList<>());
@@ -136,7 +140,9 @@ public class UserService {
                     userConfig.setPassword(passwordEncoder.encode(password));
                 }
                 userConfig.setRole(role.name());
-                userConfig.setStorageSpaces(java.util.Arrays.asList(storageSpaces));
+                // 同 create：存可变列表，避免后续 add 抛 UnsupportedOperationException。
+                // Mutable list, same reason as create.
+                userConfig.setStorageSpaces(new ArrayList<>(java.util.Arrays.asList(storageSpaces)));
                 if (rename) {
                     userConfig.setUsername(trimmedNew);
                 }

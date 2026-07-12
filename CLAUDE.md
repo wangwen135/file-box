@@ -21,6 +21,15 @@ On first start, `ConfigValidationRunner` creates `./config`, `./data/default`, `
 
 There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortTest`, JUnit 5 + AssertJ).
 
+## Logging and the `prod` profile
+
+Logging is configured in `src/main/resources/logback-spring.xml` (no `logging.*` keys in `application.yml`). It always writes the rolling file `logs/filebox.log` (daily + 50MB, 30-day / 2GB cap); the **console appender is gated on the Spring profile**:
+
+- **Default (IDEA / `mvn spring-boot:run`)** — `prod` not active → console + file.
+- **Release package** — `start.sh` / `start.bat` set `SPRING_PROFILES_ACTIVE=prod` by default → console **off**, file only. This keeps the scripts' `> logs/out.log 2>&1` from duplicating the full log into `out.log`; with console off, `out.log` shrinks to a thin capture of the startup banner / native output. Override from the release package with `SPRING_PROFILES_ACTIVE=dev ./start.sh` to get the console back.
+
+The `prod` profile currently affects **only** logback (no `@Profile` beans, no `application-prod.yml`) — don't assume it otherwise changes runtime behavior.
+
 ## Release process
 
 Releases are created by `.github/workflows/release.yml`. Pushing a tag whose name starts with an uppercase `V` triggers the workflow; use full semantic versions such as `V2.1.0` (lowercase `v2.1.0` does not match).

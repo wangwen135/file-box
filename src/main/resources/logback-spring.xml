@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  日志配置:控制台 + 滚动文件,生产环境(prod profile)关闭控制台。
+  Console + rolling file; console is turned off under the 'prod' profile.
+
+  - 文件写到 ./logs/filebox.log,按天滚动;目录默认 ./logs,可用 -DFILEBOX_LOG_DIR=... 覆盖。
+    File logs to ./logs/filebox.log, rotated daily; dir defaults to ./logs, override with -DFILEBOX_LOG_DIR=...
+  - 生产(start.sh / start.bat 自动激活 prod profile):只写文件,不往 stdout 灌,
+    避免 start 脚本里 > out.log 2>&1 再把整份日志重复捕获一遍(out.log 退化为仅含 banner / 原生输出的薄兜底)。
+    Production (start.sh / start.bat activate 'prod'): file only, nothing to stdout, so the
+    shell-redirected out.log stops duplicating the full log and shrinks to a thin banner/native fallback.
+  - 开发(IDEA / mvn spring-boot:run):控制台 + 文件,IDEA Run 窗口可实时看日志。
+    Dev (IDEA / mvn spring-boot:run): console + file, live view in IDEA Run window.
+-->
+<configuration>
+
+    <!-- Spring Boot 默认日志格式常量 + 彩色控制台 appender -->
+    <!-- Spring Boot default pattern constants + colored console appender -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <property name="FILEBOX_LOG_DIR" value="${FILEBOX_LOG_DIR:-logs}"/>
+    <property name="FILEBOX_LOG_FILE" value="${FILEBOX_LOG_DIR}/filebox"/>
+
+    <!-- 文件 appender:当前文件 filebox.log,历史归档 filebox-yyyy-MM-dd.i.log.gz -->
+    <!-- File appender: current filebox.log, archives as filebox-yyyy-MM-dd.i.log.gz -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${FILEBOX_LOG_FILE}.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 按天滚动 + 单文件 50MB 切分;保留 30 天,总量上限 2GB,超出自动清理。
+                 Daily rotation with 50MB per-file split; 30-day / 2GB total cap, auto-pruned. -->
+            <fileNamePattern>${FILEBOX_LOG_FILE}-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 生产(prod profile):只输出到文件。File only under the 'prod' profile. -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 默认(开发/IDEA):控制台 + 文件。Default (dev/IDEA): console + file. -->
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+</configuration>

@@ -330,8 +330,8 @@ a:hover {
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .header-controls .hd-trigger:hover { background: rgba(74, 144, 226, 0.22); }
-/* 存储切换触发用次要色 / storage trigger in secondary tone */
-.header-controls #storageTrigger { color: var(--secondary-color); }
+/* 存储切换触发与用户名样式一致(加粗、同色) / storage trigger matches username (bold, same color) */
+.header-controls #storageTrigger { font-weight: 600; }
 /* 顶栏小图标(精灵 /images/icons.svg, Lucide) / header icons (local sprite) */
 .ico { width: 16px; height: 16px; flex-shrink: 0; }
 .header-controls .hd-trigger .caret { width: 14px; height: 14px; opacity: 0.6; transition: transform 0.2s ease; }
