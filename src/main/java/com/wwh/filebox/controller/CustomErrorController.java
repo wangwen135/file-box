@@ -28,8 +28,7 @@ public class CustomErrorController implements ErrorController {
     }
 
     /**
-     * 实现ErrorController接口的必要方法
-     * 返回错误页面的路径
+     * Spring Boot 2.3 的 ErrorController 仍要求实现该方法。
      */
     @Override
     public String getErrorPath() {

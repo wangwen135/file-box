@@ -4,7 +4,6 @@ import com.wwh.filebox.constants.AppConstants;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -17,53 +16,6 @@ import java.util.regex.Pattern;
  * 提供文件处理相关的常用工具方法，包括文件名安全处理、文件类型检测等功能
  */
 public class FileUtils {
-
-    /**
-     * 安全处理Unicode文件名
-     * 功能：移除路径组件、空字符、控制字符，替换斜杠，合并空白符，修剪点和空格，限制长度
-     * 用于确保文件名在存储和展示时的安全性和兼容性
-     *
-     * @param name 原始文件名
-     * @return 安全处理后的文件名
-     */
-    public static String safeUnicodeFilename(String name) {
-        if (name == null) name = "file";
-        // Basename
-        name = Paths.get(name).getFileName().toString();
-        // Remove nulls
-        name = name.replace("\0", "");
-        // Replace separators
-        name = name.replace("/", "_").replace("\\", "_");
-        // Collapse whitespace
-        name = name.trim().replaceAll("\\s+", " ");
-        // 安全处理：只移除纯点和空格组成的文件名，保留其他以点开头的合法文件名
-        // 但禁止纯点（.）或纯多点（..）作为文件名
-        if (name.equals(".") || name.equals("..") || name.matches("^\\.+$")) {
-            name = "file";
-        }
-        // 只移除结尾的空白字符，不移除点
-        name = name.replaceAll("\\s+$", "");
-        if (name.isEmpty()) name = "file";
-        // Normalize to NFC to keep Unicode sensible
-        name = Normalizer.normalize(name, Normalizer.Form.NFC);
-        // Limit length while preserving extension
-        int maxTotal = 200;
-        if (name.length() > maxTotal) {
-            int dot = name.lastIndexOf('.');
-            if (dot > 0) {
-                String ext = name.substring(dot);
-                int maxBase = maxTotal - ext.length();
-                name = name.substring(0, Math.min(name.length(), maxBase)) + ext;
-            } else {
-                name = name.substring(0, maxTotal);
-            }
-        }
-        // Remove control characters
-        name = name.replaceAll("[\\p{Cntrl}]", "");
-        // Final fallback
-        if (name.isEmpty()) name = "file";
-        return name;
-    }
 
     /**
      * 文件名合规校验 / Filename compliance check.

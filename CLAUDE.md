@@ -19,7 +19,39 @@ mvn test -Dtest=FileCatalogServiceTest   # run a single test class
 
 On first start, `ConfigValidationRunner` creates `./config`, `./data/default`, `./logs`, `./runtime/multipart-tmp`, and if `filebox.yml` is missing, generates a default config with a random admin password printed **once** to the log.
 
-There is exactly one test class (`FileCatalogServiceTest`, JUnit 5 + AssertJ).
+There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortTest`, JUnit 5 + AssertJ).
+
+## Release process
+
+Releases are created by `.github/workflows/release.yml`. Pushing a tag whose name starts with an uppercase `V` triggers the workflow; use full semantic versions such as `V2.1.0` (lowercase `v2.1.0` does not match).
+
+Every release has three version sources that **must match**:
+
+- Maven project version in `pom.xml`, for example `2.1.0`.
+- Git tag with an uppercase `V` prefix, for example `V2.1.0`.
+- Markdown release notes at `.github/release-notes/<tag>.md`, for example `.github/release-notes/V2.1.0.md`.
+
+The workflow validates the Maven version against the tag and requires the matching release-notes file to exist and be non-empty. It then runs `mvn -B -V package`, creates a GitHub Release named `File Box v<version>`, uses the Markdown file as the Release body, and uploads both the JAR and release tarball. Release notes are maintained manually in the repository; they are not generated from commits or PRs.
+
+Standard release preparation and publication:
+
+```bash
+# 1. Set the Maven version and write .github/release-notes/V<version>.md
+mvn versions:set -DnewVersion=2.1.0
+mvn versions:commit
+
+# 2. Verify and commit all release changes
+mvn package
+git add pom.xml .github/release-notes/V2.1.0.md
+git commit -m "chore: prepare release 2.1.0"
+git push origin main
+
+# 3. Create the tag only after the release commit is on main
+git tag -a V2.1.0 -m "Release 2.1.0"
+git push origin V2.1.0
+```
+
+Do not create or push a release tag before the version update and its matching notes file have been committed. For the next release, copy the previous notes only as a structure reference and describe actual changes; do not reuse stale release content.
 
 ## The two-config split (most important concept)
 

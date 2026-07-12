@@ -91,22 +91,6 @@ public class DateTimeFormatter {
     }
 
     /**
-     * 获取当前年份
-     * @return 年份字符串
-     */
-    public static String getCurrentYear() {
-        return formatYear(null);
-    }
-
-    /**
-     * 获取当前月份
-     * @return 月份字符串
-     */
-    public static String getCurrentMonth() {
-        return formatMonth(null);
-    }
-
-    /**
      * 获取当前时间戳
      * @return 时间戳字符串
      */
@@ -114,14 +98,4 @@ public class DateTimeFormatter {
         return formatTimestamp(null);
     }
 
-    /**
-     * 清除当前线程的格式化器（通常不需要手动调用）
-     * 仅在特殊场景下使用，如线程池回收线程时
-     */
-    public static void remove() {
-        YEAR_FORMATTER.remove();
-        MONTH_FORMATTER.remove();
-        TIMESTAMP_FORMATTER.remove();
-        FILETIME_FORMATTER.remove();
-    }
 }

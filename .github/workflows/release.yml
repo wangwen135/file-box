@@ -1,6 +1,6 @@
 # 发布流水线 / Release pipeline
-# 推送 V* 形式的 tag(如 V2.0)时触发:构建(jar + release.tar.gz)并发布 GitHub Release。
-# Triggered by pushing a V* tag (e.g. V2.0): builds the jar + release tarball and publishes a GitHub Release.
+# 推送 V* 形式的 tag(如 V2.1.0)时触发:校验版本、构建产物并按版本说明文件发布 GitHub Release。
+# Triggered by a V* tag (e.g. V2.1.0): validates the version, builds artifacts, and publishes release notes from the repository.
 name: Release
 
 on:
@@ -26,17 +26,31 @@ jobs:
           java-version: '8'
           cache: maven
 
-      - name: 构建(含测试)/ Build with Maven
-        run: mvn -B -V package
-
-      - name: 读取版本号并暂存产物 / Read version & stage artifacts
+      - name: 校验版本与发布说明 / Validate version and release notes
         id: ver
         run: |
           VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          TAG_VERSION="${GITHUB_REF_NAME#V}"
+          NOTES_FILE=".github/release-notes/${GITHUB_REF_NAME}.md"
+
+          if [ "$VERSION" != "$TAG_VERSION" ]; then
+            echo "Version mismatch: pom.xml=$VERSION, tag=$GITHUB_REF_NAME"
+            exit 1
+          fi
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "Missing or empty release notes: $NOTES_FILE"
+            exit 1
+          fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # tag V2.0 -> 显示名 v2.0,与既有 Release "v0.1.1" 的小写风格一致
-          # tag V2.0 -> display name v2.0, matching the lowercase style of existing "v0.1.1" releases
-          echo "display=v${GITHUB_REF_NAME#V}" >> "$GITHUB_OUTPUT"
+          echo "display=v$TAG_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: 构建(含测试)/ Build with Maven
+        run: mvn -B -V package
+
+      - name: 暂存产物 / Stage artifacts
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
           mkdir -p staging
           cp "target/file-box-${VERSION}.jar" staging/
           cp "target/file-box-${VERSION}-release.tar.gz" staging/
@@ -47,8 +61,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: File Box ${{ steps.ver.outputs.display }}
-          # 由 GitHub 根据 tag 间的提交/PR 自动生成发布说明 / auto-generate notes from commits/PRs since last release
-          generate_release_notes: true
+          body_path: .github/release-notes/${{ github.ref_name }}.md
           files: |
             staging/file-box-*.jar
             staging/file-box-*-release.tar.gz
