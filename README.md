@@ -168,4 +168,4 @@ file-box-<version>/
 
 本项目基于 [Apache License 2.0](LICENSE) 许可证发布，版权及附加声明请参阅 [NOTICE](NOTICE)。
 
-> 参考 XD 的 [**pasteboard.py**](https://github.com/wangwen135/file-box/blob/release/V0.1.1/references/pasteboard.py) 实现的文件共享和管理工具，使用 Java 重写并增强功能。
+> 参考 XD 的 [**pasteboard.py**](docs/references/pasteboard.py) 实现的文件共享和管理工具，使用 Java 重写并增强功能。
