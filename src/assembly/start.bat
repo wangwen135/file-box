@@ -23,15 +23,8 @@ if "%JAR_NAME%"=="" (
     exit /b 1
 )
 
-set "LOG_FILE=logs\out.log"
 if "%JAVA_OPTS%"=="" set "JAVA_OPTS=-Xmx384m -Xms128m"
-REM 默认生产 profile:关闭控制台日志(只写 logs\filebox.log),避免 out.log 重复捕获整份日志。
-REM Default prod profile: console logging off (file only), so out.log doesn't duplicate the full log.
-if "%SPRING_PROFILES_ACTIVE%"=="" set "SPRING_PROFILES_ACTIVE=prod"
 
-start "File Box Application" java %JAVA_OPTS% -jar "%JAR_NAME%" %* ^> "%LOG_FILE%" 2^>^&1
-
-echo File Box started.
-echo Jar: %JAR_NAME%
-echo Log: %LOG_FILE%
-pause
+REM 前台运行:单窗口,日志直接输出到控制台,关闭本窗口即停止程序。
+REM Foreground run: single window, logs go to the console, close this window to stop the app.
+java %JAVA_OPTS% -jar "%JAR_NAME%" %*

@@ -26,7 +26,9 @@ There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortT
 Logging is configured in `src/main/resources/logback-spring.xml` (no `logging.*` keys in `application.yml`). It always writes the rolling file `logs/filebox.log` (daily + 50MB, 30-day / 2GB cap); the **console appender is gated on the Spring profile**:
 
 - **Default (IDEA / `mvn spring-boot:run`)** — `prod` not active → console + file.
-- **Release package** — `start.sh` / `start.bat` set `SPRING_PROFILES_ACTIVE=prod` by default → console **off**, file only. This keeps the scripts' `> logs/out.log 2>&1` from duplicating the full log into `out.log`; with console off, `out.log` shrinks to a thin capture of the startup banner / native output. Override from the release package with `SPRING_PROFILES_ACTIVE=dev ./start.sh` to get the console back.
+- **Release package** — the two start scripts differ by OS convention:
+  - `start.sh` (Linux, server) — backgrounded with `nohup ... &`, sets `SPRING_PROFILES_ACTIVE=prod` and redirects stdout to `logs/out.log`. Console logging is off so `out.log` stays a thin capture of the banner / native output; the real log is `logs/filebox.log`. The script prints the PID for `kill`. Override with `SPRING_PROFILES_ACTIVE=dev ./start.sh` for console output.
+  - `start.bat` (Windows, desktop) — runs `java -jar` in the **foreground**: one window with console logging on, no `out.log`; close the window (or Ctrl+C) to stop. No `stop` script is shipped on either OS — Windows stops by closing the window, Linux by `kill`-ing the PID `start.sh` prints.
 
 The `prod` profile currently affects **only** logback (no `@Profile` beans, no `application-prod.yml`) — don't assume it otherwise changes runtime behavior.
 

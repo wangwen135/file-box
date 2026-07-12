@@ -6,7 +6,7 @@ file-box:
     share-notice-enabled: true
   storage-spaces:
   - name: default
-    path: ./uploads
+    path: ./data/default
     max-size: 1GB
     allow-anonymous: false
   - name: opt-data
@@ -23,6 +23,7 @@ file-box:
     allow-anonymous: false
   users:
   - username: admin
+#密码是：admin123 开发测试用，不会打进发布包
     password: $2a$10$xr50sWtX1iVBIjg.XIGjbOrl9CuUYBrJRc9k0BsfwrgtLNFDlo/4m
     role: ADMIN
     storage-spaces:
