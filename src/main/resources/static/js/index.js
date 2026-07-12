@@ -458,6 +458,17 @@
 
     // 粘贴处理
     document.addEventListener("paste", e => {
+        const target = e.target;
+        const isEditableTarget = target instanceof HTMLInputElement
+            || target instanceof HTMLTextAreaElement
+            || target.isContentEditable;
+
+        // 输入框使用浏览器原生粘贴；页面空白区域仍保留快捷粘贴上传。
+        // Let editable controls handle paste normally; keep quick-paste upload for the page background.
+        if (isEditableTarget && target !== textpaste) {
+            return;
+        }
+
         const items = (e.clipboardData || e.originalEvent?.clipboardData || window.clipboardData)?.items || [];
         let hasFiles = false;
 
@@ -549,9 +560,9 @@
         const file = files[0]; // 只处理第一个文件
         const filename = file.name || `pasted_${timestamp}.bin`;
         formData.append("file", file, filename);
-        // 目录视图上传到当前文件夹；其他情况上传到存储空间根目录。
-        if (typeof currentView !== 'undefined' && currentView === 'directory' && dirPath && dirPath.length > 0) {
-            formData.append("targetFolder", dirPath.join('/'));
+        // 目录视图始终显式提交当前路径（空字符串表示根目录）；时间线省略目录，由后端按年月归档。
+        if (typeof currentView !== 'undefined' && currentView === 'directory') {
+            formData.append("targetFolder", dirPath && dirPath.length > 0 ? dirPath.join('/') : '');
         }
 
         // 显示进度模态框
@@ -704,9 +715,9 @@
      */
     function uploadText(text) {
         const payload = {text: text};
-        // 目录视图:文本也进入当前文件夹(与文件上传一致) / Directory view: text also goes into current folder
-        if (typeof currentView !== 'undefined' && currentView === 'directory' && dirPath && dirPath.length > 0) {
-            payload.targetFolder = dirPath.join('/');
+        // 目录视图始终显式提交当前路径；时间线省略目录，由后端按年月归档。
+        if (typeof currentView !== 'undefined' && currentView === 'directory') {
+            payload.targetFolder = dirPath && dirPath.length > 0 ? dirPath.join('/') : '';
         }
         handleFetch("/upload_text", {
             method: "POST",

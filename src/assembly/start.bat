@@ -25,6 +25,6 @@ if "%JAR_NAME%"=="" (
 
 if "%JAVA_OPTS%"=="" set "JAVA_OPTS=-Xmx384m -Xms128m"
 
-REM 前台运行:单窗口,日志直接输出到控制台,关闭本窗口即停止程序。
 REM Foreground run: single window, logs go to the console, close this window to stop the app.
 java %JAVA_OPTS% -jar "%JAR_NAME%" %*
+pause

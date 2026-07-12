@@ -4,6 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,5 +65,23 @@ class FileBoxControllerSortTest {
 
         assertThat(files).extracting(m -> m.get("filename"))
                 .containsExactly("alpha.txt", "Beta.txt");
+    }
+
+    @Test
+    @DisplayName("未指定上传目录时按年月归档 / omitted upload target uses year and month")
+    void omittedUploadTargetUsesYearAndMonth() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.clear();
+        calendar.set(2026, Calendar.JULY, 12);
+
+        assertThat(FileBoxController.resolveUploadTargetFolder(null, calendar.getTime()))
+                .isEqualTo("2026/07");
+    }
+
+    @Test
+    @DisplayName("显式空目录仍表示存储空间根目录 / explicit empty target keeps storage root")
+    void explicitEmptyUploadTargetKeepsRoot() {
+        assertThat(FileBoxController.resolveUploadTargetFolder("", new Date()))
+                .isEmpty();
     }
 }

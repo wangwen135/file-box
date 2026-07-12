@@ -129,7 +129,9 @@ public class FileBoxController {
 
         String storageSpaceName = storageSpace.getName();
         String storageDir = storageSpace.getPath();
-        // 上传始终进入当前目录；未指定 targetFolder 时即存储空间根目录。
+        // 时间线未指定目录时按当前年月归档；目录视图会显式传入当前目录（根目录为空字符串）。
+        // Timeline uploads default to yyyy/MM; directory view explicitly sends its current path.
+        targetFolder = resolveUploadTargetFolder(targetFolder, new Date());
         Path uploadDir = resolveWithinStorage(request, targetFolder);
         if (uploadDir == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
@@ -220,8 +222,9 @@ public class FileBoxController {
         }
 
         String storageDir = storageSpace.getPath();
-        // 上传文本也进入当前目录；未指定 targetFolder 时即存储空间根目录。
+        // 与文件上传一致：未指定目录时按当前年月归档。
         String targetFolder = body.get("targetFolder") != null ? body.get("targetFolder").toString() : null;
+        targetFolder = resolveUploadTargetFolder(targetFolder, new Date());
         Path uploadDir = resolveWithinStorage(request, targetFolder);
         if (uploadDir == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
@@ -697,6 +700,17 @@ public class FileBoxController {
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "Path resolve");
         if (storageSpace == null) return null;
         return resolveWithin(Paths.get(storageSpace.getPath()), relPath);
+    }
+
+    /**
+     * 未提供上传目录时使用当前年月；显式空字符串表示存储空间根目录。
+     * Omitted target uses yyyy/MM; an explicit empty target means the storage root.
+     */
+    static String resolveUploadTargetFolder(String targetFolder, Date now) {
+        if (targetFolder != null) {
+            return targetFolder;
+        }
+        return DateTimeFormatter.formatYear(now) + "/" + DateTimeFormatter.formatMonth(now);
     }
 
     /**
