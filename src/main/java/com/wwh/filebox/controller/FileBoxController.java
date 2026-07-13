@@ -99,6 +99,21 @@ public class FileBoxController {
         return null;
     }
 
+    /**
+     * 匿名上传校验:匿名会话只有在"全局允许匿名上传"且"当前空间允许匿名上传"时才可上传;
+     * 非匿名用户不受限。仅隐藏前端 UI 不够,必须在服务端拦截。
+     * Anonymous-upload gate: an anonymous session may upload only when the global flag is on
+     * AND the current space allows anonymous upload; non-anonymous users are unaffected.
+     * Hiding the UI is not enough — the server must enforce this.
+     */
+    private boolean isAnonymousUploadAllowed(LoginSession session, StorageSpace space) {
+        if (session == null || !"anonymous".equals(session.getUsername())) {
+            return true;
+        }
+        return authService.isAnonymousUploadGloballyEnabled()
+                && space != null && space.isAllowAnonymousUpload();
+    }
+
     @PostMapping("/upload_file")
     @ResponseBody
     public ResponseEntity<String> uploadFile(HttpServletRequest request,
@@ -125,6 +140,11 @@ public class FileBoxController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("存储空间未找到");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无上传权限");
+        }
+
+        // 匿名用户上传需额外校验:全局开关 + 当前空间允许匿名上传 / extra gate for anonymous upload
+        if (!isAnonymousUploadAllowed(session, storageSpace)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("匿名上传未启用或该空间不允许匿名上传");
         }
 
         String storageSpaceName = storageSpace.getName();
@@ -219,6 +239,11 @@ public class FileBoxController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("存储空间未找到");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无上传权限");
+        }
+
+        // 匿名用户上传需额外校验:全局开关 + 当前空间允许匿名上传 / extra gate for anonymous upload
+        if (!isAnonymousUploadAllowed(session, storageSpace)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("匿名上传未启用或该空间不允许匿名上传");
         }
 
         String storageDir = storageSpace.getPath();

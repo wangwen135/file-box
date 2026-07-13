@@ -80,13 +80,13 @@ public class AuthService {
 
     public String loginAnonymous() {
         SystemConfig config = configService.getConfig();
-        if (config == null || !config.isAnonymousUploadEnabled() || config.getStorageSpaces() == null) {
+        if (config == null || !config.isAnonymousAccessEnabled() || config.getStorageSpaces() == null) {
             return null;
         }
 
         List<String> anonymousSpaces = new ArrayList<>();
         for (SystemConfig.StorageSpaceConfig space : config.getStorageSpaces()) {
-            if (space.isAllowAnonymous()) {
+            if (space.isAllowAnonymousAccess()) {
                 anonymousSpaces.add(space.getName());
             }
         }
@@ -99,6 +99,41 @@ public class AuthService {
         sessions.put(token, session);
         logger.info("Anonymous session created with {} storage space(s)", anonymousSpaces.size());
         return token;
+    }
+
+    /**
+     * 全局"允许匿名上传"开关,供上传端点校验只读匿名 / global "anonymous upload" flag for upload gating
+     */
+    public boolean isAnonymousUploadGloballyEnabled() {
+        SystemConfig config = configService.getConfig();
+        return config != null && config.isAnonymousUploadEnabled();
+    }
+
+    /**
+     * 该会话能否向其【当前】存储空间上传 —— 匿名需"全局开关 + 当前空间允许匿名上传",非匿名始终可上传。
+     * 供 /api/user 的 canUpload 字段使用,驱动上传区按当前空间动态显隐。
+     * Can this session upload to its CURRENT space — anonymous needs the global flag AND the
+     * current space allowing anonymous upload; non-anonymous can always upload. Drives the
+     * per-space show/hide of the upload area via /api/user.canUpload.
+     */
+    public boolean canAnonymousUploadToCurrent(LoginSession session) {
+        if (session == null || !"anonymous".equals(session.getUsername())) {
+            return true; // 非匿名用户不受限 / non-anonymous users are unrestricted
+        }
+        SystemConfig config = configService.getConfig();
+        if (config == null || !config.isAnonymousUploadEnabled() || config.getStorageSpaces() == null) {
+            return false;
+        }
+        String current = session.getCurrentStorageSpace();
+        if (current == null) {
+            return false;
+        }
+        for (SystemConfig.StorageSpaceConfig space : config.getStorageSpaces()) {
+            if (current.equals(space.getName())) {
+                return space.isAllowAnonymousUpload();
+            }
+        }
+        return false;
     }
 
     /**

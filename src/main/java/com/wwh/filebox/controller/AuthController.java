@@ -221,6 +221,9 @@ public class AuthController {
         userInfo.put("storageSpaces", session.getStorageSpaces());
         userInfo.put("currentStorageSpace", session.getCurrentStorageSpace());
         userInfo.put("isAnonymous", "anonymous".equals(session.getUsername()));
+        // 上传能力按"当前存储空间"动态判定:匿名需全局开关 + 当前空间允许匿名上传;非匿名始终可上传。
+        // 切换空间会刷新页面,从而按当前空间显隐上传区。/ per-current-space: switching reloads the page.
+        userInfo.put("canUpload", authService.canAnonymousUploadToCurrent(session));
         return ResponseEntity.ok(userInfo);
     }
 
@@ -322,19 +325,21 @@ public class AuthController {
     @ResponseBody
     public ResponseEntity<?> getAnonymousConfig() {
         SystemConfig config = configService.getConfig();
-        boolean anonymousEnabled = config != null && config.isAnonymousUploadEnabled();
+        boolean accessEnabled = config != null && config.isAnonymousAccessEnabled();
+        boolean uploadEnabled = config != null && config.isAnonymousUploadEnabled();
         boolean hasAnonymousStorage = false;
-        if (anonymousEnabled && config.getStorageSpaces() != null) {
+        if (accessEnabled && config.getStorageSpaces() != null) {
             for (SystemConfig.StorageSpaceConfig space : config.getStorageSpaces()) {
-                if (space.isAllowAnonymous()) {
+                if (space.isAllowAnonymousAccess()) {
                     hasAnonymousStorage = true;
                     break;
                 }
             }
         }
         Map<String, Object> configInfo = new HashMap<>();
-        configInfo.put("enabled", anonymousEnabled && hasAnonymousStorage);
-        configInfo.put("anonymous-upload-enabled", anonymousEnabled);
+        configInfo.put("enabled", accessEnabled && hasAnonymousStorage);
+        configInfo.put("anonymous-access-enabled", accessEnabled);
+        configInfo.put("anonymous-upload-enabled", uploadEnabled);
         configInfo.put("hasAnonymousStorage", hasAnonymousStorage);
         configInfo.put("configExists", configService.configExists());
         return ResponseEntity.ok(configInfo);

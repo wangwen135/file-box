@@ -266,7 +266,7 @@ hr{border:none;border-top:1px solid var(--border-color);margin:30px 0}
         <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-history"/></svg>两种浏览视图</div><p>按时间的「时间线视图」与按目录的「目录视图」自由切换。</p></div>
         <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-db"/></svg>多存储空间</div><p>把不同用途的文件分到不同空间，互不干扰。</p></div>
         <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-users"/></svg>用户与权限</div><p>管理员 / 管理者 / 普通用户三种角色，权限清晰。</p></div>
-        <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-user"/></svg>匿名访问</div><p>可开放给未登录用户上传、浏览指定空间。</p></div>
+        <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-user"/></svg>匿名访问</div><p>可开放给未登录用户浏览指定空间，并可单独允许匿名上传。</p></div>
         <div class="feature-card"><div class="head"><svg class="ico"><use href="#i-admin"/></svg>Web 管理后台</div><p>在浏览器里管理用户、存储空间和系统设置。</p></div>
       </div>
     </section>
@@ -314,7 +314,8 @@ hr{border:none;border-top:1px solid var(--border-color);margin:30px 0}
       <div class="callout callout-warn"><svg class="ico"><use href="#i-alert"/></svg><div><strong>登录安全</strong>连续 <strong>5 次</strong>密码错误后，该账号会被临时锁定 <strong>15 分钟</strong>，期间无法登录。密码长度至少为 <strong>6 位</strong>。</div></div>
 
       <h3>匿名访问</h3>
-      <p>如果管理员开启了匿名访问功能，登录页会出现「<strong>匿名访问</strong>」按钮。点击即可<strong>无需账号密码</strong>进入，以匿名身份浏览和上传<strong>允许匿名的存储空间</strong>。匿名身份不能删除文件、不能管理文件夹、也不能进入管理后台。</p>
+      <p>管理员可以在后台分别开启「<strong>启用匿名访问</strong>」（浏览）和「<strong>允许匿名上传</strong>」两个开关。开启匿名访问后，登录页会出现「<strong>匿名访问</strong>」按钮，点击即可<strong>无需账号密码</strong>进入，以匿名身份浏览<strong>允许匿名访问的存储空间</strong>。</p>
+      <p>是否允许上传取决于「允许匿名上传」开关：<strong>只开访问、不开上传</strong>时为只读模式——页面上的文件上传区、文本上传区都会隐藏，也无法粘贴上传；两个开关都开启时，匿名用户才能在「允许匿名上传」的空间里上传文件。匿名身份始终不能删除文件、不能管理文件夹、不能进入管理后台，也看不到「局域网访问地址」提示。</p>
 
       <h3>修改自己的密码</h3>
       <ol class="steps">
@@ -360,7 +361,7 @@ hr{border:none;border-top:1px solid var(--border-color);margin:30px 0}
       <p>页面左上角的<strong>存储空间切换器</strong>会列出你有权访问的所有空间（当你只有一个空间时，它只显示当前空间名）。点击切换后，页面会刷新到对应空间的文件列表。<strong>管理员</strong>自动拥有全部空间；普通用户和匿名用户只能看到被分配 / 允许的空间。</p>
 
       <h3>匿名访问空间</h3>
-      <p>要让匿名用户能使用某个空间，需要<strong>同时满足两个条件</strong>：管理员在系统设置里开启了「匿名访问」，并且该存储空间被勾选了「允许匿名访问」。匿名登录后只能看到这类空间。</p>
+      <p>每个存储空间可以单独勾选「<strong>匿名访问</strong>」（允许浏览）和「<strong>匿名上传</strong>」（允许上传，勾选后会自动勾选匿名访问）。要让匿名用户能浏览某个空间，需要<strong>同时</strong>：系统设置开启了「启用匿名访问」，且该空间勾选了「匿名访问」；要允许上传，还需开启系统「允许匿名上传」且该空间勾选「匿名上传」。匿名登录后只能看到允许匿名访问的空间。</p>
       <div class="callout callout-note"><svg class="ico"><use href="#i-info"/></svg><div><strong>容量</strong>每个空间都有自己的容量上限（由管理员设置）。空间快满时上传会失败，请联系管理员扩容或清理文件。</div></div>
     </section>
 
@@ -464,16 +465,17 @@ hr{border:none;border-top:1px solid var(--border-color);margin:30px 0}
       <div class="callout callout-tip"><svg class="ico"><use href="#i-bulb"/></svg><div><strong>关于 ADMIN</strong>管理员会自动拥有<strong>全部</strong>存储空间的访问权限，无需逐个分配。新建存储空间时也会自动授权给所有管理员。</div></div>
 
       <h3><svg class="ico" style="color:var(--primary)"><use href="#i-db"/></svg> 存储空间管理</h3>
-      <p>管理各个存储空间，每个空间可设置名称、磁盘路径、容量上限、是否允许匿名访问：</p>
+      <p>管理各个存储空间，每个空间可设置名称、磁盘路径、容量上限，以及「匿名访问」「匿名上传」两个开关：</p>
       <ul class="feature-list">
-        <li><svg class="ico"><use href="#i-db"/></svg><strong>新建空间</strong>：指定名称（支持中文、字母、数字、下划线、短横线）、物理路径、容量、匿名开关。</li>
+        <li><svg class="ico"><use href="#i-db"/></svg><strong>新建空间</strong>：指定名称（支持中文、字母、数字、下划线、短横线）、物理路径、容量，以及「匿名访问」「匿名上传」开关（勾选「匿名上传」会自动勾选「匿名访问」）。</li>
         <li><svg class="ico"><use href="#i-trash"/></svg><strong>删除空间</strong>：只会<strong>移除配置</strong>，不会删除磁盘上的实际文件。</li>
       </ul>
 
       <h3><svg class="ico" style="color:var(--primary)"><use href="#i-admin"/></svg> 系统设置</h3>
       <ul class="feature-list">
         <li><svg class="ico"><use href="#i-info"/></svg><strong>分享提示</strong>：开启后，上传页左上角会显示一个可复制的局域网访问地址，方便分享给别人。</li>
-        <li><svg class="ico"><use href="#i-user"/></svg><strong>匿名访问</strong>：全局开关；开启后还需至少一个存储空间单独勾选「允许匿名访问」，匿名用户才能真正进入。</li>
+        <li><svg class="ico"><use href="#i-user"/></svg><strong>启用匿名访问</strong>：匿名浏览的总开关；开启后还需至少一个存储空间勾选「匿名访问」，匿名用户才能真正进入。</li>
+        <li><svg class="ico"><use href="#i-upload"/></svg><strong>允许匿名上传</strong>：额外允许匿名上传；开启时会自动开启「启用匿名访问」，关闭访问时此项也会一并关闭。</li>
       </ul>
       <div class="callout callout-note"><svg class="ico"><use href="#i-info"/></svg><div><strong>即时生效</strong>管理后台的保存操作会立刻写入配置并生效，无需重启程序。</div></div>
     </section>

@@ -12,12 +12,14 @@ public class StorageSpace {
     private String path;
     private String maxSizeStr; // String representation like "10GB"
     private long maxSize; // in bytes
-    private boolean allowAnonymous;
+    private boolean allowAnonymousAccess;   // 匿名访问(浏览) / anonymous access (browse)
+    private boolean allowAnonymousUpload;   // 匿名上传(蕴含访问) / anonymous upload (implies access)
 
     public StorageSpace() {
         this.maxSize = 10L * 1024 * 1024 * 1024; // Default 10GB
         this.maxSizeStr = "10GB";
-        this.allowAnonymous = false;
+        this.allowAnonymousAccess = false;
+        this.allowAnonymousUpload = false;
     }
 
     public String getName() {
@@ -90,12 +92,20 @@ public class StorageSpace {
         }
     }
 
-    public boolean isAllowAnonymous() {
-        return allowAnonymous;
+    public boolean isAllowAnonymousAccess() {
+        return allowAnonymousAccess;
     }
 
-    public void setAllowAnonymous(boolean allowAnonymous) {
-        this.allowAnonymous = allowAnonymous;
+    public void setAllowAnonymousAccess(boolean allowAnonymousAccess) {
+        this.allowAnonymousAccess = allowAnonymousAccess;
+    }
+
+    public boolean isAllowAnonymousUpload() {
+        return allowAnonymousUpload;
+    }
+
+    public void setAllowAnonymousUpload(boolean allowAnonymousUpload) {
+        this.allowAnonymousUpload = allowAnonymousUpload;
     }
 
     public File getStorageDirectory() {

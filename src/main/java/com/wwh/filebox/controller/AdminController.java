@@ -123,7 +123,8 @@ public class AdminController {
             spaceMap.put("path", space.getPath());
             spaceMap.put("maxSize", space.getFormattedMaxSize());
             spaceMap.put("maxSizeBytes", space.getMaxSizeInBytes());
-            spaceMap.put("allowAnonymous", space.isAllowAnonymous());
+            spaceMap.put("allowAnonymousAccess", space.isAllowAnonymousAccess());
+            spaceMap.put("allowAnonymousUpload", space.isAllowAnonymousUpload());
 
             StorageStats stats = storageService.getStorageStats(space.getName());
             if (stats != null) {
@@ -148,11 +149,12 @@ public class AdminController {
         String name = (String) request.get("name");
         String path = (String) request.get("path");
         String maxSize = (String) request.get("maxSize");
-        Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
+        Boolean allowAnonymousAccess = request.get("allowAnonymousAccess") != null ? (Boolean) request.get("allowAnonymousAccess") : false;
+        Boolean allowAnonymousUpload = request.get("allowAnonymousUpload") != null ? (Boolean) request.get("allowAnonymousUpload") : false;
 
         Map<String, Object> response = new HashMap<>();
         try {
-            boolean success = storageService.createStorageSpace(name, path, maxSize, allowAnonymous);
+            boolean success = storageService.createStorageSpace(name, path, maxSize, allowAnonymousAccess, allowAnonymousUpload);
             response.put("success", success);
             if (!success) {
                 response.put("error", "创建存储空间失败：名称不合规或已存在");
@@ -175,11 +177,12 @@ public class AdminController {
             @RequestBody Map<String, Object> request) {
         String path = (String) request.get("path");
         String maxSize = (String) request.get("maxSize");
-        Boolean allowAnonymous = request.get("allowAnonymous") != null ? (Boolean) request.get("allowAnonymous") : false;
+        Boolean allowAnonymousAccess = request.get("allowAnonymousAccess") != null ? (Boolean) request.get("allowAnonymousAccess") : false;
+        Boolean allowAnonymousUpload = request.get("allowAnonymousUpload") != null ? (Boolean) request.get("allowAnonymousUpload") : false;
 
         Map<String, Object> response = new HashMap<>();
         try {
-            boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymous);
+            boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymousAccess, allowAnonymousUpload);
             response.put("success", success);
             if (!success) {
                 response.put("error", "更新存储空间失败：名称不存在或路径无效");
@@ -360,7 +363,8 @@ public class AdminController {
         response.put("name", space.getName());
         response.put("path", space.getPath());
         response.put("maxSize", space.getFormattedMaxSize());
-        response.put("allowAnonymous", space.isAllowAnonymous());
+        response.put("allowAnonymousAccess", space.isAllowAnonymousAccess());
+        response.put("allowAnonymousUpload", space.isAllowAnonymousUpload());
 
         return ResponseEntity.ok(response);
     }
@@ -396,25 +400,45 @@ public class AdminController {
      */
     @PutMapping("/anonymous")
     public ResponseEntity<Map<String, Object>> updateAnonymous(@RequestBody Map<String, Object> request) {
-        Boolean enabled = (Boolean) request.get("enabled");
-        // 兼容旧版管理页提交的字段；新版统一使用 enabled。
-        if (enabled == null) {
-            enabled = (Boolean) request.get("anonymous-upload-enabled");
-        }
-
         SystemConfig config = configService.getConfig();
         if (config == null) {
             config = new SystemConfig();
         }
 
-        if (enabled != null) {
-            config.setAnonymousUploadEnabled(enabled);
+        // 两个新字段:访问总开关 + 上传开关;兼容旧版单字段 enabled(视作同时设置两者)
+        // Two new fields (access gate + upload); legacy single "enabled" sets both.
+        Boolean accessEnabled = (Boolean) request.get("anonymousAccessEnabled");
+        Boolean uploadEnabled = (Boolean) request.get("anonymousUploadEnabled");
+        if (accessEnabled == null && uploadEnabled == null) {
+            Boolean legacy = (Boolean) request.get("enabled");
+            if (legacy == null) {
+                legacy = (Boolean) request.get("anonymous-upload-enabled");
+            }
+            if (legacy != null) {
+                accessEnabled = legacy;
+                uploadEnabled = legacy;
+            }
+        }
+        if (accessEnabled != null) {
+            config.setAnonymousAccessEnabled(accessEnabled);
+        }
+        if (uploadEnabled != null) {
+            config.setAnonymousUploadEnabled(uploadEnabled);
+        }
+        // 强制 upload ⇒ access / enforce upload implies access
+        if (config.isAnonymousUploadEnabled() && !config.isAnonymousAccessEnabled()) {
+            config.setAnonymousAccessEnabled(true);
+        }
+        if (!config.isAnonymousAccessEnabled()) {
+            config.setAnonymousUploadEnabled(false);
         }
 
         configService.saveConfig(config);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
+        response.put("anonymousAccessEnabled", config.isAnonymousAccessEnabled());
+        response.put("anonymousUploadEnabled", config.isAnonymousUploadEnabled());
 
         return ResponseEntity.ok(response);
     }

@@ -69,7 +69,7 @@ Do not create or push a release tag before the version update and its matching n
 There are two independent configuration systems — do not confuse them:
 
 - **`src/main/resources/application.yml`** — Spring Boot config (port, multipart limits, multipart temp dir). Packaged inside the jar. Overridable at runtime via `config/application.yml` (git-ignored). Never put users/storage here.
-- **`config/filebox.yml`** — **business config**: system name, anonymous-upload toggle, storage spaces, and users (passwords stored as BCrypt hashes). This is **not** loaded by Spring; it is read manually with SnakeYAML by `FileBoxConfigStore` and exposed via `ConfigService`. It **is** committed (dev sync) and contains real dev password hashes.
+- **`config/filebox.yml`** — **business config**: system name, anonymous-access/anonymous-upload toggles, storage spaces, and users (passwords stored as BCrypt hashes). This is **not** loaded by Spring; it is read manually with SnakeYAML by `FileBoxConfigStore` and exposed via `ConfigService`. It **is** committed (dev sync) and contains real dev password hashes.
 
 `ConfigService.getConfig()` checks the file's mtime on every call and reloads when it changes — so editing `config/filebox.yml` is picked up live, and `AdminController` writes persist through `ConfigService.saveConfig()` (atomic temp-file + move, with a `.bak` of the previous version). YAML keys are written kebab-case but both kebab-case and camelCase are accepted on read.
 
@@ -90,9 +90,9 @@ There is **no Spring Security**. The `spring-security-crypto` dependency is used
 
 ## Storage spaces are the multi-tenancy unit
 
-A **storage space** = a named physical directory with a max size and an anonymous flag, defined in `filebox.yml`. Users are each granted a subset; **ADMIN users automatically get all spaces** (enforced at login in `AuthService.getStorageSpacesForUser`, and new spaces are auto-assigned to admins in `StorageService.createStorageSpace`).
+A **storage space** = a named physical directory with a max size and per-space anonymous access/upload flags, defined in `filebox.yml`. Users are each granted a subset; **ADMIN users automatically get all spaces** (enforced at login in `AuthService.getStorageSpacesForUser`, and new spaces are auto-assigned to admins in `StorageService.createStorageSpace`).
 
-Each session tracks a **current storage space** (`LoginSession.currentStorageSpace`), switchable via `POST /api/auth/switch-storage`. Nearly every file endpoint operates implicitly on the *current* space of the caller's session, validated through `FileBoxController.validateAndGetStorageSpace` (existence + per-user permission). Anonymous access is a separate login path (`/api/auth/anonymous-login`) that yields a `USER`-role session scoped to spaces with `allow-anonymous: true`.
+Each session tracks a **current storage space** (`LoginSession.currentStorageSpace`), switchable via `POST /api/auth/switch-storage`. Nearly every file endpoint operates implicitly on the *current* space of the caller's session, validated through `FileBoxController.validateAndGetStorageSpace` (existence + per-user permission). Anonymous access is a separate login path (`/api/auth/anonymous-login`) that yields a `USER`-role session scoped to spaces with `allow-anonymous-access: true`. Anonymous **upload** is gated separately — it needs the system `anonymous-upload-enabled` toggle **and** the per-space `allow-anonymous-upload` flag; otherwise the session is view-only and `/upload_file`/`/upload_text` return 403 (enforced in `FileBoxController.isAnonymousUploadAllowed`). At both system and per-space level, upload implies access (turning upload on forces access on; the admin toggle endpoint and `StorageService` both enforce this). The config store migrates the legacy single `anonymous`/`allow-anonymous` flags to the split pair on read (both inherit the old value), preserving prior behavior.
 
 ## Files are the source of truth; the catalog is derived
 

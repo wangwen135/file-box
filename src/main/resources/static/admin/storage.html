@@ -74,7 +74,7 @@
                     <div>路径</div>
                     <div>容量限制</div>
                     <div>使用情况</div>
-                    <div>匿名上传</div>
+                    <div>匿名</div>
                     <div>操作</div>
                 </div>
             </div>
@@ -111,9 +111,13 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="allowAnonymous">
-                            允许匿名访问
+                        <label class="checkbox-label" style="display:block;">
+                            <input type="checkbox" id="allowAnonymousAccess" onchange="onAnonChange()">
+                            匿名访问（允许匿名浏览此空间）
+                        </label>
+                        <label class="checkbox-label" style="display:block;margin-top:10px;">
+                            <input type="checkbox" id="allowAnonymousUpload" onchange="onAnonChange()">
+                            匿名上传（勾选后会自动勾选“匿名访问”）
                         </label>
                     </div>
                 </div>
@@ -163,9 +167,11 @@
                             <span class="progress-text">加载中...</span>
                         </div>
                         <div class="anon-cell">
-                            ${space.allowAnonymous
-                                ? '<span class="anon-badge anon-on" title="已启用匿名上传"><svg class="ico anon-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-globe"/></svg>已开启</span>'
-                                : '<span class="anon-badge anon-off">未开启</span>'}
+                            ${(!space.allowAnonymousAccess && !space.allowAnonymousUpload)
+                                ? '<span class="anon-badge anon-off">未开启</span>'
+                                : (space.allowAnonymousUpload
+                                    ? '<span class="anon-badge anon-on" title="匿名浏览+上传"><svg class="ico anon-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-globe"/></svg>可上传</span>'
+                                    : '<span class="anon-badge anon-on" title="仅匿名浏览"><svg class="ico anon-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-globe"/></svg>仅浏览</span>')}
                         </div>
                         <div class="row-actions">
                             <button onclick="editStorage('${space.name}')" class="btn btn-sm btn-secondary">编辑</button>
@@ -230,7 +236,8 @@
                     document.getElementById('storageSize').value = parseInt(data.maxSize) || 10;
                     const unit = data.maxSize.match(/[A-Z]+/)?.[0] || 'GB';
                     document.getElementById('storageUnit').value = unit;
-                    document.getElementById('allowAnonymous').checked = data.allowAnonymous || false;
+                    document.getElementById('allowAnonymousAccess').checked = data.allowAnonymousAccess || false;
+                    document.getElementById('allowAnonymousUpload').checked = data.allowAnonymousUpload || false;
                 });
             document.getElementById('storageModal').classList.add('show');
         }
@@ -239,19 +246,29 @@
             document.getElementById('storageModal').classList.remove('show');
         }
 
+        // 匿名勾选联动:勾选上传→自动勾选访问;取消访问→自动取消上传 / link the two checkboxes (upload implies access)
+        function onAnonChange() {
+            const access = document.getElementById('allowAnonymousAccess');
+            const upload = document.getElementById('allowAnonymousUpload');
+            if (upload.checked) access.checked = true;     // 勾上传→勾访问
+            if (!access.checked) upload.checked = false;   // 取消访问→取消上传
+        }
+
         async function saveStorage(event) {
             event.preventDefault();
             const name = document.getElementById('storageName').value;
             const path = document.getElementById('storagePath').value;
             const size = document.getElementById('storageSize').value;
             const unit = document.getElementById('storageUnit').value;
-            const allowAnonymous = document.getElementById('allowAnonymous').checked;
+            const allowAnonymousAccess = document.getElementById('allowAnonymousAccess').checked;
+            const allowAnonymousUpload = document.getElementById('allowAnonymousUpload').checked;
 
             const data = {
                 name,
                 path,
                 maxSize: size + unit,
-                allowAnonymous
+                allowAnonymousAccess,
+                allowAnonymousUpload
             };
 
             try {

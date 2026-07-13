@@ -56,8 +56,8 @@ public class StorageService {
                     StorageSpace space = new StorageSpace();
                     space.setName(spaceConfig.getName());
                     space.setPath(spaceConfig.getPath());
-                    space.setMaxSize(spaceConfig.getMaxSize());
-                    space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
+                    space.setAllowAnonymousAccess(spaceConfig.isAllowAnonymousAccess());
+                    space.setAllowAnonymousUpload(spaceConfig.isAllowAnonymousUpload());
                     return space;
                 })
                 .collect(java.util.stream.Collectors.toList());
@@ -78,7 +78,8 @@ public class StorageService {
                 space.setName(spaceConfig.getName());
                 space.setPath(spaceConfig.getPath());
                 space.setMaxSize(spaceConfig.getMaxSize());
-                space.setAllowAnonymous(spaceConfig.isAllowAnonymous());
+                space.setAllowAnonymousAccess(spaceConfig.isAllowAnonymousAccess());
+                space.setAllowAnonymousUpload(spaceConfig.isAllowAnonymousUpload());
                 return space;
             }
         }
@@ -124,7 +125,7 @@ public class StorageService {
     /**
      * Create storage space
      */
-    public boolean createStorageSpace(String name, String path, String maxSize, boolean allowAnonymous) {
+    public boolean createStorageSpace(String name, String path, String maxSize, boolean allowAnonymousAccess, boolean allowAnonymousUpload) {
         SystemConfig config = configService.getConfig();
         if (config == null) {
             return false;
@@ -153,7 +154,9 @@ public class StorageService {
         spaceConfig.setName(name);
         spaceConfig.setPath(path);
         spaceConfig.setMaxSize(maxSize);
-        spaceConfig.setAllowAnonymous(allowAnonymous);
+        // 上传蕴含访问 / upload implies access
+        spaceConfig.setAllowAnonymousAccess(allowAnonymousAccess || allowAnonymousUpload);
+        spaceConfig.setAllowAnonymousUpload(allowAnonymousUpload);
 
         if (config.getStorageSpaces() == null) {
             config.setStorageSpaces(new ArrayList<>());
@@ -179,7 +182,7 @@ public class StorageService {
     /**
      * Update storage space
      */
-    public boolean updateStorageSpace(String name, String path, String maxSize, boolean allowAnonymous) {
+    public boolean updateStorageSpace(String name, String path, String maxSize, boolean allowAnonymousAccess, boolean allowAnonymousUpload) {
         SystemConfig config = configService.getConfig();
         if (config == null || config.getStorageSpaces() == null) {
             return false;
@@ -196,7 +199,9 @@ public class StorageService {
             if (spaceConfig.getName().equals(name)) {
                 spaceConfig.setPath(path);
                 spaceConfig.setMaxSize(maxSize);
-                spaceConfig.setAllowAnonymous(allowAnonymous);
+                // 上传蕴含访问 / upload implies access
+                spaceConfig.setAllowAnonymousAccess(allowAnonymousAccess || allowAnonymousUpload);
+                spaceConfig.setAllowAnonymousUpload(allowAnonymousUpload);
 
                 configService.saveConfig(config);
                 logger.info("Storage space {} updated", name);

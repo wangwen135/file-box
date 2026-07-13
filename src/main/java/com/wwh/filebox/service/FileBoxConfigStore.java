@@ -180,7 +180,8 @@ public class FileBoxConfigStore {
         defaultSpace.setName("default");
         defaultSpace.setPath("./data/default");
         defaultSpace.setMaxSize("10GB");
-        defaultSpace.setAllowAnonymous(false);
+        defaultSpace.setAllowAnonymousAccess(false);
+        defaultSpace.setAllowAnonymousUpload(false);
         config.setStorageSpaces(new ArrayList<SystemConfig.StorageSpaceConfig>(Arrays.asList(defaultSpace)));
 
         SystemConfig.UserConfig adminUser = new SystemConfig.UserConfig();
@@ -211,6 +212,13 @@ public class FileBoxConfigStore {
             if (anonymousUploadEnabled != null) {
                 config.setAnonymousUploadEnabled(Boolean.parseBoolean(String.valueOf(anonymousUploadEnabled)));
             }
+            // 匿名访问总开关;缺省时回退到上传开关旧值(旧配置里访问+上传是绑定的) / access gate; fall back to upload flag for legacy configs
+            Object anonymousAccessEnabled = firstPresent(system, "anonymous-access-enabled", "anonymousAccessEnabled");
+            if (anonymousAccessEnabled != null) {
+                config.setAnonymousAccessEnabled(Boolean.parseBoolean(String.valueOf(anonymousAccessEnabled)));
+            } else {
+                config.setAnonymousAccessEnabled(config.isAnonymousUploadEnabled());
+            }
             Object shareNoticeEnabled = firstPresent(system, "share-notice-enabled", "shareNoticeEnabled");
             if (shareNoticeEnabled != null) {
                 config.setShareNoticeEnabled(Boolean.parseBoolean(String.valueOf(shareNoticeEnabled)));
@@ -230,8 +238,15 @@ public class FileBoxConfigStore {
                 space.setName(stringValue(map.get("name")));
                 space.setPath(stringValue(map.get("path")));
                 space.setMaxSize(stringValue(firstPresent(map, "max-size", "maxSize")));
-                Object allowAnonymous = firstPresent(map, "allow-anonymous", "allowAnonymous");
-                space.setAllowAnonymous(allowAnonymous != null && Boolean.parseBoolean(String.valueOf(allowAnonymous)));
+                // 优先读两个新键;缺省则回退旧单键 allow-anonymous(旧值同时表示访问+上传) / prefer the two new keys, fall back to legacy single flag
+                Object legacyAnon = firstPresent(map, "allow-anonymous", "allowAnonymous");
+                Object allowAccess = firstPresent(map, "allow-anonymous-access", "allowAnonymousAccess");
+                Object allowUpload = firstPresent(map, "allow-anonymous-upload", "allowAnonymousUpload");
+                boolean legacyVal = legacyAnon != null && Boolean.parseBoolean(String.valueOf(legacyAnon));
+                boolean access = allowAccess != null ? Boolean.parseBoolean(String.valueOf(allowAccess)) : legacyVal;
+                boolean upload = allowUpload != null ? Boolean.parseBoolean(String.valueOf(allowUpload)) : legacyVal;
+                space.setAllowAnonymousAccess(access || upload); // 上传蕴含访问 / upload implies access
+                space.setAllowAnonymousUpload(upload);
                 spaces.add(space);
             }
         }
@@ -264,10 +279,11 @@ public class FileBoxConfigStore {
         root.put("file-box", fileBox);
 
         Map<String, Object> anonymous = new LinkedHashMap<String, Object>();
-        anonymous.put("enabled", config.isAnonymousUploadEnabled());
+        anonymous.put("enabled", config.isAnonymousAccessEnabled()); // 旧版兼容:匿名是否可用的总开关 / legacy: anonymous availability gate
         fileBox.put("anonymous", anonymous);
 
         Map<String, Object> system = new LinkedHashMap<String, Object>();
+        system.put("anonymous-access-enabled", config.isAnonymousAccessEnabled());
         system.put("anonymous-upload-enabled", config.isAnonymousUploadEnabled());
         system.put("share-notice-enabled", config.isShareNoticeEnabled());
         if (config.getAllowedOrigins() != null && !config.getAllowedOrigins().trim().isEmpty()) {
@@ -282,7 +298,8 @@ public class FileBoxConfigStore {
                 map.put("name", space.getName());
                 map.put("path", space.getPath());
                 map.put("max-size", space.getMaxSize());
-                map.put("allow-anonymous", space.isAllowAnonymous());
+                map.put("allow-anonymous-access", space.isAllowAnonymousAccess());
+                map.put("allow-anonymous-upload", space.isAllowAnonymousUpload());
                 spaces.add(map);
             }
         }

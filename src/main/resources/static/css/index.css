@@ -1152,6 +1152,7 @@ a:hover {
     width: 100%; box-sizing: border-box; padding: 10px 14px;
     border: 1px solid #e9ecef; border-radius: 8px;
     background: #fff; color: var(--dark-text);
+    text-align: left; /* 覆盖全局 a{text-align:center},让文件名靠左挨着图标 / override global a centering so filename sits left by the icon */
     transition: background .15s, border-color .15s;
 }
 #recent .file-row:hover,

@@ -10,6 +10,8 @@ import java.util.List;
 public class SystemConfig {
 
     private boolean anonymousUploadEnabled;
+    // 匿名访问总开关:能否匿名登录并浏览 / anonymous access gate: can anonymous log in & browse
+    private boolean anonymousAccessEnabled;
     private boolean shareNoticeEnabled = true;
     private String allowedOrigins;
 
@@ -22,6 +24,14 @@ public class SystemConfig {
 
     public void setAnonymousUploadEnabled(boolean anonymousUploadEnabled) {
         this.anonymousUploadEnabled = anonymousUploadEnabled;
+    }
+
+    public boolean isAnonymousAccessEnabled() {
+        return anonymousAccessEnabled;
+    }
+
+    public void setAnonymousAccessEnabled(boolean anonymousAccessEnabled) {
+        this.anonymousAccessEnabled = anonymousAccessEnabled;
     }
 
     public boolean isShareNoticeEnabled() {
@@ -60,7 +70,8 @@ public class SystemConfig {
         private String name;
         private String path;
         private String maxSize;
-        private boolean allowAnonymous;
+        private boolean allowAnonymousAccess;   // 匿名访问(浏览) / anonymous access (browse)
+        private boolean allowAnonymousUpload;   // 匿名上传(蕴含访问) / anonymous upload (implies access)
 
         public String getName() {
             return name;
@@ -86,12 +97,20 @@ public class SystemConfig {
             this.maxSize = maxSize;
         }
 
-        public boolean isAllowAnonymous() {
-            return allowAnonymous;
+        public boolean isAllowAnonymousAccess() {
+            return allowAnonymousAccess;
         }
 
-        public void setAllowAnonymous(boolean allowAnonymous) {
-            this.allowAnonymous = allowAnonymous;
+        public void setAllowAnonymousAccess(boolean allowAnonymousAccess) {
+            this.allowAnonymousAccess = allowAnonymousAccess;
+        }
+
+        public boolean isAllowAnonymousUpload() {
+            return allowAnonymousUpload;
+        }
+
+        public void setAllowAnonymousUpload(boolean allowAnonymousUpload) {
+            this.allowAnonymousUpload = allowAnonymousUpload;
         }
     }
 

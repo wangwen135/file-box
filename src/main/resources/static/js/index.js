@@ -142,6 +142,7 @@
             if (!data) return;
             window.currentRole = data.role;
             window.isAnonymous = data.isAnonymous || false;
+            window.canUpload = data.canUpload !== false; // 只读匿名为 false → 隐藏上传区
             window.currentStorageSpace = data.currentStorageSpace || data.groupName || '';
             currentUsername = data.username || '';
 
@@ -165,6 +166,18 @@
                 document.getElementById('changePwdEntry').style.display = 'none';
                 document.getElementById('logoutEntry').style.display = 'none';
                 document.getElementById('loginEntry').style.display = '';
+            }
+            // 不能上传(只读匿名)→ 隐藏上传区与文本区;匿名用户始终隐藏"局域网访问地址"提示
+            // view-only anonymous hides the upload/text areas; anonymous always hides the LAN-address notice
+            if (window.canUpload === false) {
+                ['dropzone', 'textpaste', 'sendText', 'uploadDivider'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+            }
+            if (window.isAnonymous) {
+                const sn = document.getElementById('shareNotice');
+                if (sn) sn.classList.add('hidden');
             }
             if (data.role === 'admin') {
                 userInfoElement.classList.add('admin');
@@ -459,6 +472,7 @@
 
     // 粘贴处理
     document.addEventListener("paste", e => {
+        if (window.canUpload === false) return; // 只读匿名不允许粘贴上传 / view-only anonymous cannot paste-upload
         const target = e.target;
         const isEditableTarget = target instanceof HTMLInputElement
             || target instanceof HTMLTextAreaElement
@@ -526,6 +540,7 @@
     });
 
     sendTextBtn.addEventListener("click", () => {
+        if (window.canUpload === false) return; // 只读匿名不允许上传 / view-only anonymous cannot upload
         const txt = textpaste.value.trim();
         if (!txt) return Notify.warning("请输入一些文本");
         uploadText(txt);
@@ -548,6 +563,7 @@
      * @param {FileList} files - 文件列表
      */
     function handleFiles(files) {
+        if (window.canUpload === false) return; // 只读匿名不允许上传 / view-only anonymous cannot upload
         // 只处理第一个文件
         if (files.length > 0) {
             uploadFiles([files[0]]);
@@ -556,6 +572,7 @@
 
 
     function uploadFiles(files) {
+        if (window.canUpload === false) return; // 只读匿名不允许上传 / view-only anonymous cannot upload
         const formData = new FormData();
         const timestamp = new Date().toISOString().replace(/[:.]/g, "");
         const file = files[0]; // 只处理第一个文件

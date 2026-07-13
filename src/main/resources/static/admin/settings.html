@@ -82,15 +82,26 @@
             </div>
         </div>
 
-        <!-- Anonymous access setting / 匿名访问设置 -->
+        <!-- 匿名访问(总开关)/ anonymous access gate -->
         <div class="card">
             <div class="setting-row">
                 <div>
                     <p class="setting-row-title">启用匿名访问</p>
-                    <p class="setting-row-desc">允许未登录用户访问并上传文件到匿名存储空间</p>
-                    <p class="setting-note">需要至少有一个存储空间启用“允许匿名访问”，匿名用户才能进入并使用该空间。</p>
+                    <p class="setting-row-desc">允许未登录用户浏览匿名存储空间（只读）</p>
+                    <p class="setting-note">需要至少有一个存储空间开启“匿名访问”，匿名用户才能进入。匿名用户默认看不到上传区和局域网访问地址。</p>
                 </div>
-                <div class="toggle-switch" id="anonymousToggle" onclick="toggleAnonymous()"></div>
+                <div class="toggle-switch" id="anonymousAccessToggle" onclick="toggleAnonymousAccess()"></div>
+            </div>
+        </div>
+
+        <!-- 匿名上传(需要先开启匿名访问)/ anonymous upload (requires access) -->
+        <div class="card">
+            <div class="setting-row">
+                <div>
+                    <p class="setting-row-title">允许匿名上传</p>
+                    <p class="setting-row-desc">额外允许匿名用户上传文件。开启时会自动开启“启用匿名访问”，关闭访问时此项会一并关闭。</p>
+                </div>
+                <div class="toggle-switch" id="anonymousUploadToggle" onclick="toggleAnonymousUpload()"></div>
             </div>
         </div>
     </main>
@@ -100,7 +111,8 @@
     <script>
         let settings = {
             shareNoticeEnabled: true,
-            anonymousEnabled: false
+            anonymousAccessEnabled: false,
+            anonymousUploadEnabled: false
         };
 
         // Load settings
@@ -119,12 +131,14 @@
                 const anonResponse = await fetch('/api/auth/anonymous-config');
                 if (anonResponse.ok) {
                     const anonConfig = await anonResponse.json();
-                    settings.anonymousEnabled = anonConfig['anonymous-upload-enabled'] || false;
+                    settings.anonymousAccessEnabled = anonConfig['anonymous-access-enabled'] || false;
+                    settings.anonymousUploadEnabled = anonConfig['anonymous-upload-enabled'] || false;
                 }
 
                 // Update UI
                 updateToggle('shareNoticeToggle', settings.shareNoticeEnabled);
-                updateToggle('anonymousToggle', settings.anonymousEnabled);
+                updateToggle('anonymousAccessToggle', settings.anonymousAccessEnabled);
+                updateToggle('anonymousUploadToggle', settings.anonymousUploadEnabled);
             } catch (error) {
                 console.error('Failed to load settings:', error);
             }
@@ -139,17 +153,48 @@
             }
         }
 
-        async function toggleAnonymous() {
-            const previous = settings.anonymousEnabled;
-            settings.anonymousEnabled = !settings.anonymousEnabled;
-            updateToggle('anonymousToggle', settings.anonymousEnabled);
+        // 切换"启用匿名访问":关闭访问时,上传一并关闭 / toggle access gate: turning it off also turns upload off
+        async function toggleAnonymousAccess() {
+            const prevAccess = settings.anonymousAccessEnabled;
+            const prevUpload = settings.anonymousUploadEnabled;
+            const newAccess = !prevAccess;
+            const newUpload = newAccess ? prevUpload : false;
+            settings.anonymousAccessEnabled = newAccess;
+            settings.anonymousUploadEnabled = newUpload;
+            updateToggle('anonymousAccessToggle', newAccess);
+            updateToggle('anonymousUploadToggle', newUpload);
             await autoSave(
-                'anonymousToggle',
+                'anonymousAccessToggle',
                 '/api/admin/anonymous',
-                { enabled: settings.anonymousEnabled },
+                { anonymousAccessEnabled: newAccess, anonymousUploadEnabled: newUpload },
                 () => {
-                    settings.anonymousEnabled = previous;
-                    updateToggle('anonymousToggle', previous);
+                    settings.anonymousAccessEnabled = prevAccess;
+                    settings.anonymousUploadEnabled = prevUpload;
+                    updateToggle('anonymousAccessToggle', prevAccess);
+                    updateToggle('anonymousUploadToggle', prevUpload);
+                }
+            );
+        }
+
+        // 切换"允许匿名上传":开启上传时,访问自动开启 / toggle upload: turning it on also turns access on
+        async function toggleAnonymousUpload() {
+            const prevAccess = settings.anonymousAccessEnabled;
+            const prevUpload = settings.anonymousUploadEnabled;
+            const newUpload = !prevUpload;
+            const newAccess = newUpload ? true : prevAccess;
+            settings.anonymousUploadEnabled = newUpload;
+            settings.anonymousAccessEnabled = newAccess;
+            updateToggle('anonymousUploadToggle', newUpload);
+            updateToggle('anonymousAccessToggle', newAccess);
+            await autoSave(
+                'anonymousUploadToggle',
+                '/api/admin/anonymous',
+                { anonymousAccessEnabled: newAccess, anonymousUploadEnabled: newUpload },
+                () => {
+                    settings.anonymousAccessEnabled = prevAccess;
+                    settings.anonymousUploadEnabled = prevUpload;
+                    updateToggle('anonymousUploadToggle', prevUpload);
+                    updateToggle('anonymousAccessToggle', prevAccess);
                 }
             );
         }
