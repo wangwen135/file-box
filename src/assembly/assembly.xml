@@ -36,7 +36,7 @@
         </fileSet>
 
         <fileSet>
-            <directory>src/assembly/runtime-dirs</directory>
+            <directory>src/assembly</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>data/default/</include>

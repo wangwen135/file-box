@@ -15,7 +15,7 @@ mvn test                          # run tests
 mvn test -Dtest=FileCatalogServiceTest   # run a single test class
 ```
 
-`mvn package` produces both `target/file-box-<version>.jar` and `target/file-box-<version>-release.tar.gz` (via the `maven-assembly-plugin` descriptor `src/assembly/assembly.xml`). The release tarball bundles `start.sh`/`start.bat`/`manage.sh`/`manage.bat` plus empty `data/`, `logs/`, `runtime/` dirs; it deliberately does **not** ship `config/filebox.yml` (that is generated on first run). Runtime heap is `-Xmx384m` (set in `start.sh`).
+`mvn package` produces both `target/file-box-<version>.jar` and `target/file-box-<version>-release.tar.gz` (via the `maven-assembly-plugin` descriptor `src/assembly/assembly.xml`). The release tarball bundles `start.sh`/`start.bat`/`manage.sh`/`manage.bat` plus `data/default/` (which ships the user manual `操作说明.html`, visible to users as a file in the default storage space on first launch), `logs/`, and `runtime/multipart-tmp/` dirs; it deliberately does **not** ship `config/filebox.yml` (that is generated on first run). These shipped directories mirror the layout under `src/assembly/` (e.g. `config/`, `data/default/`, `logs/`, `runtime/` sit directly there, like `config/`) — the empty ones are kept in git via `.gitkeep` placeholders. Edit `src/assembly/data/default/操作说明.html` and rebuild to update the shipped manual. Runtime heap is `-Xmx384m` (set in `start.sh`).
 
 On first start, `ConfigValidationRunner` creates `./config`, `./data/default`, `./logs`, `./runtime/multipart-tmp`, and if `filebox.yml` is missing, generates a default config with a random admin password printed **once** to the log.
 

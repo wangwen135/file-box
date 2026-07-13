@@ -77,6 +77,8 @@ http://localhost:8888
 
 请在首次登录后立即修改管理员密码。
 
+登录后，默认存储空间（`data/default`）中已附带《操作说明》：在文件列表中点击 `操作说明.html` 即可在浏览器中查看完整使用手册。
+
 ## 配置说明
 
 File Box 使用两个配置文件：
@@ -157,6 +159,7 @@ file-box-<version>/
     application.yml
   data/
     default/
+      操作说明.html
   logs/
   runtime/
     multipart-tmp/
