@@ -181,6 +181,7 @@
 
             // 存储空间切换器 / storage space switcher
             renderStorageSwitcher(spaceList, window.currentStorageSpace);
+            applyDisplayMode();
             switchView(currentView);
         })
         .catch(() => {
@@ -1079,6 +1080,8 @@
      * @returns {HTMLElement} 文件元素
      */
     function createFileElement(file) {
+        // 横条模式返回行元素,否则返回卡片 / row mode returns a row element, else a card
+        if (displayMode === 'row') return createFileRow(file);
         const a = document.createElement("a");
         a.href = file.url;
         a.target = "_blank";
@@ -1098,6 +1101,56 @@
         }
 
         a.appendChild(previewDiv);
+        return a;
+    }
+
+    /**
+     * 横条视图:创建文件行 / row view: build a file row
+     * 与卡片共用删除逻辑(addDeleteButton),.file-row .delete-btn 的 CSS 把按钮改成行内样式。
+     * Shares delete logic with the card; CSS turns the absolutely-positioned delete
+     * button into an inline row button.
+     */
+    function createFileRow(file) {
+        const a = document.createElement("a");
+        a.href = file.url;
+        a.target = "_blank";
+        a.className = "file-row";
+
+        // 类型块:图片显示缩略图,其余显示扩展名 / type tile: image thumbnail, else extension text
+        const icon = document.createElement("span");
+        icon.className = "file-row-icon";
+        if (file.type === "image") {
+            const img = document.createElement("img");
+            img.src = file.url;
+            img.alt = "";
+            img.loading = "lazy";
+            icon.appendChild(img);
+        } else {
+            icon.textContent = extractFileExtension(file.filename);
+        }
+
+        const name = document.createElement("span");
+        name.className = "file-row-name";
+        name.textContent = file.filename;
+        name.title = file.filename;
+
+        const meta = document.createElement("span");
+        meta.className = "file-row-meta";
+        const size = document.createElement("span");
+        size.textContent = formatFileSize(file.size);
+        const time = document.createElement("span");
+        time.textContent = file.time;
+        meta.appendChild(size);
+        meta.appendChild(time);
+
+        a.appendChild(icon);
+        a.appendChild(name);
+        a.appendChild(meta);
+
+        // ADMIN 与 MANAGER 可删除 / delete for ADMIN & MANAGER
+        if (window.currentRole === 'admin' || window.currentRole === 'manager') {
+            addDeleteButton(a, file, a);
+        }
         return a;
     }
 
@@ -1264,9 +1317,33 @@
     // ============== 目录浏览视图 / Directory browsing view ==============
     let currentView = 'recent';     // 'recent' | 'directory'
     let dirPath = [];                // 当前目录层级(文件夹名数组,相对存储根)
+    // 显示模式 block=块状卡片 row=横条列表;持久化在 localStorage(个人偏好,跨会话保留)
+    // display mode: block=card grid, row=list rows; persisted in localStorage as a preference
+    let displayMode = localStorage.getItem('filebox.displayMode') === 'row' ? 'row' : 'block';
 
     document.getElementById('tab-recent').addEventListener('click', () => switchView('recent'));
     document.getElementById('tab-dir').addEventListener('click', () => switchView('directory'));
+    document.getElementById('tab-block').addEventListener('click', () => setDisplayMode('block'));
+    document.getElementById('tab-row').addEventListener('click', () => setDisplayMode('row'));
+
+    // 应用显示模式:切换 body 类与按钮高亮(不重新拉取,仅影响后续渲染) / apply display mode: body class + button highlight only
+    function applyDisplayMode() {
+        document.body.classList.toggle('display-mode-block', displayMode === 'block');
+        document.body.classList.toggle('display-mode-row', displayMode === 'row');
+        const b = document.getElementById('tab-block'), r = document.getElementById('tab-row');
+        if (b) b.classList.toggle('active', displayMode === 'block');
+        if (r) r.classList.toggle('active', displayMode === 'row');
+    }
+
+    // 切换显示模式并重新渲染当前视图 / switch display mode and re-render the current view
+    function setDisplayMode(mode) {
+        if (mode === displayMode) return;
+        displayMode = mode;
+        localStorage.setItem('filebox.displayMode', mode);
+        applyDisplayMode();
+        resetPagination();
+        if (currentView === 'directory') fetchDir(); else fetchFiles();
+    }
 
     function switchView(v) {
         resetPagination();
@@ -1342,16 +1419,23 @@
             c.innerHTML = '<div class="dir-empty"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg> 空文件夹</div>';
             return;
         }
-        folders.forEach(f => {
-            const card = document.createElement('div');
-            card.className = 'folder-card';
-            const ic = document.createElement('span'); ic.className = 'folder-icon'; ic.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg>';
-            const nm = document.createElement('span'); nm.className = 'folder-name'; nm.textContent = f.name; nm.title = f.name;
-            card.appendChild(ic); card.appendChild(nm);
-            card.onclick = () => { dirPath.push(f.name); saveCurrentBrowsingState(); fetchDir(); };
-            if (window.currentRole === 'admin' || window.currentRole === 'manager') appendFolderOps(card, f.name);
-            c.appendChild(card);
-        });
+        if (folders.length > 0) {
+            // 文件夹单独成组:块状时为卡片网格,横条时为纵向堆叠(CSS 随 body 类切换)
+            // folders in their own group: card grid in block mode, stacked rows in row mode (CSS-driven)
+            const folderGrid = document.createElement('div');
+            folderGrid.className = 'dir-folders';
+            folders.forEach(f => {
+                const card = document.createElement('div');
+                card.className = 'folder-card';
+                const ic = document.createElement('span'); ic.className = 'folder-icon'; ic.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder"/></svg>';
+                const nm = document.createElement('span'); nm.className = 'folder-name'; nm.textContent = f.name; nm.title = f.name;
+                card.appendChild(ic); card.appendChild(nm);
+                card.onclick = () => { dirPath.push(f.name); saveCurrentBrowsingState(); fetchDir(); };
+                if (window.currentRole === 'admin' || window.currentRole === 'manager') appendFolderOps(card, f.name);
+                folderGrid.appendChild(card);
+            });
+            c.appendChild(folderGrid);
+        }
         // 文件:网格排列,与"最近上传"一致 / files in a grid matching the recent view
         if (files.length > 0) {
             const fileGrid = document.createElement('div');

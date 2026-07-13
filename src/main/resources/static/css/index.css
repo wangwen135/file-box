@@ -983,6 +983,8 @@ a:hover {
     margin: 4px 0 4px;
     background: #e9ecef;
     border-radius: 9px;
+    max-width: 100%;
+    overflow-x: auto;     /* 窄屏按钮过多时横向滚动,避免撑破布局 / scroll on narrow screens */
 }
 .view-tab {
     display: inline-flex;
@@ -1013,6 +1015,12 @@ a:hover {
     background: #1e293b;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
+/* 分隔线:把"选哪个视图"和"怎么显示"两组按钮隔开 / divider between view group and display-mode group */
+.view-tab-sep {
+    width: 1px; align-self: stretch; margin: 4px 4px;
+    background: rgba(0, 0, 0, 0.12); flex: 0 0 auto;
+}
+[data-theme="dark"] .view-tab-sep { background: rgba(255, 255, 255, 0.15); }
 
 #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 14px; }
 [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
@@ -1093,18 +1101,89 @@ a:hover {
     .view-tab { width: auto; white-space: nowrap; }
 }
 
+/* ===== 文件夹卡片:块状/横条两模式(CSS 随 body 显示模式类切换) ===== */
+/* folder card: block (card) / row modes, driven by the body display-mode class */
 .folder-card {
-    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
-    border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
-    transition: background .15s;
+    display: flex; background: #fff; border: 1px solid #e9ecef; border-radius: 8px;
+    cursor: pointer; transition: background .15s, border-color .15s;
 }
 .folder-card:hover { background: rgba(74, 144, 226, 0.08); }
-[data-theme="dark"] .folder-card { border-color: #334155; }
+[data-theme="dark"] .folder-card { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .folder-card:hover { background: rgba(14, 165, 233, 0.1); }
-.folder-icon { display: inline-flex; align-items: center; }
-.folder-icon .ico { width: 20px; height: 20px; }
-.folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-icon { display: inline-flex; align-items: center; justify-content: center; }
+.folder-name { font-size: 13px; color: var(--dark-text); }
 .folder-ops, .file-row-ops { display: flex; gap: 4px; }
+
+/* 块状模式:文件夹卡片,与文件卡片同尺寸 / block mode: folder card sized like a file card */
+.display-mode-block .folder-card {
+    width: 180px; height: 160px; flex-direction: column;
+    justify-content: center; align-items: center; gap: 10px;
+    padding: 14px; text-align: center; position: relative;
+}
+.display-mode-block .folder-card .folder-icon .ico { width: 48px; height: 48px; color: var(--primary-color); }
+.display-mode-block .folder-card .folder-name {
+    max-width: 100%;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; white-space: normal; line-height: 1.3;
+}
+.display-mode-block .folder-card .folder-ops { position: absolute; top: 6px; right: 6px; }
+
+/* 横条模式:文件夹横条(原样式) / row mode: folder row (original look) */
+.display-mode-row .folder-card { align-items: center; gap: 10px; padding: 12px 14px; }
+.display-mode-row .folder-card .folder-icon .ico { width: 20px; height: 20px; }
+.display-mode-row .folder-card .folder-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 文件夹容器:块状=卡片网格 / folder group container (card grid in block mode) */
+.dir-folders { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 auto 10px; max-width: 100%; }
+
+/* 横条模式:文件/文件夹容器均改为纵向堆叠 / row mode: stack everything vertically */
+.display-mode-row .dir-folders { flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.display-mode-row #recent,
+.display-mode-row .dir-files { display: flex; flex-direction: column; gap: 8px; justify-content: flex-start; }
+.display-mode-row #recent a,
+.display-mode-row .dir-files a { margin-bottom: 0; }
+
+/* ===== 横条文件项 / row-mode file item ===== */
+#recent .file-row,
+.dir-files .file-row {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; box-sizing: border-box; padding: 10px 14px;
+    border: 1px solid #e9ecef; border-radius: 8px;
+    background: #fff; color: var(--dark-text);
+    transition: background .15s, border-color .15s;
+}
+#recent .file-row:hover,
+.dir-files .file-row:hover { background: rgba(74, 144, 226, 0.06); border-color: #cfe0f5; text-decoration: none; }
+.file-row-icon {
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(74, 144, 226, 0.1); color: var(--primary-color);
+    font-size: 12px; font-weight: 700; overflow: hidden;
+}
+.file-row-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.file-row-name {
+    flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--dark-text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.file-row-meta {
+    flex: 0 0 auto; display: flex; gap: 12px; align-items: center;
+    font-size: 12px; color: var(--light-text); white-space: nowrap;
+}
+/* 行内删除按钮:覆盖卡片的"绝对定位圆形红钮+hover才显示" / inline delete button for rows
+   (overrides the card's absolutely-positioned red circle that only shows on .preview:hover) */
+.file-row .delete-btn {
+    display: flex; position: static; width: 30px; height: 30px; border-radius: 6px;
+    background: transparent; color: var(--light-text); opacity: .5;
+}
+.file-row .delete-btn .ico { width: 16px; height: 16px; }
+.file-row .delete-btn:hover { opacity: 1; background: rgba(220, 53, 69, .1); color: #dc3545; }
+[data-theme="dark"] #recent .file-row,
+[data-theme="dark"] .dir-files .file-row { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+[data-theme="dark"] #recent .file-row:hover,
+[data-theme="dark"] .dir-files .file-row:hover { background: rgba(14, 165, 233, .1); border-color: #0ea5e9; }
+[data-theme="dark"] .file-row-name { color: #e2e8f0; }
 .mini-btn {
     display: inline-flex; align-items: center; justify-content: center;
     padding: 3px 8px; font-size: 13px; border: 1px solid #d0d7de; border-radius: 5px;
