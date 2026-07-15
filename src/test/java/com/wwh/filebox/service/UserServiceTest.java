@@ -85,4 +85,41 @@ class UserServiceTest {
 
         assertThat(userService.deleteUser("bob")).isTrue();
     }
+
+    private SystemConfig.UserConfig user(String name, Role role) {
+        SystemConfig.UserConfig u = new SystemConfig.UserConfig();
+        u.setUsername(name);
+        u.setPassword(encoder.encode("x"));
+        u.setRole(role.name());
+        u.setStorageSpaces(new ArrayList<>());
+        return u;
+    }
+
+    @Test
+    void updateUserRefusesToDemoteLastAdmin() {
+        seed(configWithAdmins("admin"));
+        // 把唯一的 admin 降级为 USER / demote the only admin
+        assertThatThrownBy(() ->
+                userService.updateUser("admin", null, Role.USER, new String[]{"default"}, "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("管理员");
+    }
+
+    @Test
+    void updateUserAllowsDemotingAdminWhenOthersExist() {
+        seed(configWithAdmins("admin", "admin2"));
+        assertThat(userService.updateUser("admin2", null, Role.USER, new String[]{}, "admin2")).isTrue();
+        // admin2 已被降级为 USER / admin2 demoted to USER
+        assertThat(configService.getConfig().getUsers()).filteredOn(u -> "admin2".equals(u.getUsername()))
+                .hasSize(1).first().extracting(SystemConfig.UserConfig::getRole).isEqualTo(Role.USER.name());
+    }
+
+    @Test
+    void updateUserAllowsChangingNonAdminRole() {
+        SystemConfig config = configWithAdmins("admin");
+        config.getUsers().add(user("bob", Role.USER));
+        seed(config);
+
+        assertThat(userService.updateUser("bob", null, Role.MANAGER, new String[]{}, "bob")).isTrue();
+    }
 }

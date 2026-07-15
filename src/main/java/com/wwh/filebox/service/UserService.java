@@ -133,6 +133,23 @@ public class UserService {
             }
         }
 
+        // 最后一个管理员不可降级 / cannot demote the last admin to a non-admin role
+        if (role != Role.ADMIN) {
+            int adminCount = 0;
+            boolean targetIsAdmin = false;
+            for (SystemConfig.UserConfig u : config.getUsers()) {
+                if (Role.ADMIN.name().equals(u.getRole())) {
+                    adminCount++;
+                    if (u.getUsername().equals(username)) {
+                        targetIsAdmin = true;
+                    }
+                }
+            }
+            if (targetIsAdmin && adminCount <= 1) {
+                throw new IllegalStateException("系统至少需要保留一个管理员");
+            }
+        }
+
         for (SystemConfig.UserConfig userConfig : config.getUsers()) {
             if (userConfig.getUsername().equals(username)) {
                 // Only update password if provided and not empty
