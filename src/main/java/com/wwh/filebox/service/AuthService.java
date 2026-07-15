@@ -171,6 +171,17 @@ public class AuthService {
     }
 
     /**
+     * 让某用户的所有会话立即下线(管理员改密码/改角色/删除/改名时调用)。
+     * Force all of a user's sessions offline (used on password/role change, deletion, rename).
+     */
+    public void invalidateSessionsForUser(String username) {
+        if (username == null) {
+            return;
+        }
+        sessions.entrySet().removeIf(e -> username.equals(e.getValue().getUsername()));
+    }
+
+    /**
      * Get session by token
      */
     public LoginSession getSession(String token) {
