@@ -84,4 +84,50 @@ class AuthServiceTest {
         config.getUsers().add(u);
         configService.saveConfig(config);
     }
+
+    private void setSpaces(String username, String... spaces) {
+        SystemConfig config = configService.getConfig();
+        for (SystemConfig.UserConfig u : config.getUsers()) {
+            if (u.getUsername().equals(username)) {
+                u.setStorageSpaces(new ArrayList<>(List.of(spaces)));
+            }
+        }
+        configService.saveConfig(config);
+    }
+
+    @Test
+    void refreshStorageSpacesPicksUpNewlyAssignedSpace() {
+        seedUser("alice", "pw");
+        LoginSession session = new LoginSession("alice", Role.USER, new String[]{"default"});
+        setSpaces("alice", "default", "photos");
+
+        authService.refreshStorageSpaces(session);
+
+        assertThat(session.getStorageSpaces()).containsExactly("default", "photos");
+    }
+
+    @Test
+    void refreshStorageSpacesClampsRemovedCurrentSpace() {
+        seedUser("alice", "pw");
+        LoginSession session = new LoginSession("alice", Role.USER, new String[]{"default"});
+        assertThat(session.getCurrentStorageSpace()).isEqualTo("default");
+        setSpaces("alice", "photos"); // default 被移除 / default removed
+
+        authService.refreshStorageSpaces(session);
+
+        assertThat(session.getStorageSpaces()).containsExactly("photos");
+        assertThat(session.getCurrentStorageSpace()).isEqualTo("photos");
+    }
+
+    @Test
+    void refreshStorageSpacesClearsCurrentWhenEmpty() {
+        seedUser("alice", "pw");
+        LoginSession session = new LoginSession("alice", Role.USER, new String[]{"default"});
+        setSpaces("alice"); // 清空 / cleared
+
+        authService.refreshStorageSpaces(session);
+
+        assertThat(session.getStorageSpaces()).isEmpty();
+        assertThat(session.getCurrentStorageSpace()).isNull();
+    }
 }

@@ -230,6 +230,51 @@ public class AuthService {
     }
 
     /**
+     * 按最新配置重派生该会话的可用存储空间,并在当前空间失效时夹紧到首个(或置空)。
+     * 使管理员调整空间权限后,用户刷新页面即可生效,无需重新登录。
+     * Re-derive this session's storage spaces from the live config and clamp the current
+     * space if it was removed — lets admin permission changes apply on page refresh.
+     */
+    public void refreshStorageSpaces(LoginSession session) {
+        if (session == null) {
+            return;
+        }
+        SystemConfig config = configService.getConfig();
+        if (config == null) {
+            return;
+        }
+        SystemConfig.UserConfig userConfig = null;
+        if (config.getUsers() != null) {
+            for (SystemConfig.UserConfig uc : config.getUsers()) {
+                if (uc.getUsername().equals(session.getUsername())) {
+                    userConfig = uc;
+                    break;
+                }
+            }
+        }
+        if (userConfig == null) {
+            return; // 用户已不存在,保持现状 / user no longer exists; leave as-is
+        }
+
+        String[] fresh = getStorageSpacesForUser(userConfig, config);
+        session.setStorageSpaces(fresh);
+
+        String current = session.getCurrentStorageSpace();
+        boolean currentValid = false;
+        if (current != null) {
+            for (String s : fresh) {
+                if (s.equals(current)) {
+                    currentValid = true;
+                    break;
+                }
+            }
+        }
+        if (!currentValid) {
+            session.setCurrentStorageSpace(fresh.length > 0 ? fresh[0] : null);
+        }
+    }
+
+    /**
      * Check if user is admin
      */
     public boolean isAdmin(String token) {
