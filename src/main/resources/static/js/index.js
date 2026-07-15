@@ -162,6 +162,17 @@
             document.getElementById('currentRole').textContent = data.isAnonymous
                 ? '匿名用户'
                 : (roleNames[data.role] || data.role || '—');
+            // 非匿名、非管理员且无任何存储空间 → 每浏览器会话提示一次
+            // non-anonymous, non-admin with no assigned spaces: notify once per session
+            if (!window.isAnonymous && data.role !== 'admin' && spaceList.length === 0
+                    && !sessionStorage.getItem('filebox_noSpaces_notified')) {
+                sessionStorage.setItem('filebox_noSpaces_notified', '1');
+                Notify.alert({
+                    title: '暂无可用存储空间',
+                    content: '管理员尚未为您分配任何存储空间的访问权限，您暂时无法正常使用本系统，请联系管理员处理。',
+                    okText: '我知道了'
+                });
+            }
             if (data.isAnonymous) {
                 document.getElementById('changePwdEntry').style.display = 'none';
                 document.getElementById('logoutEntry').style.display = 'none';
