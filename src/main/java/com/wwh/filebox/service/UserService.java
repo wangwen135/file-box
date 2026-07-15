@@ -158,6 +158,7 @@ public class UserService {
 
     /**
      * Delete user
+     * 删除用户;若目标为最后一个 ADMIN 则拒绝,避免后台被锁死。
      */
     public boolean deleteUser(String username) {
         SystemConfig config = configService.getConfig();
@@ -165,12 +166,30 @@ public class UserService {
             return false;
         }
 
+        SystemConfig.UserConfig target = null;
+        int adminCount = 0;
+        for (SystemConfig.UserConfig u : config.getUsers()) {
+            if (Role.ADMIN.name().equals(u.getRole())) {
+                adminCount++;
+            }
+            if (u.getUsername().equals(username)) {
+                target = u;
+            }
+        }
+
+        if (target == null) {
+            return false;
+        }
+        // 最后一个管理员不可删 / cannot remove the last admin
+        if (Role.ADMIN.name().equals(target.getRole()) && adminCount <= 1) {
+            throw new IllegalStateException("系统至少需要保留一个管理员");
+        }
+
         boolean removed = config.getUsers().removeIf(user -> user.getUsername().equals(username));
         if (removed) {
             configService.saveConfig(config);
             logger.info("User {} deleted", username);
         }
-
         return removed;
     }
 
