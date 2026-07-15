@@ -168,7 +168,8 @@ public class FileBoxConfigStore {
     }
 
     public static String generateAdminPassword() {
-        return SecureTokenGenerator.generateToken().substring(0, 22);
+        // 仅字母数字,便于首启/重置时从控制台复制 / alphanumeric only, easy to copy from the console
+        return SecureTokenGenerator.generateAlphanumeric(22);
     }
 
     public static SystemConfig createDefaultConfig(String adminUsername, String adminPasswordHash) {
