@@ -211,6 +211,10 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\":\"Invalid or expired token\"}");
         }
 
+        // 按最新配置刷新会话存储空间,使管理员改空间后刷新即生效(无需重新登录)
+        // Refresh this session's spaces from the live config so admin edits apply on reload
+        authService.refreshStorageSpaces(session);
+
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("username", session.getUsername());
         // 前端 index.html 以小写比较 role === 'admin',这里返回小写以保持兼容
