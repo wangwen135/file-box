@@ -1,5 +1,6 @@
 package com.wwh.filebox.controller;
 
+import com.wwh.filebox.model.LoginSession;
 import com.wwh.filebox.model.Role;
 import com.wwh.filebox.model.StorageSpace;
 import com.wwh.filebox.model.StorageStats;
@@ -261,6 +262,8 @@ public class AdminController {
 
     /**
      * Update user
+     * 改密码/改角色/改名 → 强制该用户下线重新登录;仅改存储空间不打扰。
+     * 最后一个管理员降级由 service 拒绝。
      */
     @PutMapping("/users/{username}")
     public ResponseEntity<Map<String, Object>> updateUser(
@@ -275,13 +278,31 @@ public class AdminController {
         Role role = Role.fromString(roleStr);
         String[] storageSpaces = storageSpacesList != null ? storageSpacesList.toArray(new String[0]) : new String[0];
 
-        boolean success = userService.updateUser(username, password, role, storageSpaces, newUsername);
+        // 记录变更类型,判断是否需要强制下线 / detect what changed to decide forced re-login
+        User existing = userService.getUser(username);
+        Role oldRole = existing != null ? existing.getRole() : null;
+        boolean passwordChanged = password != null && !password.isEmpty();
+        boolean roleChanged = oldRole != null && !oldRole.equals(role);
+        String trimmedNew = newUsername == null ? "" : newUsername.trim();
+        boolean renamed = !trimmedNew.isEmpty() && !trimmedNew.equals(username);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
-
-        if (!success) {
-            response.put("error", "更新失败，用户名可能已存在或用户不存在");
+        try {
+            boolean success = userService.updateUser(username, password, role, storageSpaces, newUsername);
+            response.put("success", success);
+            if (success) {
+                // 改密码/改角色/改名 → 下线该用户(按旧用户名);仅改空间不打扰
+                // password/role change or rename forces re-login (by old username); space-only does not
+                if (passwordChanged || roleChanged || renamed) {
+                    authService.invalidateSessionsForUser(username);
+                }
+            } else {
+                response.put("error", "更新失败，用户名可能已存在或用户不存在");
+            }
+        } catch (IllegalStateException e) {
+            // 例如:最后一个管理员不可降级 / business constraint, e.g. last admin demotion
+            response.put("success", false);
+            response.put("error", e.getMessage());
         }
 
         return ResponseEntity.ok(response);
@@ -289,18 +310,37 @@ public class AdminController {
 
     /**
      * Delete user
+     * 禁止删除当前登录的自己;被删用户的会话立即失效;最后一个管理员由 service 拒绝。
      */
     @DeleteMapping("/users/{username}")
-    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable String username) {
-        boolean success = userService.deleteUser(username);
-
+    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable String username, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
-        response.put("success", success);
+        try {
+            // 禁止删除当前登录的自己 / cannot delete the currently logged-in self
+            Object sessionAttr = request.getAttribute("session");
+            if (sessionAttr instanceof LoginSession) {
+                String caller = ((LoginSession) sessionAttr).getUsername();
+                if (username.equals(caller)) {
+                    response.put("success", false);
+                    response.put("error", "不能删除当前登录的账号");
+                    return ResponseEntity.ok(response);
+                }
+            }
 
-        if (!success) {
-            response.put("error", "Failed to delete user");
+            boolean success = userService.deleteUser(username);
+            if (success) {
+                // 被删用户的会话立即下线 / kill the deleted user's sessions immediately
+                authService.invalidateSessionsForUser(username);
+            }
+            response.put("success", success);
+            if (!success) {
+                response.put("error", "删除失败，用户不存在");
+            }
+        } catch (IllegalStateException e) {
+            // 例如:最后一个管理员不可删 / business constraint, e.g. last admin
+            response.put("success", false);
+            response.put("error", e.getMessage());
         }
-
         return ResponseEntity.ok(response);
     }
 
