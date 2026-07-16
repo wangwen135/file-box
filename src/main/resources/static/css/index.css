@@ -1022,6 +1022,9 @@ a:hover {
 }
 [data-theme="dark"] .view-tab-sep { background: rgba(255, 255, 255, 0.15); }
 
+/* 视图标签:桌面显全称,手机显简称 / view-tab labels: full on desktop, short on mobile */
+.view-tab-short { display: none; }
+
 #recent-view, #dir-view { border-top: 1px solid #e9ecef; padding-top: 14px; }
 [data-theme="dark"] #recent-view, [data-theme="dark"] #dir-view { border-top-color: #334155; }
 
@@ -1099,9 +1102,16 @@ a:hover {
     .dir-header { align-items: center; gap: 10px; margin-bottom: 14px; padding: 8px 6px; border-radius: 9px; }
     .dir-header-actions .btn { width: auto; padding: 4px 9px; }
     .view-tab { width: auto; white-space: nowrap; }
+    /* 手机端:网格/列表按钮仅保留图标 / phone: keep only the icon on grid/list tabs */
+    .view-tab-text { display: none; }
+    /* 手机端:时间线/目录按钮显示简称 / phone: show short labels on timeline/dir tabs */
+    .view-tab-full { display: none; }
+    .view-tab-short { display: inline; }
+    /* 手机端:隐藏可省文字(如"新建文件夹",仅留 + 号)/ hide dispensable labels on phone */
+    .hide-on-mobile { display: none; }
 }
 
-/* ===== 文件夹卡片:块状/横条两模式(CSS 随 body 显示模式类切换) ===== */
+/* ===== 文件夹卡片:卡片/列表两模式(CSS 随 body 显示模式类切换) ===== */
 /* folder card: block (card) / row modes, driven by the body display-mode class */
 .folder-card {
     display: flex; background: #fff; border: 1px solid #e9ecef; border-radius: 8px;
@@ -1114,7 +1124,7 @@ a:hover {
 .folder-name { font-size: 13px; color: var(--dark-text); }
 .folder-ops, .file-row-ops { display: flex; gap: 4px; }
 
-/* 块状模式:文件夹卡片,与文件卡片同尺寸 / block mode: folder card sized like a file card */
+/* 卡片模式:文件夹卡片,与文件卡片同尺寸 / block mode: folder card sized like a file card */
 .display-mode-block .folder-card {
     width: 180px; height: 160px; flex-direction: column;
     justify-content: center; align-items: center; gap: 10px;
@@ -1128,24 +1138,24 @@ a:hover {
 }
 .display-mode-block .folder-card .folder-ops { position: absolute; top: 6px; right: 6px; }
 
-/* 横条模式:文件夹横条(原样式) / row mode: folder row (original look) */
+/* 列表模式:文件夹行(原样式) / row mode: folder row (original look) */
 .display-mode-row .folder-card { align-items: center; gap: 10px; padding: 12px 14px; }
 .display-mode-row .folder-card .folder-icon .ico { width: 20px; height: 20px; }
 .display-mode-row .folder-card .folder-name {
     flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* 文件夹容器:块状=卡片网格 / folder group container (card grid in block mode) */
+/* 文件夹容器:卡片模式为网格 / folder group container (card grid in block mode) */
 .dir-folders { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 auto 10px; max-width: 100%; }
 
-/* 横条模式:文件/文件夹容器均改为纵向堆叠 / row mode: stack everything vertically */
+/* 列表模式:文件/文件夹容器均改为纵向堆叠 / row mode: stack everything vertically */
 .display-mode-row .dir-folders { flex-direction: column; gap: 8px; margin-bottom: 8px; }
 .display-mode-row #recent,
 .display-mode-row .dir-files { display: flex; flex-direction: column; gap: 8px; justify-content: flex-start; }
 .display-mode-row #recent a,
 .display-mode-row .dir-files a { margin-bottom: 0; }
 
-/* ===== 横条文件项 / row-mode file item ===== */
+/* ===== 列表文件项 / row-mode file item ===== */
 #recent .file-row,
 .dir-files .file-row {
     display: flex; align-items: center; gap: 12px;

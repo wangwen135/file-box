@@ -1097,7 +1097,7 @@
      * @returns {HTMLElement} 文件元素
      */
     function createFileElement(file) {
-        // 横条模式返回行元素,否则返回卡片 / row mode returns a row element, else a card
+        // 列表模式返回行元素,否则返回卡片 / row mode returns a row element, else a card
         if (displayMode === 'row') return createFileRow(file);
         const a = document.createElement("a");
         a.href = file.url;
@@ -1122,7 +1122,7 @@
     }
 
     /**
-     * 横条视图:创建文件行 / row view: build a file row
+     * 列表视图:创建文件行 / row view: build a file row
      * 与卡片共用删除逻辑(addDeleteButton),.file-row .delete-btn 的 CSS 把按钮改成行内样式。
      * Shares delete logic with the card; CSS turns the absolutely-positioned delete
      * button into an inline row button.
@@ -1334,7 +1334,7 @@
     // ============== 目录浏览视图 / Directory browsing view ==============
     let currentView = 'recent';     // 'recent' | 'directory'
     let dirPath = [];                // 当前目录层级(文件夹名数组,相对存储根)
-    // 显示模式 block=块状卡片 row=横条列表;持久化在 localStorage(个人偏好,跨会话保留)
+    // 显示模式 block=卡片 row=列表;持久化在 localStorage(个人偏好,跨会话保留)
     // display mode: block=card grid, row=list rows; persisted in localStorage as a preference
     let displayMode = localStorage.getItem('filebox.displayMode') === 'row' ? 'row' : 'block';
 
@@ -1437,7 +1437,7 @@
             return;
         }
         if (folders.length > 0) {
-            // 文件夹单独成组:块状时为卡片网格,横条时为纵向堆叠(CSS 随 body 类切换)
+            // 文件夹单独成组:卡片时为网格,列表时为纵向堆叠(CSS 随 body 类切换)
             // folders in their own group: card grid in block mode, stacked rows in row mode (CSS-driven)
             const folderGrid = document.createElement('div');
             folderGrid.className = 'dir-folders';
