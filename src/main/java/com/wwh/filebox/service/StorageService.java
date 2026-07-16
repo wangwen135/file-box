@@ -99,6 +99,18 @@ public class StorageService {
     }
 
     /**
+     * 改名判定：新名非空、去空白后与旧名不同，才视为改名。
+     * 与 {@link AdminController} 及在线会话迁移共用同一套定义，避免判定不一致。
+     * Decide whether an update is actually a rename: new name present and, once
+     * trimmed, different from the old name. Shared by the controller and the
+     * in-memory session migration so both agree on what "renamed" means.
+     */
+    public static boolean shouldRename(String oldName, String rawNewName) {
+        String trimmed = rawNewName == null ? "" : rawNewName.trim();
+        return !trimmed.isEmpty() && !trimmed.equals(oldName);
+    }
+
+    /**
      * 校验并准备存储目录：不存在则创建；无法创建或被普通文件占用则抛 IllegalStateException。
      * Validate and prepare the storage directory: create it if missing; throw if it cannot be
      * created or is occupied by a regular file. 注意 File.mkdirs() 失败时只返回 false、不抛异常，
@@ -182,7 +194,7 @@ public class StorageService {
     /**
      * Update storage space
      */
-    public boolean updateStorageSpace(String name, String path, String maxSize, boolean allowAnonymousAccess, boolean allowAnonymousUpload) {
+    public boolean updateStorageSpace(String name, String newName, String path, String maxSize, boolean allowAnonymousAccess, boolean allowAnonymousUpload) {
         SystemConfig config = configService.getConfig();
         if (config == null || config.getStorageSpaces() == null) {
             return false;
@@ -195,8 +207,42 @@ public class StorageService {
         }
         ensureStorageDirectory(path);
 
+        // 改名判定：新名非空且与旧名不同才触发改名 / rename only when new name is non-blank and differs
+        boolean rename = shouldRename(name, newName);
+        String trimmedNew = newName != null ? newName.trim() : "";
+
+        if (rename) {
+            // 新名走与新建相同的正则校验（允许中文/字母/数字/下划线/连字符）
+            if (!isValidStorageSpaceName(trimmedNew)) {
+                logger.warn("Invalid storage space name: {}", trimmedNew);
+                return false;
+            }
+            // 重名检查（排除正在改名的自身）/ duplicate check excluding the space being renamed
+            for (SystemConfig.StorageSpaceConfig other : config.getStorageSpaces()) {
+                if (!other.getName().equals(name) && other.getName().equals(trimmedNew)) {
+                    logger.warn("Storage space {} already exists", trimmedNew);
+                    return false;
+                }
+            }
+        }
+
         for (SystemConfig.StorageSpaceConfig spaceConfig : config.getStorageSpaces()) {
             if (spaceConfig.getName().equals(name)) {
+                if (rename) {
+                    // 改名：更新空间名 + 同步所有用户引用 + 清旧名统计缓存（懒重建）
+                    // Rename: set the new name, sync every user's reference, drop stale stats cache
+                    spaceConfig.setName(trimmedNew);
+                    if (config.getUsers() != null) {
+                        for (SystemConfig.UserConfig user : config.getUsers()) {
+                            if (user.getStorageSpaces() != null) {
+                                Collections.replaceAll(user.getStorageSpaces(), name, trimmedNew);
+                            }
+                        }
+                    }
+                    statsCache.remove(name);
+                    lastStatsUpdate.remove(name);
+                }
+
                 spaceConfig.setPath(path);
                 spaceConfig.setMaxSize(maxSize);
                 // 上传蕴含访问 / upload implies access
@@ -204,7 +250,7 @@ public class StorageService {
                 spaceConfig.setAllowAnonymousUpload(allowAnonymousUpload);
 
                 configService.saveConfig(config);
-                logger.info("Storage space {} updated", name);
+                logger.info("Storage space {} updated{}", name, rename ? " (renamed to " + trimmedNew + ")" : "");
                 return true;
             }
         }
