@@ -92,11 +92,11 @@
     <div class="divider" id="uploadDivider"></div>
 
     <div class="view-tabs">
-        <button id="tab-recent" class="view-tab active"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-history"/></svg>时间线浏览</button>
-        <button id="tab-dir" class="view-tab"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder-tree"/></svg>目录浏览</button>
+        <button id="tab-recent" class="view-tab active"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-history"/></svg><span class="view-tab-full">时间线浏览</span><span class="view-tab-short">时间线</span></button>
+        <button id="tab-dir" class="view-tab"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-folder-tree"/></svg><span class="view-tab-full">目录浏览</span><span class="view-tab-short">目录</span></button>
         <span class="view-tab-sep" aria-hidden="true"></span>
-        <button id="tab-block" class="view-tab active" title="块状视图" aria-label="块状视图"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-grid"/></svg>块状</button>
-        <button id="tab-row" class="view-tab" title="横条视图" aria-label="横条视图"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-list"/></svg>横条</button>
+        <button id="tab-block" class="view-tab active" title="卡片视图" aria-label="卡片视图"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-grid"/></svg><span class="view-tab-text">卡片</span></button>
+        <button id="tab-row" class="view-tab" title="列表视图" aria-label="列表视图"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-list"/></svg><span class="view-tab-text">列表</span></button>
     </div>
 
     <div id="recent-view">
@@ -120,7 +120,7 @@
         <div class="dir-header">
             <div id="dir-breadcrumb" class="dir-breadcrumb"></div>
             <div class="dir-header-actions">
-                <button id="newFolderBtn" class="btn" style="display:none">＋ 新建文件夹</button>
+                <button id="newFolderBtn" class="btn" style="display:none">＋ <span class="hide-on-mobile">新建文件夹</span></button>
             </div>
         </div>
         <div id="dirContent"></div>

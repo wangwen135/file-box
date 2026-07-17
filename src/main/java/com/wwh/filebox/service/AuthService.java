@@ -315,6 +315,41 @@ public class AuthService {
     }
 
     /**
+     * 重命名所有活跃会话中的存储空间引用（storageSpaces 数组元素 + currentStorageSpace）。
+     * 登录态内存迁移：改名后活跃用户无需重登即可继续访问，避免指向已失效的旧名。
+     * Migrate the renamed space across all live sessions (storageSpaces array +
+     * currentStorageSpace) so users need not re-login after an admin rename.
+     */
+    public void renameInSessions(String oldName, String newName) {
+        if (oldName == null || newName == null || oldName.equals(newName)) {
+            return;
+        }
+        for (Map.Entry<String, LoginSession> entry : sessions.entrySet()) {
+            LoginSession session = entry.getValue();
+            String[] spaces = session.getStorageSpaces();
+            if (spaces != null && spaces.length > 0) {
+                // 拷贝后替换，整组一次性 setStorageSpaces，读端只见一致快照（引用交换即原子）
+                // Copy, replace, then assign the whole array at once so concurrent readers
+                // see a consistent snapshot (the reference swap is itself atomic).
+                String[] copy = java.util.Arrays.copyOf(spaces, spaces.length);
+                boolean changed = false;
+                for (int i = 0; i < copy.length; i++) {
+                    if (oldName.equals(copy[i])) {
+                        copy[i] = newName;
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    session.setStorageSpaces(copy);
+                }
+            }
+            if (oldName.equals(session.getCurrentStorageSpace())) {
+                session.setCurrentStorageSpace(newName);
+            }
+        }
+    }
+
+    /**
      * Generate cryptographically secure random token
      */
     private String generateToken() {

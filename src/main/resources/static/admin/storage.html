@@ -94,6 +94,12 @@
                     <div class="form-group">
                         <label class="form-label">存储空间名称</label>
                         <input type="text" id="storageName" class="input-field" placeholder="例如：default" required>
+                        <p class="text-muted text-tiny" id="renameHint" style="display:none;margin-top:6px;">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;vertical-align:-2px;">
+                                <use href="/images/icons.svg#ico-info"/>
+                            </svg>
+                            修改名称将同步更新已分配用户与活跃会话，不会移动磁盘文件。
+                        </p>
                     </div>
                     <div class="form-group">
                         <label class="form-label">存储路径</label>
@@ -192,7 +198,7 @@
                 const progressBar = row && row.querySelector('.progress-fill');
                 const progressText = row && row.querySelector('.progress-text');
                 try {
-                    const statsResponse = await fetch(`/api/admin/storage/${space.name}/stats`);
+                    const statsResponse = await fetch(`/api/admin/storage/${encodeURIComponent(space.name)}/stats`);
                     let usedBytes = 0;
                     let percentage = 0;
                     if (statsResponse.ok) {
@@ -220,6 +226,7 @@
             document.getElementById('modalTitle').textContent = '新增存储空间';
             document.getElementById('storageForm').reset();
             document.getElementById('editName').value = '';
+            document.getElementById('renameHint').style.display = 'none';
             document.getElementById('storageModal').classList.add('show');
         }
 
@@ -228,8 +235,9 @@
             document.getElementById('modalTitle').textContent = '编辑存储空间';
             document.getElementById('editName').value = name;
             document.getElementById('storageName').value = name;
+            document.getElementById('renameHint').style.display = 'block';
             // Load full details
-            fetch(`/api/admin/storage/${name}`)
+            fetch(`/api/admin/storage/${encodeURIComponent(name)}`)
                 .then(r => r.json())
                 .then(data => {
                     document.getElementById('storagePath').value = data.path;
@@ -263,6 +271,20 @@
             const allowAnonymousAccess = document.getElementById('allowAnonymousAccess').checked;
             const allowAnonymousUpload = document.getElementById('allowAnonymousUpload').checked;
 
+            // 改名前二次确认（仅当名称确实改变时才拦截）/ confirm only when the name actually changes
+            if (isEditing) {
+                const original = document.getElementById('editName').value;
+                if (name.trim() !== original.trim()) {
+                    const ok = await Notify.confirm({
+                        title: '重命名存储空间',
+                        content: `将存储空间 <strong>${original}</strong> 重命名为 <strong>${name.trim()}</strong> 吗？<br><span class="text-muted">已分配用户与活跃会话将同步更新，物理文件不受影响。</span>`,
+                        okText: '确认重命名',
+                        cancelText: '取消'
+                    });
+                    if (!ok) return;
+                }
+            }
+
             const data = {
                 name,
                 path,
@@ -272,7 +294,7 @@
             };
 
             try {
-                const url = isEditing ? `/api/admin/storage/${document.getElementById('editName').value}` : '/api/admin/storage';
+                const url = isEditing ? `/api/admin/storage/${encodeURIComponent(document.getElementById('editName').value)}` : '/api/admin/storage';
                 const method = isEditing ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
@@ -314,7 +336,7 @@
             }
 
             try {
-                const response = await fetch(`/api/admin/storage/${name}`, {
+                const response = await fetch(`/api/admin/storage/${encodeURIComponent(name)}`, {
                     method: 'DELETE'
                 });
 

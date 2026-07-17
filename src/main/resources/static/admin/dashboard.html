@@ -153,7 +153,7 @@
                     usageList.innerHTML = '';
 
                     for (const space of storageData) {
-                        const statsResponse = await fetch(`/api/admin/storage/${space.name}/stats`);
+                        const statsResponse = await fetch(`/api/admin/storage/${encodeURIComponent(space.name)}/stats`);
                         if (statsResponse.ok) {
                             const stats = await statsResponse.json();
                             totalUsed += stats.usedSize || 0;

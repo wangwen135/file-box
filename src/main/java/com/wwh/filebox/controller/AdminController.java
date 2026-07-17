@@ -176,17 +176,24 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> updateStorage(
             @PathVariable String name,
             @RequestBody Map<String, Object> request) {
+        String newName = (String) request.get("name"); // 期望的新名称（缺省/与原名相同则不改名）
         String path = (String) request.get("path");
         String maxSize = (String) request.get("maxSize");
         Boolean allowAnonymousAccess = request.get("allowAnonymousAccess") != null ? (Boolean) request.get("allowAnonymousAccess") : false;
         Boolean allowAnonymousUpload = request.get("allowAnonymousUpload") != null ? (Boolean) request.get("allowAnonymousUpload") : false;
 
+        // 是否真正改名（与 StorageService 共用同一套判定）/ is this actually a rename?
+        boolean renameRequested = StorageService.shouldRename(name, newName);
+
         Map<String, Object> response = new HashMap<>();
         try {
-            boolean success = storageService.updateStorageSpace(name, path, maxSize, allowAnonymousAccess, allowAnonymousUpload);
+            boolean success = storageService.updateStorageSpace(name, newName, path, maxSize, allowAnonymousAccess, allowAnonymousUpload);
             response.put("success", success);
             if (!success) {
-                response.put("error", "更新存储空间失败：名称不存在或路径无效");
+                response.put("error", "更新存储空间失败：名称不合规、已存在，或原空间/路径无效");
+            } else if (renameRequested) {
+                // 持久化成功后再迁移活跃会话，避免指向未落盘的名字
+                authService.renameInSessions(name, newName.trim());
             }
         } catch (IllegalStateException e) {
             response.put("success", false);
