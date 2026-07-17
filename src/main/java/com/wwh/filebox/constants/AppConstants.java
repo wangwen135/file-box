@@ -9,9 +9,25 @@ public final class AppConstants {
         public static final String DEFAULT_ADMIN_USERNAME = "admin";
         public static final int MIN_PASSWORD_LENGTH = 6;
         public static final String TOKEN_COOKIE_NAME = "token";
-        public static final int TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
+
+        // 会话有效期(毫秒):"记住我"=30 天,否则 1 天 / session TTL (ms): 30 days remembered, else 1 day
+        public static final long SESSION_TTL_REMEMBER_ME_MS = 30L * 24 * 60 * 60 * 1000;
+        public static final long SESSION_TTL_DEFAULT_MS = 24L * 60 * 60 * 1000;
+
+        // Cookie 有效期(秒):需与对应会话有效期对齐 / cookie Max-Age (seconds), aligned with the matching session TTL
+        public static final int TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;   // 记住我 / remembered
+        public static final int TOKEN_COOKIE_DEFAULT_AGE = 24 * 60 * 60;    // 不记住 / not remembered
 
         private Auth() {
+        }
+
+        /**
+         * 按是否"记住我"选取 cookie 的 Max-Age(秒),使 cookie 寿命与对应的会话有效期一致。
+         * Pick the cookie Max-Age (seconds) by the remember-me flag so the cookie lifetime
+         * matches the corresponding session TTL.
+         */
+        public static int cookieMaxAgeSeconds(boolean rememberMe) {
+            return rememberMe ? TOKEN_COOKIE_MAX_AGE : TOKEN_COOKIE_DEFAULT_AGE;
         }
     }
 

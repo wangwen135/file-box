@@ -1,5 +1,7 @@
 package com.wwh.filebox.model;
 
+import com.wwh.filebox.constants.AppConstants;
+
 /**
  * Login session model
  * 登录会话模型
@@ -28,7 +30,7 @@ public class LoginSession {
         this.currentStorageSpace = storageSpaces != null && storageSpaces.length > 0 ? storageSpaces[0] : null;
         this.loginTime = System.currentTimeMillis();
         this.rememberMe = rememberMe;
-        long expiryDuration = rememberMe ? 30L * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 30 days or 1 day
+        long expiryDuration = rememberMe ? AppConstants.Auth.SESSION_TTL_REMEMBER_ME_MS : AppConstants.Auth.SESSION_TTL_DEFAULT_MS;
         this.expiryTime = System.currentTimeMillis() + expiryDuration;
     }
 
@@ -37,13 +39,13 @@ public class LoginSession {
     }
 
     public void extendExpiry() {
-        long expiryDuration = rememberMe ? 30L * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+        long expiryDuration = rememberMe ? AppConstants.Auth.SESSION_TTL_REMEMBER_ME_MS : AppConstants.Auth.SESSION_TTL_DEFAULT_MS;
         this.expiryTime = System.currentTimeMillis() + expiryDuration;
     }
 
     public void extendExpiry(boolean rememberMe) {
         this.rememberMe = rememberMe;
-        long expiryDuration = rememberMe ? 30L * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+        long expiryDuration = rememberMe ? AppConstants.Auth.SESSION_TTL_REMEMBER_ME_MS : AppConstants.Auth.SESSION_TTL_DEFAULT_MS;
         this.expiryTime = System.currentTimeMillis() + expiryDuration;
     }
 

@@ -79,7 +79,7 @@ public class AuthController {
         loginAttemptService.loginSucceeded(username);
 
         // Set token cookie
-        setTokenCookie(response, token);
+        setTokenCookie(response, token, true);
 
         logger.info("User {} logged in successfully", username);
         return ResponseEntity.status(HttpStatus.FOUND).location(java.net.URI.create("/index.html")).build();
@@ -131,7 +131,7 @@ public class AuthController {
         loginAttemptService.loginSucceeded(username);
 
         // Set token cookie
-        setTokenCookie(response, token);
+        setTokenCookie(response, token, rememberMe);
 
         logger.info("User {} logged in successfully via API", username);
         Map<String, Object> result = new HashMap<>();
@@ -151,7 +151,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(result);
         }
 
-        setTokenCookie(response, token);
+        setTokenCookie(response, token, false);
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         return ResponseEntity.ok(result);
@@ -375,17 +375,20 @@ public class AuthController {
      * @param response HTTP响应
      * @param token 认证令牌
      */
-    private void setTokenCookie(HttpServletResponse response, String token) {
+    private void setTokenCookie(HttpServletResponse response, String token, boolean rememberMe) {
+        // cookie 寿命随"记住我"变化:记住=30天,否则=1天,与服务端会话有效期对齐
+        // cookie lifetime follows the remember-me flag: 30 days remembered, else 1 day (aligned with the session TTL)
+        int maxAge = AppConstants.Auth.cookieMaxAgeSeconds(rememberMe);
         Cookie cookie = new Cookie(AppConstants.Auth.TOKEN_COOKIE_NAME, token);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
-        cookie.setMaxAge(AppConstants.Auth.TOKEN_COOKIE_MAX_AGE);
+        cookie.setMaxAge(maxAge);
         // 添加SameSite属性防止CSRF攻击（需要Servlet 3.1+或通过响应头设置）
         // 在响应头中设置SameSite属性
         response.setHeader("Set-Cookie",
             String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Lax",
                 AppConstants.Auth.TOKEN_COOKIE_NAME,
                 token,
-                AppConstants.Auth.TOKEN_COOKIE_MAX_AGE));
+                maxAge));
     }
 }
