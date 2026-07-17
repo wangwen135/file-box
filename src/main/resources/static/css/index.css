@@ -930,8 +930,12 @@ a:hover {
         width: 16px;
         height: 16px;
     }
+    /* .dir-folders 一并加入,使手机端文件夹卡片与文件卡片对齐(否则默认 flex-start 会让文件夹行偏左)
+       / include the folder container so folder cards align with file cards on phone
+       (otherwise the default flex-start leaves the folder row left-shifted) */
     #recent,
-    .dir-files {
+    .dir-files,
+    .dir-folders {
         justify-content: space-around;
     }
     /* 目录视图与时间线共用同一文件块工厂 createFileElement(),移动端
@@ -1143,6 +1147,19 @@ a:hover {
 .display-mode-row .folder-card .folder-icon .ico { width: 20px; height: 20px; }
 .display-mode-row .folder-card .folder-name {
     flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 手机端:文件夹卡片宽度改为与文件卡片一致(calc(50% - 10px)),避免固定 180px 在窄屏
+   一行只放得下一个文件夹卡片(而文件卡片因响应式能放两个)。此规则必须位于上方桌面
+   .display-mode-block .folder-card 规则【之后】——等特异性下,后出现的 width:180px 才不会把它覆盖掉。
+   / Phone: size folder cards like file cards (calc(50% - 10px)) so the fixed 180px doesn't
+   collapse folders to one-per-row on narrow screens while files fit two. This MUST stay AFTER
+   the desktop .display-mode-block .folder-card rule above — at equal specificity a later-sourced
+   width:180px would otherwise override this mobile rule. */
+@media (max-width: 600px) {
+    .display-mode-block .folder-card {
+        width: calc(50% - 10px);
+    }
 }
 
 /* 文件夹容器:卡片模式为网格 / folder group container (card grid in block mode) */
