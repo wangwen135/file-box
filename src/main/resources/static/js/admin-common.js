@@ -174,6 +174,60 @@
         });
     }
 
+    // 折叠态:把隐藏的标签同步到 title 悬浮提示;展开态移除(避免与可见文字重复)
+    // collapsed → mirror hidden labels into title tooltips; expanded → clear them (no duplicate with visible text)
+    function syncCollapsedTitles() {
+        const sidebar = document.querySelector('.admin-sidebar');
+        if (!sidebar) return;
+        const collapsed = sidebar.classList.contains('collapsed');
+        sidebar.querySelectorAll('.nav-item, .info-row').forEach(row => {
+            const span = row.querySelector('span:not(.toggle-label)');
+            if (!span) return;
+            if (collapsed) row.setAttribute('title', span.textContent.trim());
+            else row.removeAttribute('title');
+        });
+    }
+
+    // 侧栏折叠:在「展开 / 仅图标」间切换,状态用 localStorage 记忆,跨页面保持
+    // Sidebar collapse: toggle between full and icon-only, remembered across pages via localStorage
+    function setupSidebarCollapse() {
+        const sidebar = document.querySelector('.admin-sidebar');
+        if (!sidebar) return;
+
+        const KEY = 'filebox-admin-sidebar-collapsed';
+
+        // 注入折叠按钮(钉在侧栏顶部)/ inject the toggle button at the very top of the sidebar
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'sidebar-collapse-toggle';
+        toggle.innerHTML = `
+            <span class="toggle-label">折叠菜单</span>
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-chevron"/></svg>
+        `;
+        sidebar.insertBefore(toggle, sidebar.firstChild);
+
+        function setCollapsed(state) {
+            sidebar.classList.toggle('collapsed', state);
+            toggle.setAttribute('aria-expanded', String(!state));
+            const label = toggle.querySelector('.toggle-label');
+            if (label) label.textContent = state ? '展开菜单' : '折叠菜单';
+            syncCollapsedTitles(); // 折叠/展开后重刷图标 tooltip / refresh icon tooltips after toggle
+        }
+
+        // 首次套用先关掉过渡,避免页面加载时宽度滑动 / suppress transition on first paint so it doesn't slide on load
+        const initial = localStorage.getItem(KEY) === '1';
+        sidebar.style.transition = 'none';
+        setCollapsed(initial);
+        sidebar.offsetHeight; // force reflow
+        sidebar.style.transition = '';
+
+        toggle.addEventListener('click', () => {
+            const next = !sidebar.classList.contains('collapsed');
+            localStorage.setItem(KEY, next ? '1' : '0');
+            setCollapsed(next);
+        });
+    }
+
     // 统一鉴权守卫:未登录跳登录页,非 ADMIN 跳首页 / Admin session guard: redirect to login if unauthenticated, to home if not admin
     async function guardAdminAccess() {
         try {
@@ -198,6 +252,7 @@
     injectAdminTopbar();
     setupDropdowns();
     setupPasswordEntry();
+    setupSidebarCollapse();
     guardAdminAccess();
 
     // 版本号单一来源：pom.xml → application.yml → /api/system/info
@@ -210,6 +265,7 @@
                 document.querySelectorAll('[data-app-version]').forEach(el => {
                     el.textContent = 'v' + data.version;
                 });
+                syncCollapsedTitles(); // 版本异步填入后再刷一次 tooltip,否则停在 v0.0.0 / refresh after async version fill
             })
             .catch(() => {});
     }

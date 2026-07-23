@@ -30,6 +30,30 @@
     flex-direction: column;
     color: var(--text-primary);
     flex-shrink: 0;
+    transition: width 0.2s ease;
+}
+
+/* 折叠开关:钉在侧栏顶部,点击在「展开 / 仅图标」间切换 / collapse toggle pinned at sidebar top */
+.sidebar-collapse-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.6rem 1.25rem;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.sidebar-collapse-toggle:hover { color: var(--primary); }
+.sidebar-collapse-toggle .ico {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
 }
 
 .admin-brand {
@@ -73,6 +97,40 @@ a.info-row:hover { color: var(--primary); }
     height: 15px;
     flex-shrink: 0;
     color: currentColor;
+}
+
+/* ============ 侧栏折叠态(仅图标列)/ collapsed sidebar (icon rail) ============
+   仅在 >640px 生效:手机端侧栏是顶部水平条,不折叠 / desktop+tablet only */
+@media (min-width: 641px) {
+    .admin-sidebar.collapsed { width: 4.5rem; }
+
+    /* 隐藏所有文字标签 / hide every text label */
+    .admin-sidebar.collapsed .nav-item span,
+    .admin-sidebar.collapsed .info-row span,
+    .admin-sidebar.collapsed .admin-brand { display: none; }
+
+    /* 菜单项与底部信息行:图标居中 / center icons in nav + footer rows */
+    .admin-sidebar.collapsed .nav-item {
+        justify-content: center;
+        padding: 0.75rem 0;
+    }
+    .admin-sidebar.collapsed .admin-nav { margin-top: 0.5rem; }
+    .admin-sidebar.collapsed .admin-sidebar-footer {
+        align-items: center;
+        padding: 0.9rem 0;
+    }
+    .admin-sidebar.collapsed .info-row { justify-content: center; }
+
+    /* 折叠按钮:只剩箭头居中,且朝右(点击展开)/ toggle becomes a centered right-arrow */
+    .admin-sidebar.collapsed .sidebar-collapse-toggle {
+        justify-content: center;
+        padding: 0.6rem 0;
+    }
+    /* 折叠态隐藏文字标签,只留箭头(否则会和图标挤在一起)/ hide the text label so only the arrow remains */
+    .admin-sidebar.collapsed .sidebar-collapse-toggle .toggle-label { display: none; }
+    /* 展开态箭头朝左(点击向左收起)/ expanded → left, collapsed → right */
+    .sidebar-collapse-toggle .ico { transform: rotate(90deg); }
+    .admin-sidebar.collapsed .sidebar-collapse-toggle .ico { transform: rotate(-90deg); }
 }
 
 /* 主内容区 / Main content area */
@@ -761,6 +819,9 @@ a.info-row:hover { color: var(--primary); }
     .admin-topbar {
         padding: 0 12px;
     }
+
+    /* 手机端不显示折叠按钮:侧栏已是顶部水平条 / hide toggle on phone (horizontal bar) */
+    .sidebar-collapse-toggle { display: none; }
 
     .admin-topbar-subtitle {
         display: none;
