@@ -11,6 +11,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,7 @@ class AuthServiceTest {
         u.setUsername(username);
         u.setPassword(encoder.encode(password));
         u.setRole(Role.USER.name());
-        u.setStorageSpaces(new ArrayList<>(List.of("default")));
+        u.setStorageSpaces(new ArrayList<>(Arrays.asList("default")));
         config.getUsers().add(u);
         configService.saveConfig(config);
     }
@@ -80,7 +81,7 @@ class AuthServiceTest {
         u.setUsername(username);
         u.setPassword(encoder.encode(password));
         u.setRole(Role.USER.name());
-        u.setStorageSpaces(new ArrayList<>(List.of("default")));
+        u.setStorageSpaces(new ArrayList<>(Arrays.asList("default")));
         config.getUsers().add(u);
         configService.saveConfig(config);
     }
@@ -89,7 +90,7 @@ class AuthServiceTest {
         SystemConfig config = configService.getConfig();
         for (SystemConfig.UserConfig u : config.getUsers()) {
             if (u.getUsername().equals(username)) {
-                u.setStorageSpaces(new ArrayList<>(List.of(spaces)));
+                u.setStorageSpaces(new ArrayList<>(Arrays.asList(spaces)));
             }
         }
         configService.saveConfig(config);
