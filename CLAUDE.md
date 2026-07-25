@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-File Box is a self-hosted file sharing/management web app: Java 8 + Spring Boot 2.3, single fat-jar, **no database**. Files live directly on the filesystem; users, storage spaces, and system settings live in a hand-rolled YAML config. Default port **8888**.
+File Box is a self-hosted file sharing/management web app: **Java 21 + Spring Boot 3.5** (`jakarta.*` namespace), single fat-jar (plus optional **self-contained native packages** via jpackage — see [Native packaging](#native-packaging-jpackage)), **no database**. Files live directly on the filesystem; users, storage spaces, and system settings live in a hand-rolled YAML config. Default port **8888**.
 
 ## Build, run, test
 
@@ -20,6 +20,17 @@ mvn test -Dtest=FileCatalogServiceTest   # run a single test class
 On first start, `ConfigValidationRunner` creates `./config`, `./data/default`, `./logs`, `./runtime/multipart-tmp`, and if `filebox.yml` is missing, generates a default config with a random admin password printed **once** to the log.
 
 There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortTest`, JUnit 5 + AssertJ).
+
+## Native packaging (jpackage)
+
+Besides the fat-jar / release-tarball (which needs Java pre-installed), File Box can be built into **self-contained, extract-and-run archives** that bundle a trimmed JRE via `jlink` — no Java needed on the target machine. Per the product decision, both platforms ship as **portable archives only** (no installers: no deb/rpm/msi).
+
+- `packaging/build-native.sh` (Linux) → `FileBox-<ver>-linux.tar.gz`
+- `packaging/build-native.ps1` (Windows) → `FileBox-<ver>-windows.zip`
+
+Each archive extracts to one folder `FileBox-<ver>-<platform>/{FileBox/, README.txt}`. Running the launcher (`FileBox/bin/FileBox` on Linux, double-click `FileBox\FileBox.exe` on Windows) writes config/data/logs/runtime to a sibling `file-box-data/` *inside that folder* — set by the launcher option `-Dfilebox.data.dir=$ROOTDIR/../file-box-data` (resolved by `FileBoxPaths`). The whole folder is portable; upgrade by replacing `FileBox/` and keeping `file-box-data/`. Requires JDK 17+ (`jlink`/`jpackage`/`jmods`); jpackage **cannot cross-compile**, so each platform archive must be built on that OS. The release CI matrix does both. See `packaging/README.md`.
+
+Two `jlink` gotchas: `java.instrument` (Tomcat class transformation) and `jdk.crypto.ec`/`jdk.crypto.cryptoki` (TLS) are **not** detected by `jdeps` but are required at runtime — both are in the `MODULES` list in the build scripts.
 
 ## Logging and the `prod` profile
 
@@ -42,7 +53,7 @@ Every release has three version sources that **must match**:
 - Git tag with an uppercase `V` prefix, for example `V2.1.0`.
 - Markdown release notes at `.github/release-notes/<tag>.md`, for example `.github/release-notes/V2.1.0.md`.
 
-The workflow validates the Maven version against the tag and requires the matching release-notes file to exist and be non-empty. It then runs `mvn -B -V package`, creates a GitHub Release named `File Box v<version>`, uses the Markdown file as the Release body, and uploads both the JAR and release tarball. Release notes are maintained manually in the repository; they are not generated from commits or PRs.
+The workflow validates the Maven version against the tag and requires the matching release-notes file to exist and be non-empty. It then builds on a **Linux + Windows matrix** (`mvn -B -V package` + the platform native script), creates a GitHub Release named `File Box v<version>`, uses the Markdown file as the Release body, and uploads the JAR, the release tarball, **and** the two self-contained native archives (`FileBox-<ver>-linux.tar.gz`, `FileBox-<ver>-windows.zip`). Release notes are maintained manually in the repository; they are not generated from commits or PRs.
 
 Standard release preparation and publication:
 
@@ -73,7 +84,7 @@ There are two independent configuration systems — do not confuse them:
 
 `ConfigService.getConfig()` checks the file's mtime on every call and reloads when it changes — so editing `config/filebox.yml` is picked up live, and `AdminController` writes persist through `ConfigService.saveConfig()` (atomic temp-file + move, with a `.bak` of the previous version). YAML keys are written kebab-case but both kebab-case and camelCase are accepted on read.
 
-Config path resolution precedence (`FileBoxConfigStore.resolveConfigPath`): `--filebox.config=` CLI arg → `filebox.config` system property → `FILEBOX_CONFIG` env var → `./config/filebox.yml`.
+Config path resolution precedence (`FileBoxConfigStore.resolveConfigPath`): `--filebox.config=` CLI arg → `filebox.config` system property → `FILEBOX_CONFIG` env var → `<data-home>/config/filebox.yml`. The **data home** (`FileBoxPaths`, used by *all* of config/data/logs/runtime + logback's log dir) resolves `filebox.data.dir` property → `FILEBOX_DATA_HOME` env → current dir (`.`), so legacy CWD-relative behavior is unchanged unless a data home is explicitly given (the native launcher sets one — see Native packaging).
 
 ## Maintenance commands run before Spring boots
 

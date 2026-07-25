@@ -1,6 +1,12 @@
 # 发布流水线 / Release pipeline
-# 推送 V* 形式的 tag(如 V2.1.0)时触发:校验版本、构建产物并按版本说明文件发布 GitHub Release。
-# Triggered by a V* tag (e.g. V2.1.0): validates the version, builds artifacts, and publishes release notes from the repository.
+# 推送 V* 形式的 tag(如 V2.2.0)时触发:
+#   - 在 Linux 与 Windows 各构建一个自带 JRE 的【解压即用】压缩包(jpackage 不能交叉编译)
+#   - 连同 fat jar + release.tar.gz 一起发布到 GitHub Release
+#
+# Triggered by a V* tag (e.g. V2.2.0):
+#   - builds a self-contained, extract-and-run archive on each of Linux and Windows
+#     (jpackage can't cross-compile → one runner per OS)
+#   - publishes them alongside the fat jar + release.tar.gz as release assets
 name: Release
 
 on:
@@ -13,17 +19,67 @@ permissions:
   contents: write
 
 jobs:
-  build-release:
+  build:
+    name: Build (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux
+            native_cmd: ./packaging/build-native.sh
+            native_shell: bash
+          - os: windows-latest
+            label: windows
+            native_cmd: '& ./packaging/build-native.ps1'
+            native_shell: pwsh
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 拉取代码 / Checkout
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 21 / Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: 构建(含测试)/ Build with Maven
+        run: mvn -B -V package
+
+      - name: 构建原生压缩包 / Build native archive
+        shell: ${{ matrix.native_shell }}
+        run: ${{ matrix.native_cmd }}
+
+      - name: 上传原生压缩包 / Upload native archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.label }}
+          path: target/native/FileBox-*
+
+      - name: 上传 jar + release.tar.gz(仅 Linux)/ Upload jar + release tarball (linux only)
+        if: matrix.label == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-release
+          path: |
+            target/file-box-*.jar
+            target/file-box-*-release.tar.gz
+
+  release:
+    name: Publish release
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: 拉取代码 / Checkout
         uses: actions/checkout@v4
 
-      - name: 安装 JDK 8 / Set up JDK 8
+      - name: 安装 JDK 21(读取版本)/ Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '21'
           cache: maven
 
       - name: 校验版本与发布说明 / Validate version and release notes
@@ -45,17 +101,13 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "display=v$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: 构建(含测试)/ Build with Maven
-        run: mvn -B -V package
+      - name: 汇集产物 / Gather artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: staging
 
-      - name: 暂存产物 / Stage artifacts
-        run: |
-          VERSION="${{ steps.ver.outputs.version }}"
-          mkdir -p staging
-          cp "target/file-box-${VERSION}.jar" staging/
-          cp "target/file-box-${VERSION}-release.tar.gz" staging/
-          echo "=== staged artifacts ==="
-          ls -la staging/
+      - name: 查看 staging / List staged artifacts
+        run: find staging -type f -not -name '*.jar.gz*' | sort
 
       - name: 创建 Release 并上传产物 / Create release & upload assets
         uses: softprops/action-gh-release@v2
@@ -63,5 +115,7 @@ jobs:
           name: File Box ${{ steps.ver.outputs.display }}
           body_path: .github/release-notes/${{ github.ref_name }}.md
           files: |
-            staging/file-box-*.jar
-            staging/file-box-*-release.tar.gz
+            staging/jar-release/file-box-*.jar
+            staging/jar-release/file-box-*-release.tar.gz
+            staging/native-linux/FileBox-*-linux.tar.gz
+            staging/native-windows/FileBox-*-windows.zip
