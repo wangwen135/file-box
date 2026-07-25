@@ -1,6 +1,9 @@
 package com.wwh.filebox.model;
 
+import com.wwh.filebox.config.FileBoxPaths;
+
 import java.io.File;
+import java.nio.file.Path;
 
 /**
  * Storage space model
@@ -108,7 +111,16 @@ public class StorageSpace {
         this.allowAnonymousUpload = allowAnonymousUpload;
     }
 
+    /**
+     * 存储根的绝对、规范化 {@link Path},相对路径按数据根({@link FileBoxPaths})解析。
+     * Absolute, normalized storage root; relative paths resolve via the data home.
+     * dataHome 默认为当前目录,故与旧 {@code new File(path)} 在 CWD 下结果一致(向后兼容)。
+     */
+    public Path getResolvedBasePath() {
+        return FileBoxPaths.resolveRelOrAbs(path);
+    }
+
     public File getStorageDirectory() {
-        return new File(path);
+        return getResolvedBasePath().toFile();
     }
 }

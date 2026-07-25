@@ -1,5 +1,6 @@
 package com.wwh.filebox.service;
 
+import com.wwh.filebox.config.FileBoxPaths;
 import com.wwh.filebox.constants.AppConstants;
 import com.wwh.filebox.model.SystemConfig;
 import com.wwh.filebox.security.SecureTokenGenerator;
@@ -23,7 +24,6 @@ import java.util.Map;
 
 public class FileBoxConfigStore {
 
-    public static final String DEFAULT_CONFIG_FILE = "./config/filebox.yml";
     public static final String CONFIG_PROPERTY = "filebox.config";
     public static final String CONFIG_ENV = "FILEBOX_CONFIG";
 
@@ -98,7 +98,7 @@ public class FileBoxConfigStore {
 
         String password = generateAdminPassword();
         SystemConfig config = createDefaultConfig(AppConstants.Auth.DEFAULT_ADMIN_USERNAME, passwordEncoder.encode(password));
-        Files.createDirectories(Paths.get("./data/default"));
+        Files.createDirectories(FileBoxPaths.defaultStorageDir());
         save(config);
         return new InitializationResult(true, password, config);
     }
@@ -126,7 +126,7 @@ public class FileBoxConfigStore {
 
         if (admin == null) {
             config = createDefaultConfig(AppConstants.Auth.DEFAULT_ADMIN_USERNAME, passwordEncoder.encode(password));
-            Files.createDirectories(Paths.get("./data/default"));
+            Files.createDirectories(FileBoxPaths.defaultStorageDir());
         } else {
             admin.setPassword(passwordEncoder.encode(password));
             admin.setRole("ADMIN");
@@ -151,7 +151,7 @@ public class FileBoxConfigStore {
         if (env != null && !env.trim().isEmpty()) {
             return Paths.get(env.trim());
         }
-        return Paths.get(DEFAULT_CONFIG_FILE);
+        return FileBoxPaths.configFile();
     }
 
     public static String readConfigPathArg(String[] args) {

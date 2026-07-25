@@ -1,12 +1,10 @@
 package com.wwh.filebox.config;
 
-import com.wwh.filebox.constants.AppConstants;
 import org.springframework.boot.autoconfigure.web.servlet.MultipartProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import jakarta.servlet.MultipartConfigElement;
-import java.io.File;
 
 /**
  * 自定义 multipart 配置 / Custom multipart configuration.
@@ -30,9 +28,9 @@ public class MultipartConfig {
 
     @Bean
     public MultipartConfigElement multipartConfigElement(MultipartProperties multipartProperties) {
-        // 把 yml 中的相对路径（./.multipart-tmp）解析为相对 CWD 的绝对路径
-        // Resolve the relative yml path to an absolute, CWD-relative path
-        String absoluteLocation = new File(AppConstants.FileUpload.MULTIPART_TEMP_DIR).getAbsolutePath();
+        // 把 multipart 临时目录解析为【基于数据根的绝对路径】(数据根默认 = CWD,向后兼容)
+        // Resolve the multipart temp dir to an absolute, data-home-anchored path (data home defaults to CWD)
+        String absoluteLocation = FileBoxPaths.multipartTempDir().toString();
 
         return new MultipartConfigElement(
                 absoluteLocation,

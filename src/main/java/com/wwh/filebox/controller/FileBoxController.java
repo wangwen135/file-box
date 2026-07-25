@@ -246,7 +246,7 @@ public class FileBoxController {
         }
 
         // 上传改变了文件集，作废该存储空间的遍历缓存 / uploads changed the file set; drop the cached walk
-        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+        fileCatalogService.invalidateScanCache(storageSpace.getResolvedBasePath());
         return ResponseEntity.ok("OK");
     }
 
@@ -328,7 +328,7 @@ public class FileBoxController {
         }
 
         // 文本上传改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
-        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+        fileCatalogService.invalidateScanCache(storageSpace.getResolvedBasePath());
         return ResponseEntity.ok("OK");
     }
 
@@ -363,14 +363,12 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无删除权限");
         }
 
-        String storageDir = storageSpace.getPath();
-
         // Ensure file path starts with '/' handling
         if (filePath.startsWith("/")) {
             filePath = filePath.substring(1);
         }
 
-        Path basePath = Paths.get(storageDir).toAbsolutePath().normalize();
+        Path basePath = storageSpace.getResolvedBasePath();
         Path targetPath = Paths.get(basePath.toString(), filePath).toAbsolutePath().normalize();
 
         // Security check: ensure target path is within storage directory
@@ -382,7 +380,7 @@ public class FileBoxController {
         if (Files.exists(targetPath) && Files.isRegularFile(targetPath) && !Files.isSymbolicLink(targetPath)) {
             Files.delete(targetPath);
             // 删除改变了文件集，作废该存储空间的遍历缓存与统计缓存 / drop the cached walk and stats for this space
-            fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+            fileCatalogService.invalidateScanCache(storageSpace.getResolvedBasePath());
             storageService.clearStatsCache(storageSpace.getName());
             logger.info("User {} successfully deleted file: {}", username, filePath);
             return ResponseEntity.ok("文件删除成功");
@@ -410,7 +408,7 @@ public class FileBoxController {
         }
 
         FileCatalogService.ScanResult scan = fileCatalogService.scan(
-                Paths.get(storageSpace.getPath()), null, null,
+                storageSpace.getResolvedBasePath(), null, null,
                 AppConstants.FileUpload.DEFAULT_FILE_OFFSET, 1);
         Map<String, Object> resp = new HashMap<>();
         resp.put("periods", scan.getPeriods());
@@ -459,7 +457,7 @@ public class FileBoxController {
         List<Map<String, Object>> result = new ArrayList<>();
         FileCatalogService.ScanResult scan;
         try {
-            scan = fileCatalogService.scan(Paths.get(storageSpace.getPath()), year, month, offset, limit);
+            scan = fileCatalogService.scan(storageSpace.getResolvedBasePath(), year, month, offset, limit);
             for (FileCatalogService.FileEntry entry : scan.getFiles()) {
                 result.add(buildDirRecord(entry.getPath(), entry.getRelativePath()));
             }
@@ -507,7 +505,7 @@ public class FileBoxController {
             writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "存储空间未找到");
             return null;
         }
-        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path basePath = storageSpace.getResolvedBasePath();
         Path target;
         try {
             target = basePath.resolve(rel).toAbsolutePath().normalize();
@@ -802,7 +800,7 @@ public class FileBoxController {
     private Path resolveWithinStorage(HttpServletRequest request, String relPath) {
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "Path resolve");
         if (storageSpace == null) return null;
-        return resolveWithin(Paths.get(storageSpace.getPath()), relPath);
+        return resolveWithin(storageSpace.getResolvedBasePath(), relPath);
     }
 
     /**
@@ -866,7 +864,7 @@ public class FileBoxController {
         if (storageSpace == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的存储空间");
         }
-        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path basePath = storageSpace.getResolvedBasePath();
         Path dir = resolveWithin(basePath, path);
         if (dir == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
@@ -971,7 +969,7 @@ public class FileBoxController {
         if (storageSpace == null) {
             return ResponseEntity.badRequest().body("无效的存储空间");
         }
-        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path basePath = storageSpace.getResolvedBasePath();
         Path source = resolveWithin(basePath, path);
         if (source == null || source.equals(basePath)) {
             return ResponseEntity.badRequest().body("不能重命名存储根目录");
@@ -1021,7 +1019,7 @@ public class FileBoxController {
         if (storageSpace == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的存储空间");
         }
-        Path basePath = Paths.get(storageSpace.getPath()).toAbsolutePath().normalize();
+        Path basePath = storageSpace.getResolvedBasePath();
         Path target = resolveWithin(basePath, folderPath);
         if (target == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的路径");
@@ -1053,7 +1051,7 @@ public class FileBoxController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除文件夹失败");
         }
         // 删除文件夹改变了文件集，作废该存储空间的遍历缓存与统计缓存 / drop the cached walk and stats for this space
-        fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
+        fileCatalogService.invalidateScanCache(storageSpace.getResolvedBasePath());
         storageService.clearStatsCache(storageSpace.getName());
         logger.info("User {} deleted folder: {}", session.getUsername(), folderPath);
         return ResponseEntity.ok("文件夹删除成功");

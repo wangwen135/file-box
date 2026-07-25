@@ -16,7 +16,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * 审计日志(传输 + 登录)的 Spring 装配:文件路径与"保留最近 N 条"上限来自 application.yml(filebox.audit.*)。
@@ -99,6 +98,8 @@ public class AuditConfig {
     }
 
     private static Path absolute(String path) {
-        return Paths.get(path).toAbsolutePath().normalize();
+        // 相对路径按数据根解析(默认 CWD,向后兼容);yml 里填绝对路径则原样尊重
+        // Relative paths anchor under the data home (default CWD); absolute paths from yml are honored as-is
+        return FileBoxPaths.resolveRelOrAbs(path);
     }
 }

@@ -19,7 +19,11 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <property name="FILEBOX_LOG_DIR" value="${FILEBOX_LOG_DIR:-logs}"/>
+    <!-- 日志目录优先级:显式 FILEBOX_LOG_DIR > filebox.data.dir/logs > 当前目录(.)/logs。
+         优先为了"一个 -Dfilebox.data.dir 即可整体搬迁数据(含日志)";二者都未设时退回 ./logs(向后兼容)。
+         Precedence: explicit FILEBOX_LOG_DIR > filebox.data.dir/logs > current-dir(.)/logs. Lets a single
+         -Dfilebox.data.dir relocate everything (data + logs); falls back to ./logs when neither is set. -->
+    <property name="FILEBOX_LOG_DIR" value="${FILEBOX_LOG_DIR:-${filebox.data.dir:-.}/logs}"/>
     <property name="FILEBOX_LOG_FILE" value="${FILEBOX_LOG_DIR}/filebox"/>
 
     <!-- 文件 appender:当前文件 filebox.log,历史归档 filebox-yyyy-MM-dd.i.log.gz -->

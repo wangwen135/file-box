@@ -1,6 +1,5 @@
 package com.wwh.filebox.config;
 
-import com.wwh.filebox.constants.AppConstants;
 import com.wwh.filebox.service.ConfigService;
 import com.wwh.filebox.service.FileBoxConfigStore;
 import org.slf4j.Logger;
@@ -14,7 +13,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -58,10 +56,10 @@ public class ConfigValidationRunner implements CommandLineRunner {
 
     private void prepareRuntimeDirectories() {
         try {
-            Files.createDirectories(Paths.get("./config"));
-            Files.createDirectories(Paths.get("./data/default"));
-            Files.createDirectories(Paths.get("./logs"));
-            Path multipartTmp = Paths.get(AppConstants.FileUpload.MULTIPART_TEMP_DIR);
+            Files.createDirectories(FileBoxPaths.configDir());
+            Files.createDirectories(FileBoxPaths.defaultStorageDir());
+            Files.createDirectories(FileBoxPaths.logsDir());
+            Path multipartTmp = FileBoxPaths.multipartTempDir();
             Files.createDirectories(multipartTmp);
             logger.info("Multipart temp dir ready: {}", multipartTmp.toAbsolutePath());
         } catch (IOException e) {

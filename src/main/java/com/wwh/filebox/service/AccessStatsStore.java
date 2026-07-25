@@ -2,6 +2,7 @@ package com.wwh.filebox.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wwh.filebox.config.FileBoxPaths;
 import com.wwh.filebox.model.AccessStat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -44,7 +44,7 @@ public class AccessStatsStore {
             @Value("${filebox.audit.access-stats-snapshot:logs/access-stats.json}") String snapshotPath,
             @Value("${filebox.audit.access-stats-retention-days:30}") int retentionDays) {
         this.registry = registry;
-        this.file = Paths.get(snapshotPath).toAbsolutePath().normalize();
+        this.file = FileBoxPaths.resolveRelOrAbs(snapshotPath);
         this.retentionDays = retentionDays;
     }
 

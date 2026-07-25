@@ -1,5 +1,6 @@
 package com.wwh.filebox.service;
 
+import com.wwh.filebox.config.FileBoxPaths;
 import com.wwh.filebox.constants.AppConstants;
 import com.wwh.filebox.model.StorageSpace;
 import com.wwh.filebox.model.StorageStats;
@@ -117,7 +118,8 @@ public class StorageService {
      * 必须显式检查返回值 —— 原先的 try/catch 是死代码，目录建不出来时配置仍会被保存。
      */
     private File ensureStorageDirectory(String path) {
-        File storageDir = new File(path);
+        // 相对路径按数据根解析(默认 CWD,向后兼容) / relative paths anchor under the data home
+        File storageDir = FileBoxPaths.resolveRelOrAbs(path).toFile();
         if (storageDir.exists()) {
             if (!storageDir.isDirectory()) {
                 // 路径被普通文件占用，无法作为目录使用 / a regular file blocks the path
