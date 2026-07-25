@@ -70,7 +70,7 @@ public class AuthController {
         }
 
         // Try to login
-        String token = authService.login(username, password, true);
+        String token = authService.login(username, password, true, ip);
 
         if (token == null) {
             // Login failed, record attempt
@@ -121,7 +121,7 @@ public class AuthController {
         }
 
         // Try to login
-        String token = authService.login(username, password, rememberMe);
+        String token = authService.login(username, password, rememberMe, ip);
 
         if (token == null) {
             // Login failed, record attempt
@@ -159,7 +159,7 @@ public class AuthController {
     @ResponseBody
     public ResponseEntity<?> anonymousLogin(HttpServletRequest httpRequest, HttpServletResponse response) {
         String ip = ClientIp.from(httpRequest);
-        String token = authService.loginAnonymous();
+        String token = authService.loginAnonymous(ip);
         if (token == null) {
             loginRecorder.record("anonymous", ip, false, "匿名访问未启用", false);
             Map<String, Object> result = new HashMap<>();

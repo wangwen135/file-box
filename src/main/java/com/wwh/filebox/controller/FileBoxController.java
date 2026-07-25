@@ -606,11 +606,10 @@ public class FileBoxController {
 
         long contentLength = end - start + 1;
 
-        // 只记"用户主动打开/下载"(顶层导航 Sec-Fetch-Dest=document);跳过列表里 <img>/<video> 等
-        // 渲染请求,否则一打开列表就刷屏。没有该头(老浏览器/非浏览器客户端)默认不记,避免重回噪音。
-        // Only log top-level opens/downloads (Sec-Fetch-Dest=document); skip inline <img>/<video>
-        // render fetches or opening the listing floods the log. Absent header -> don't log.
-        boolean shouldRecordDownload = "document".equals(request.getHeader("Sec-Fetch-Dest"));
+        // 预览请求(列表里 <img>/<video> 带 preview=1)不计入下载;其它(点击打开/直接访问 URL)都记。
+        // Preview fetches (listing <img>/<video> carrying preview=1) aren't logged; everything else
+        // (clicking a file open, or hitting the URL directly) is.
+        boolean shouldRecordDownload = request.getParameter("preview") == null;
         LoginSession downloadSession = shouldRecordDownload ? getSession(request) : null;
         TransferRecorder.Handle downloadHandle = shouldRecordDownload
                 ? transferRecorder.begin(

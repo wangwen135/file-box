@@ -13,6 +13,7 @@ import com.wwh.filebox.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -394,6 +395,40 @@ public class AdminController {
     public ResponseEntity<List<Map<String, Object>>> getSessions() {
         List<Map<String, Object>> sessions = authService.getActiveSessions();
         return ResponseEntity.ok(sessions);
+    }
+
+    /**
+     * 踢掉单个会话(按 token)。不允许踢自己当前的会话,免得把自己锁出去。
+     * Kick a single session by token. Refuses to kick the caller's own current session.
+     */
+    @PostMapping("/sessions/kick")
+    public ResponseEntity<?> kickSession(@RequestParam String token, HttpServletRequest request) {
+        String callerToken = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if ("token".equals(c.getName())) {
+                    callerToken = c.getValue();
+                    break;
+                }
+            }
+        }
+        if (token.equals(callerToken)) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("success", false);
+            err.put("error", "不能踢自己当前的会话");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
+        }
+        boolean ok = authService.invalidateSession(token);
+        if (!ok) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("success", false);
+            err.put("error", "会话不存在或已失效");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        return ResponseEntity.ok(result);
     }
 
     /**

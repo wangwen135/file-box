@@ -15,6 +15,9 @@ public class LoginSession {
     private long loginTime;
     private long expiryTime;
     private boolean rememberMe;
+    private String loginIp;        // 登录 IP / login IP
+    private boolean anonymous;     // 是否匿名会话 / whether this is an anonymous session
+    private long lastActiveMillis; // 最近一次活跃时间 / last active time
 
     public LoginSession() {
     }
@@ -103,5 +106,29 @@ public class LoginSession {
 
     public void setRememberMe(boolean rememberMe) {
         this.rememberMe = rememberMe;
+    }
+
+    public String getLoginIp() {
+        return loginIp;
+    }
+
+    public void setLoginIp(String loginIp) {
+        this.loginIp = loginIp;
+    }
+
+    public boolean isAnonymous() {
+        return anonymous;
+    }
+
+    public void setAnonymous(boolean anonymous) {
+        this.anonymous = anonymous;
+    }
+
+    public long getLastActiveMillis() {
+        return lastActiveMillis;
+    }
+
+    public void setLastActiveMillis(long lastActiveMillis) {
+        this.lastActiveMillis = lastActiveMillis;
     }
 }

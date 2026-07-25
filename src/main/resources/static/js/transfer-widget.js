@@ -49,6 +49,14 @@
 
         makeDraggable(root, fab);
 
+        // 点浮窗以外的地方自动收起面板(点图标本身由上面的 fab click 处理,不会冲突)
+        // click outside the widget closes the panel (the fab click above handles the icon itself)
+        document.addEventListener('click', function (e) {
+            if (!panel.hidden && !root.contains(e.target)) {
+                panel.hidden = true;
+            }
+        });
+
         function render(transfers) {
             var items = transfers || [];
             countEl.textContent = items.length > 0 ? String(items.length) : '';

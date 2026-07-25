@@ -266,6 +266,7 @@
         append('/admin/transfer-log.html', 'ico-history', '传输日志', 'transfer-log');
         append('/admin/login-log.html', 'ico-login', '登录日志', 'login-log');
         append('/admin/access-stats.html', 'ico-gauge', '访问统计', 'access-stats');
+        append('/admin/sessions.html', 'ico-users', '会话管理', 'sessions');
         syncCollapsedTitles();
     }
 

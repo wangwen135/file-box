@@ -39,13 +39,17 @@ public class AuthService {
      * Login with username and password
      */
     public String login(String username, String password) {
-        return login(username, password, true);
+        return login(username, password, true, null);
+    }
+
+    public String login(String username, String password, boolean rememberMe) {
+        return login(username, password, rememberMe, null);
     }
 
     /**
-     * Login with username, password and remember me option
+     * Login with username, password, remember me option and the caller's IP (for session management).
      */
-    public String login(String username, String password, boolean rememberMe) {
+    public String login(String username, String password, boolean rememberMe, String loginIp) {
         SystemConfig config = configService.getConfig();
         if (config == null || config.getUsers() == null) {
             logger.error("Configuration not loaded");
@@ -66,6 +70,9 @@ public class AuthService {
                     String[] storageSpaces = getStorageSpacesForUser(userConfig, config);
 
                     LoginSession session = new LoginSession(username, Role.fromString(userConfig.getRole()), storageSpaces, rememberMe);
+                    session.setLoginIp(loginIp);
+                    session.setAnonymous(false);
+                    session.setLastActiveMillis(System.currentTimeMillis());
                     sessions.put(token, session);
 
                     logger.info("User {} logged in successfully", username);
@@ -79,6 +86,14 @@ public class AuthService {
     }
 
     public String loginAnonymous() {
+        return loginAnonymous(null);
+    }
+
+    /**
+     * 匿名登录:发一个标记为 anonymous 的会话,并记录登录 IP。
+     * Anonymous login: create a session flagged anonymous, recording the login IP.
+     */
+    public String loginAnonymous(String loginIp) {
         SystemConfig config = configService.getConfig();
         if (config == null || !config.isAnonymousAccessEnabled() || config.getStorageSpaces() == null) {
             return null;
@@ -96,6 +111,9 @@ public class AuthService {
 
         String token = generateToken();
         LoginSession session = new LoginSession("anonymous", Role.USER, anonymousSpaces.toArray(new String[0]), false);
+        session.setAnonymous(true);
+        session.setLoginIp(loginIp);
+        session.setLastActiveMillis(System.currentTimeMillis());
         sessions.put(token, session);
         logger.info("Anonymous session created with {} storage space(s)", anonymousSpaces.size());
         return token;
@@ -182,6 +200,18 @@ public class AuthService {
     }
 
     /**
+     * 踢掉单个会话(按 token)。会话管理用,区别于 invalidateSessionsForUser(按用户名,会把同名会话全踢)。
+     * Kick a single session by token — for session management, unlike invalidateSessionsForUser
+     * (by username, which kills every session sharing that name, e.g. all anonymous sessions).
+     */
+    public boolean invalidateSession(String token) {
+        if (token == null) {
+            return false;
+        }
+        return sessions.remove(token) != null;
+    }
+
+    /**
      * Get session by token
      */
     public LoginSession getSession(String token) {
@@ -196,6 +226,7 @@ public class AuthService {
             }
             // Extend session expiry on access
             session.extendExpiry();
+            session.setLastActiveMillis(System.currentTimeMillis());
         }
         return session;
     }
@@ -377,6 +408,9 @@ public class AuthService {
             sessionInfo.put("storageSpace", session.getCurrentStorageSpace());
             sessionInfo.put("loginTime", session.getLoginTime());
             sessionInfo.put("expiryTime", session.getExpiryTime());
+            sessionInfo.put("loginIp", session.getLoginIp());
+            sessionInfo.put("anonymous", session.isAnonymous());
+            sessionInfo.put("lastActiveMillis", session.getLastActiveMillis());
             sessionList.add(sessionInfo);
         }
         return sessionList;

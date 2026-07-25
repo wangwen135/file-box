@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Box - 会话管理</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .page-actions{display:flex;gap:10px;align-items:center}
+        .audit-hint{font-size:12px;color:var(--text-secondary,#999)}
+        .audit-table{width:100%;border-collapse:collapse;font-size:13px}
+        .audit-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--border,#eee);color:var(--text-secondary,#999);font-weight:600;white-space:nowrap}
+        .audit-table td{padding:9px 8px;border-bottom:1px solid var(--border,#f0f0f0);vertical-align:middle}
+        .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px}
+        .tag-anon{background:rgba(245,158,11,.15);color:#b45309}
+        .tag-user{background:rgba(79,124,255,.12);color:var(--primary,#4f7cff)}
+        .tag-role{background:var(--bg-hover,#eef1f6);color:var(--text-secondary,#666)}
+        .tok{font-family:monospace;color:var(--text-secondary,#999)}
+        .kick-btn{padding:4px 10px;border:1px solid #ef4444;background:transparent;color:#ef4444;border-radius:6px;cursor:pointer;font-size:12px}
+        .kick-btn:hover{background:#ef4444;color:#fff}
+        .empty-row td{text-align:center;color:var(--text-secondary,#999);padding:30px}
+    </style>
+</head>
+<body class="admin-layout">
+    <aside class="sidebar admin-sidebar">
+        <div class="admin-brand">
+            <h1 class="text-gradient">File Box</h1>
+            <p>管理后台</p>
+        </div>
+        <nav class="admin-nav">
+            <a href="/admin/dashboard.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg><span>仪表盘</span></a>
+            <a href="/admin/storage.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-storage"/></svg><span>存储管理</span></a>
+            <a href="/admin/users.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-users"/></svg><span>用户管理</span></a>
+            <a href="/admin/settings.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-settings"/></svg><span>系统设置</span></a>
+        </nav>
+        <div class="admin-sidebar-footer"></div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="page-header">
+            <div>
+                <h2 class="page-title">会话管理</h2>
+                <p class="page-subtitle">当前在线的登录会话(含匿名),可踢下线</p>
+            </div>
+            <div class="page-actions">
+                <span class="audit-hint" id="count"></span>
+                <button class="btn" onclick="load()">刷新</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="audit-table">
+                <thead><tr><th>用户</th><th>类型</th><th>角色</th><th>登录时间</th><th>登录IP</th><th>最近活跃</th><th>当前空间</th><th>token</th><th>操作</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="/js/notification.js"></script>
+    <script src="/js/admin-common.js"></script>
+    <script>
+        function fmtTime(ms){ if(!ms) return '-'; var d=new Date(ms); function p(n){return n<10?'0'+n:n;} return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+        function fmtRel(ms){ if(!ms) return '-'; var s=Math.round((Date.now()-ms)/1000); if(s<60) return s+'秒前'; if(s<3600) return Math.floor(s/60)+'分钟前'; if(s<86400) return Math.floor(s/3600)+'小时前'; return Math.floor(s/86400)+'天前'; }
+        function esc(s){ if(s==null) return ''; return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+        async function load() {
+            var r = await fetch('/api/admin/sessions', {credentials:'same-origin'});
+            if (!r.ok) { if (window.Notify) Notify.error('加载失败'); return; }
+            var list = await r.json();
+            list = list || [];
+            // 最近活跃倒序 / sort by last active desc
+            list.sort(function(a,b){ return (b.lastActiveMillis||0) - (a.lastActiveMillis||0); });
+            document.getElementById('count').textContent = '共 ' + list.length + ' 个会话';
+            document.getElementById('rows').innerHTML = list.length
+                ? list.map(rowHtml).join('')
+                : '<tr class="empty-row"><td colspan="9">暂无在线会话</td></tr>';
+        }
+
+        function rowHtml(s) {
+            var typeTag = s.anonymous ? '<span class="tag tag-anon">匿名</span>' : '<span class="tag tag-user">用户</span>';
+            var roleTag = '<span class="tag tag-role">' + esc(s.role) + '</span>';
+            var tok = s.token || '';
+            var masked = tok.length > 6 ? '…' + tok.slice(-6) : tok;
+            return '<tr>'
+                + '<td>' + esc(s.username) + '</td>'
+                + '<td>' + typeTag + '</td>'
+                + '<td>' + roleTag + '</td>'
+                + '<td>' + fmtTime(s.loginTime) + '</td>'
+                + '<td>' + esc(s.loginIp || '-') + '</td>'
+                + '<td title="' + fmtTime(s.lastActiveMillis) + '">' + fmtRel(s.lastActiveMillis) + '</td>'
+                + '<td>' + esc(s.storageSpace || '-') + '</td>'
+                + '<td class="tok">' + esc(masked) + '</td>'
+                + '<td><button class="kick-btn" onclick="kick(\'' + esc(tok).replace(/'/g,"\\'") + '\')">踢下线</button></td>'
+                + '</tr>';
+        }
+
+        function kick(token) {
+            showConfirm('踢下线', '确定把该会话踢下线?对方需要重新登录。', '确定踢下线', function () { doKick(token); });
+        }
+
+        async function doKick(token) {
+            var r = await fetch('/api/admin/sessions/kick?token=' + encodeURIComponent(token), {method:'POST', credentials:'same-origin'});
+            var data = await r.json().catch(function(){ return {}; });
+            if (r.ok && data.success) {
+                if (window.Notify) Notify.success('已踢下线');
+                load();
+            } else {
+                if (window.Notify) Notify.error(data.error || '操作失败');
+            }
+        }
+
+        // 自定义确认弹框(复用"修改密码"那套 modal 样式,不用浏览器原生 confirm)
+        // custom confirm modal (reuses the change-password modal styles, not the native confirm)
+        function showConfirm(title, message, okText, onConfirm) {
+            var overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.zIndex = '10001';
+            overlay.innerHTML =
+                '<div class="notify-modal" style="min-width:360px;">' +
+                  '<div class="modal-header"><h3 class="modal-title">' + title + '</h3></div>' +
+                  '<div class="modal-body"><div style="padding:6px 4px;color:var(--text-primary,#222);font-size:14px;">' + message + '</div></div>' +
+                  '<div class="modal-footer">' +
+                    '<button type="button" class="modal-btn modal-btn-default" data-act="cancel">取消</button>' +
+                    '<button type="button" class="modal-btn" data-act="ok" style="background:#ef4444;color:#fff;">' + okText + '</button>' +
+                  '</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            var close = function () { overlay.remove(); document.removeEventListener('keydown', onEsc); };
+            var onEsc = function (e) { if (e.key === 'Escape') { close(); } };
+            overlay.addEventListener('click', function (e) { if (e.target === overlay) { close(); } });
+            document.addEventListener('keydown', onEsc);
+            overlay.querySelector('[data-act=cancel]').addEventListener('click', close);
+            overlay.querySelector('[data-act=ok]').addEventListener('click', function () { close(); onConfirm(); });
+        }
+
+        load();
+        setInterval(load, 10000); // 每 10 秒自动刷新 / auto-refresh every 10s
+    </script>
+</body>
+</html>

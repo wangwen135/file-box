@@ -1103,6 +1103,14 @@
     }
 
     /**
+     * 给预览用的 url 加 preview 标记,后端见此标记不记下载。
+     * Mark a preview url so the backend skips logging it as a download.
+     */
+    function previewUrl(url) {
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'preview=1';
+    }
+
+    /**
      * 创建单个文件元素
      * @param {Object} file - 文件对象
      * @returns {HTMLElement} 文件元素
@@ -1149,7 +1157,7 @@
         icon.className = "file-row-icon";
         if (file.type === "image") {
             const img = document.createElement("img");
-            img.src = file.url;
+            img.src = previewUrl(file.url);
             img.alt = "";
             img.loading = "lazy";
             icon.appendChild(img);
@@ -1198,13 +1206,13 @@
                 container.appendChild(pre);
             } else if (file.type === "image") {
                 const img = document.createElement("img");
-                img.src = file.url;
+                img.src = previewUrl(file.url);
                 img.alt = escapeHtml(file.filename);
                 img.loading = "lazy"; // 添加懒加载
                 container.appendChild(img);
             } else if (file.type === "video") {
                 const vid = document.createElement("video");
-                vid.src = file.url;
+                vid.src = previewUrl(file.url);
                 vid.controls = true;
                 vid.preload = "metadata"; // 优化加载
                 container.appendChild(vid);

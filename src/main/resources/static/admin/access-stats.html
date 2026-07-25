@@ -12,6 +12,7 @@
         .audit-filters .f-item{display:flex;flex-direction:column;gap:4px}
         .audit-filters label{font-size:11px;color:var(--text-secondary,#999)}
         .audit-filters input{padding:6px 8px;border:1px solid var(--border,#ddd);border-radius:6px;background:var(--bg,#fff);color:var(--text-primary,#222);font-size:13px}
+        .audit-filters input[type=date]::-webkit-calendar-picker-indicator{margin-right:6px}
         .audit-hint{font-size:12px;color:var(--text-secondary,#999)}
         .audit-table{width:100%;border-collapse:collapse;font-size:13px}
         .audit-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--border,#eee);color:var(--text-secondary,#999);font-weight:600;white-space:nowrap}
@@ -57,8 +58,10 @@
 
         <div class="audit-filters">
             <div class="f-item"><label>日期</label><input type="date" id="f_date"></div>
+            <div class="f-item"><label>可疑阈值(请求数/天)</label><input type="number" id="f_thr" value="500" min="0" style="width:90px"></div>
+            <label class="f-item" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="f_only" style="width:auto">仅看可疑</label>
             <button class="btn" onclick="load()">刷新</button>
-            <span class="audit-hint">点击某行 IP 查看当天按小时的分布;请求数 ≥ <strong id="thr">500</strong>/天高亮为可疑。</span>
+            <span class="audit-hint">点击某行 IP 查看当天按小时分布。</span>
         </div>
 
         <div class="table-container">
@@ -73,8 +76,8 @@
     <script src="/js/notification.js"></script>
     <script src="/js/admin-common.js"></script>
     <script>
-        var THRESHOLD = 500;
         var openIp = null;
+        var lastRecords = [];
 
         function todayStr() { var d = new Date(); function p(n){return n<10?'0'+n:n;} return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
         document.getElementById('f_date').value = todayStr();
@@ -83,21 +86,32 @@
         function fmtTime(ms){ if(!ms) return '-'; var d=new Date(ms); function p(n){return n<10?'0'+n:n;} return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
         function esc(s){ if(s==null) return ''; return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
+        function threshold(){ var v = parseInt(document.getElementById('f_thr').value, 10); return isNaN(v) ? 0 : v; }
+        function onlySusp(){ return document.getElementById('f_only').checked; }
+
         async function load() {
             var date = document.getElementById('f_date').value || todayStr();
             var r = await fetch('/api/admin/access-stats?date=' + encodeURIComponent(date), {credentials:'same-origin'});
             if (!r.ok) { if (window.Notify) Notify.error('加载失败'); return; }
             var d = await r.json();
-            var records = d.records || [];
-            document.getElementById('rows').innerHTML = records.length
-                ? records.map(rowHtml).join('')
-                : '<tr class="empty-row"><td colspan="7">暂无数据</td></tr>';
-            document.getElementById('detail').innerHTML = '';
+            lastRecords = d.records || [];
             openIp = null;
+            document.getElementById('detail').innerHTML = '';
+            render();
         }
 
-        function rowHtml(r) {
-            var sus = r.requests >= THRESHOLD ? ' class="suspicious"' : '';
+        // 阈值/仅看可疑 变了就重渲染(用缓存数据,不重新请求)/ re-render from cache on filter change
+        function render() {
+            var thr = threshold();
+            var only = onlySusp();
+            var rows = only ? lastRecords.filter(function(r){ return r.requests >= thr; }) : lastRecords;
+            document.getElementById('rows').innerHTML = rows.length
+                ? rows.map(function(r){ return rowHtml(r, thr); }).join('')
+                : '<tr class="empty-row"><td colspan="7">' + (lastRecords.length ? '没有满足条件的 IP' : '暂无数据') + '</td></tr>';
+        }
+
+        function rowHtml(r, thr) {
+            var sus = thr > 0 && r.requests >= thr ? ' class="suspicious"' : '';
             var ipLabel = r.ip === '__other__' ? '其它 IP(超上限)' : esc(r.ip);
             return '<tr' + sus + ' onclick="toggleIp(\'' + esc(r.ip).replace(/'/g, "\\'") + '\')">' +
                 '<td><span class="ip-link">' + ipLabel + '</span></td>' +
@@ -119,10 +133,11 @@
             var hours = d.hours || [];
             var max = 1;
             hours.forEach(function(h){ if (h.requests > max) max = h.requests; });
+            var thr = threshold();
             var label = ip === '__other__' ? '其它 IP' : ip;
             var bars = hours.map(function(h, i){
                 var pct = Math.round(h.requests * 100 / max);
-                var hot = h.requests >= THRESHOLD ? ' hot' : '';
+                var hot = thr > 0 && h.requests >= thr ? ' hot' : '';
                 var lbl = (i < 10 ? '0' + i : i) + ':00';
                 return '<div class="bar-row"><span class="bar-label">' + lbl + '</span>'
                     + '<div class="bar-track"><div class="bar-fill' + hot + '" style="width:' + pct + '%"></div></div>'
@@ -132,6 +147,8 @@
                 '<div class="detail-panel"><div class="detail-title">' + esc(label) + ' 当天按小时分布</div>' + bars + '</div>';
         }
 
+        document.getElementById('f_thr').addEventListener('input', render);
+        document.getElementById('f_only').addEventListener('change', render);
         load();
     </script>
 </body>
