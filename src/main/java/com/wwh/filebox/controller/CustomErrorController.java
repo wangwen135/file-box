@@ -26,12 +26,4 @@ public class CustomErrorController implements ErrorController {
     public String handleNestedError() {
         return "redirect:/index.html";
     }
-
-    /**
-     * Spring Boot 2.3 的 ErrorController 仍要求实现该方法。
-     */
-    @Override
-    public String getErrorPath() {
-        return "/error";
-    }
 }

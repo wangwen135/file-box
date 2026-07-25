@@ -1,6 +1,6 @@
 package com.wwh.filebox.util;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 取客户端真实 IP:优先 X-Forwarded-For(反代场景取首段),否则回退到 remoteAddr。
