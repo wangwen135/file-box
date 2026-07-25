@@ -20,3 +20,14 @@ filebox:
   # 版本号来自 pom.xml，由 Maven resource filtering 注入（@project.version@）
   # Version injected from pom.xml via Maven resource filtering
   version: @project.version@
+  audit:
+    # 传输记录 / 登录记录 的文件路径，与"保留最近 N 条"上限（保护堆内存）
+    # Transfer- and login-log file paths, plus the "keep last N records" cap (protects the heap)
+    transfer-log: logs/transfer-history.jsonl
+    login-log: logs/login-history.jsonl
+    max-records: 100000
+    # 访问统计(IP/请求数/流量/桶分布):内存表上限、快照文件、保留天数
+    # Access stats (IP/request/traffic/buckets): in-memory cap, snapshot file, retention days
+    access-stats-snapshot: logs/access-stats.json
+    access-stats-max-entries: 500000
+    access-stats-retention-days: 30

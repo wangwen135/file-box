@@ -249,11 +249,45 @@
         }
     }
 
+    // 审计日志侧栏入口(传输日志 / 登录日志),按当前页高亮 / audit-log sidebar entries
+    function injectAuditNav() {
+        const nav = document.querySelector('.admin-sidebar .admin-nav');
+        if (!nav || nav.querySelector('a[href$="transfer-log.html"]')) {
+            return;
+        }
+        const path = location.pathname;
+        const append = (href, ico, label, match) => {
+            const a = document.createElement('a');
+            a.href = href;
+            a.className = 'nav-item' + (path.indexOf(match) >= 0 ? ' active' : '');
+            a.innerHTML = '<svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#' + ico + '"/></svg><span>' + label + '</span>';
+            nav.appendChild(a);
+        };
+        append('/admin/transfer-log.html', 'ico-history', '传输日志', 'transfer-log');
+        append('/admin/login-log.html', 'ico-login', '登录日志', 'login-log');
+        append('/admin/access-stats.html', 'ico-gauge', '访问统计', 'access-stats');
+        syncCollapsedTitles();
+    }
+
+    // 实时传输浮窗(仅管理员) / real-time transfer widget (admin only)
+    function injectTransferWidget() {
+        if (document.querySelector('script[data-transfer-widget]')) {
+            return;
+        }
+        const s = document.createElement('script');
+        s.src = '/js/transfer-widget.js';
+        s.async = true;
+        s.setAttribute('data-transfer-widget', '');
+        document.body.appendChild(s);
+    }
+
     injectAdminTopbar();
     setupDropdowns();
     setupPasswordEntry();
     setupSidebarCollapse();
     guardAdminAccess();
+    injectAuditNav();
+    injectTransferWidget();
 
     // 版本号单一来源：pom.xml → application.yml → /api/system/info
     // Single source: pom.xml → application.yml → /api/system/info

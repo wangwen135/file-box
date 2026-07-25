@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Box - 访问统计</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .audit-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:16px 0;padding:14px 16px;background:var(--bg-elevated,#fff);border:1px solid var(--border,#eee);border-radius:10px}
+        .audit-filters .f-item{display:flex;flex-direction:column;gap:4px}
+        .audit-filters label{font-size:11px;color:var(--text-secondary,#999)}
+        .audit-filters input{padding:6px 8px;border:1px solid var(--border,#ddd);border-radius:6px;background:var(--bg,#fff);color:var(--text-primary,#222);font-size:13px}
+        .audit-hint{font-size:12px;color:var(--text-secondary,#999)}
+        .audit-table{width:100%;border-collapse:collapse;font-size:13px}
+        .audit-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--border,#eee);color:var(--text-secondary,#999);font-weight:600;white-space:nowrap}
+        .audit-table td{padding:9px 8px;border-bottom:1px solid var(--border,#f0f0f0)}
+        .audit-table tr.suspicious td{background:rgba(239,68,68,.08)}
+        .audit-table tr.suspicious td:first-child{box-shadow:inset 3px 0 0 #ef4444}
+        .audit-table tbody tr{cursor:pointer}
+        .audit-table tbody tr:hover td{background:var(--bg-hover,#f5f7fb)}
+        .ip-link{color:var(--primary,#4f7cff);text-decoration:none}
+        .empty-row td{text-align:center;color:var(--text-secondary,#999);padding:30px}
+        .detail-panel{margin-top:16px;padding:16px;background:var(--bg-elevated,#fff);border:1px solid var(--border,#eee);border-radius:10px}
+        .detail-title{font-size:13px;font-weight:600;margin-bottom:10px}
+        .bar-row{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px}
+        .bar-label{flex:0 0 48px;color:var(--text-secondary,#999)}
+        .bar-track{flex:1 1 auto;height:14px;background:var(--bg-hover,#eef1f6);border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;background:var(--primary,#4f7cff);border-radius:4px}
+        .bar-fill.hot{background:#ef4444}
+        .bar-num{flex:0 0 auto;color:var(--text-secondary,#999);min-width:120px;text-align:right}
+    </style>
+</head>
+<body class="admin-layout">
+    <aside class="sidebar admin-sidebar">
+        <div class="admin-brand">
+            <h1 class="text-gradient">File Box</h1>
+            <p>管理后台</p>
+        </div>
+        <nav class="admin-nav">
+            <a href="/admin/dashboard.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg><span>仪表盘</span></a>
+            <a href="/admin/storage.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-storage"/></svg><span>存储管理</span></a>
+            <a href="/admin/users.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-users"/></svg><span>用户管理</span></a>
+            <a href="/admin/settings.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-settings"/></svg><span>系统设置</span></a>
+        </nav>
+        <div class="admin-sidebar-footer"></div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="page-header">
+            <div>
+                <h2 class="page-title">访问统计</h2>
+                <p class="page-subtitle">按 IP 统计请求数与流量(每小时聚合)</p>
+            </div>
+        </div>
+
+        <div class="audit-filters">
+            <div class="f-item"><label>日期</label><input type="date" id="f_date"></div>
+            <button class="btn" onclick="load()">刷新</button>
+            <span class="audit-hint">点击某行 IP 查看当天按小时的分布;请求数 ≥ <strong id="thr">500</strong>/天高亮为可疑。</span>
+        </div>
+
+        <div class="table-container">
+            <table class="audit-table">
+                <thead><tr><th>IP</th><th>请求数</th><th>流量</th><th>列表</th><th>下载</th><th>其它</th><th>末次时间</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+        <div id="detail"></div>
+    </main>
+
+    <script src="/js/notification.js"></script>
+    <script src="/js/admin-common.js"></script>
+    <script>
+        var THRESHOLD = 500;
+        var openIp = null;
+
+        function todayStr() { var d = new Date(); function p(n){return n<10?'0'+n:n;} return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+        document.getElementById('f_date').value = todayStr();
+
+        function fmtSize(b){ if(!b) return '0 B'; var u=['B','KB','MB','GB','TB']; var i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(b<10&&i>0?1:0)+' '+u[i]; }
+        function fmtTime(ms){ if(!ms) return '-'; var d=new Date(ms); function p(n){return n<10?'0'+n:n;} return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+        function esc(s){ if(s==null) return ''; return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+        async function load() {
+            var date = document.getElementById('f_date').value || todayStr();
+            var r = await fetch('/api/admin/access-stats?date=' + encodeURIComponent(date), {credentials:'same-origin'});
+            if (!r.ok) { if (window.Notify) Notify.error('加载失败'); return; }
+            var d = await r.json();
+            var records = d.records || [];
+            document.getElementById('rows').innerHTML = records.length
+                ? records.map(rowHtml).join('')
+                : '<tr class="empty-row"><td colspan="7">暂无数据</td></tr>';
+            document.getElementById('detail').innerHTML = '';
+            openIp = null;
+        }
+
+        function rowHtml(r) {
+            var sus = r.requests >= THRESHOLD ? ' class="suspicious"' : '';
+            var ipLabel = r.ip === '__other__' ? '其它 IP(超上限)' : esc(r.ip);
+            return '<tr' + sus + ' onclick="toggleIp(\'' + esc(r.ip).replace(/'/g, "\\'") + '\')">' +
+                '<td><span class="ip-link">' + ipLabel + '</span></td>' +
+                '<td>' + r.requests + '</td>' +
+                '<td>' + fmtSize(r.bytes) + '</td>' +
+                '<td>' + r.listRequests + '</td>' +
+                '<td>' + r.downloadRequests + '</td>' +
+                '<td>' + r.otherRequests + '</td>' +
+                '<td>' + fmtTime(r.lastSeenMillis) + '</td></tr>';
+        }
+
+        async function toggleIp(ip) {
+            if (openIp === ip) { openIp = null; document.getElementById('detail').innerHTML = ''; return; }
+            openIp = ip;
+            var date = document.getElementById('f_date').value || todayStr();
+            var r = await fetch('/api/admin/access-stats?date=' + encodeURIComponent(date) + '&ip=' + encodeURIComponent(ip), {credentials:'same-origin'});
+            if (!r.ok) return;
+            var d = await r.json();
+            var hours = d.hours || [];
+            var max = 1;
+            hours.forEach(function(h){ if (h.requests > max) max = h.requests; });
+            var label = ip === '__other__' ? '其它 IP' : ip;
+            var bars = hours.map(function(h, i){
+                var pct = Math.round(h.requests * 100 / max);
+                var hot = h.requests >= THRESHOLD ? ' hot' : '';
+                var lbl = (i < 10 ? '0' + i : i) + ':00';
+                return '<div class="bar-row"><span class="bar-label">' + lbl + '</span>'
+                    + '<div class="bar-track"><div class="bar-fill' + hot + '" style="width:' + pct + '%"></div></div>'
+                    + '<span class="bar-num">' + h.requests + ' 次 · ' + fmtSize(h.bytes) + '</span></div>';
+            }).join('');
+            document.getElementById('detail').innerHTML =
+                '<div class="detail-panel"><div class="detail-title">' + esc(label) + ' 当天按小时分布</div>' + bars + '</div>';
+        }
+
+        load();
+    </script>
+</body>
+</html>

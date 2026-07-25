@@ -5,8 +5,10 @@ import com.wwh.filebox.model.LoginSession;
 import com.wwh.filebox.model.SystemConfig;
 import com.wwh.filebox.service.AuthService;
 import com.wwh.filebox.service.ConfigService;
+import com.wwh.filebox.service.LoginRecorder;
 import com.wwh.filebox.service.UserService;
 import com.wwh.filebox.security.LoginAttemptManager;
+import com.wwh.filebox.util.ClientIp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +44,9 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private LoginRecorder loginRecorder;
+
     /**
      * Default login endpoint (legacy support)
      */
@@ -48,14 +54,17 @@ public class AuthController {
     public ResponseEntity<?> loginPost(
             @RequestParam String username,
             @RequestParam String password,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
+        String ip = ClientIp.from(httpRequest);
         logger.info("User login attempt: {}", username);
 
         // Check if user is locked
         if (loginAttemptService.isLocked(username)) {
             long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
             logger.warn("User {} is locked, remaining lock time: {} seconds", username, remainingLockTime);
+            loginRecorder.record(username, ip, false, "账户已锁定", true);
             return ResponseEntity.status(HttpStatus.LOCKED)
                     .body("登录失败次数过多，请" + remainingLockTime + "秒后重试");
         }
@@ -65,6 +74,7 @@ public class AuthController {
 
         if (token == null) {
             // Login failed, record attempt
+            loginRecorder.record(username, ip, false, "用户名或密码错误", true);
             if (loginAttemptService.loginFailed(username)) {
                 long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
                 return ResponseEntity.status(HttpStatus.LOCKED)
@@ -82,6 +92,7 @@ public class AuthController {
         setTokenCookie(response, token, true);
 
         logger.info("User {} logged in successfully", username);
+        loginRecorder.record(username, ip, true, null, true);
         return ResponseEntity.status(HttpStatus.FOUND).location(java.net.URI.create("/index.html")).build();
     }
 
@@ -90,10 +101,11 @@ public class AuthController {
      */
     @PostMapping("/api/auth/login")
     @ResponseBody
-    public ResponseEntity<?> apiLogin(@RequestBody Map<String, String> request, HttpServletResponse response) {
+    public ResponseEntity<?> apiLogin(@RequestBody Map<String, String> request, HttpServletRequest httpRequest, HttpServletResponse response) {
         String username = request.get("username");
         String password = request.get("password");
         Boolean rememberMe = request.get("rememberMe") != null ? Boolean.valueOf(request.get("rememberMe")) : true;
+        String ip = ClientIp.from(httpRequest);
 
         logger.info("API login attempt: {}", username);
 
@@ -101,6 +113,7 @@ public class AuthController {
         if (loginAttemptService.isLocked(username)) {
             long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
             logger.warn("User {} is locked, remaining lock time: {} seconds", username, remainingLockTime);
+            loginRecorder.record(username, ip, false, "账户已锁定", rememberMe);
             Map<String, Object> lockedResult = new HashMap<>();
             lockedResult.put("success", false);
             lockedResult.put("error", "登录失败次数过多，请" + remainingLockTime + "秒后重试");
@@ -112,6 +125,7 @@ public class AuthController {
 
         if (token == null) {
             // Login failed, record attempt
+            loginRecorder.record(username, ip, false, "用户名或密码错误", rememberMe);
             if (loginAttemptService.loginFailed(username)) {
                 long remainingLockTime = loginAttemptService.getRemainingLockTime(username);
                 Map<String, Object> lockedResult = new HashMap<>();
@@ -134,6 +148,7 @@ public class AuthController {
         setTokenCookie(response, token, rememberMe);
 
         logger.info("User {} logged in successfully via API", username);
+        loginRecorder.record(username, ip, true, null, rememberMe);
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("token", token);
@@ -142,9 +157,11 @@ public class AuthController {
 
     @PostMapping("/api/auth/anonymous-login")
     @ResponseBody
-    public ResponseEntity<?> anonymousLogin(HttpServletResponse response) {
+    public ResponseEntity<?> anonymousLogin(HttpServletRequest httpRequest, HttpServletResponse response) {
+        String ip = ClientIp.from(httpRequest);
         String token = authService.loginAnonymous();
         if (token == null) {
+            loginRecorder.record("anonymous", ip, false, "匿名访问未启用", false);
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
             result.put("error", "匿名访问未启用或没有可访问的匿名存储空间");
@@ -152,6 +169,7 @@ public class AuthController {
         }
 
         setTokenCookie(response, token, false);
+        loginRecorder.record("anonymous", ip, true, null, false);
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         return ResponseEntity.ok(result);

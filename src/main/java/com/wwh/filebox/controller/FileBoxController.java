@@ -4,9 +4,12 @@ import com.wwh.filebox.constants.AppConstants;
 import com.wwh.filebox.model.LoginSession;
 import com.wwh.filebox.model.Role;
 import com.wwh.filebox.model.StorageSpace;
+import com.wwh.filebox.model.TransferDirection;
 import com.wwh.filebox.service.AuthService;
 import com.wwh.filebox.service.FileCatalogService;
 import com.wwh.filebox.service.StorageService;
+import com.wwh.filebox.service.TransferRecorder;
+import com.wwh.filebox.util.ClientIp;
 import com.wwh.filebox.util.DateTimeFormatter;
 import com.wwh.filebox.util.FileUtils;
 import org.slf4j.Logger;
@@ -71,6 +74,9 @@ public class FileBoxController {
     @Autowired
     private FileCatalogService fileCatalogService;
 
+    @Autowired
+    private TransferRecorder transferRecorder;
+
     private String getTokenFromRequest(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
@@ -114,6 +120,17 @@ public class FileBoxController {
                 && space != null && space.isAllowAnonymousUpload();
     }
 
+    /** 把一次被拒上传的每个文件都记为失败(审计) / log each file of a rejected upload as failed (audit). */
+    private void recordUploadsFailed(MultipartFile[] files, String username, String space, String ip) {
+        if (files == null) {
+            return;
+        }
+        for (MultipartFile f : files) {
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, space, f.getOriginalFilename(), ip);
+            handle.fail();
+        }
+    }
+
     @PostMapping("/upload_file")
     @ResponseBody
     public ResponseEntity<String> uploadFile(HttpServletRequest request,
@@ -121,6 +138,7 @@ public class FileBoxController {
                                              @RequestParam(value = "targetFolder", required = false) String targetFolder) throws IOException {
         LoginSession session = getSession(request);
         String username = session != null ? session.getUsername() : "unknown";
+        String ip = ClientIp.from(request);
         logger.info("User {} attempting to upload {} files", username, files.length);
 
         if (files == null || files.length == 0) {
@@ -130,13 +148,15 @@ public class FileBoxController {
 
         // 使用统一的存储空间验证方法
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "Upload");
+        String attemptedSpace = getCurrentStorageSpace(request);
         if (storageSpace == null) {
+            // 请求级被拒:把每个文件记为失败(审计) / request-level rejection: log each file as failed
+            recordUploadsFailed(files, username, attemptedSpace, ip);
             // 根据不同的验证失败情况返回不同的错误码
-            String storageSpaceName = getCurrentStorageSpace(request);
-            if (storageSpaceName == null) {
+            if (attemptedSpace == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("未选择存储空间");
             }
-            if (storageService.getStorageSpace(storageSpaceName) == null) {
+            if (storageService.getStorageSpace(attemptedSpace) == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("存储空间未找到");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无上传权限");
@@ -144,19 +164,21 @@ public class FileBoxController {
 
         // 匿名用户上传需额外校验:全局开关 + 当前空间允许匿名上传 / extra gate for anonymous upload
         if (!isAnonymousUploadAllowed(session, storageSpace)) {
+            recordUploadsFailed(files, username, storageSpace.getName(), ip);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("匿名上传未启用或该空间不允许匿名上传");
         }
 
         String storageSpaceName = storageSpace.getName();
-        String storageDir = storageSpace.getPath();
         // 时间线未指定目录时按当前年月归档；目录视图会显式传入当前目录（根目录为空字符串）。
         // Timeline uploads default to yyyy/MM; directory view explicitly sends its current path.
         targetFolder = resolveUploadTargetFolder(targetFolder, new Date());
         Path uploadDir = resolveWithinStorage(request, targetFolder);
         if (uploadDir == null) {
+            recordUploadsFailed(files, username, storageSpaceName, ip);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
         }
         if (Files.exists(uploadDir) && !Files.isDirectory(uploadDir)) {
+            recordUploadsFailed(files, username, storageSpaceName, ip);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
         }
         Files.createDirectories(uploadDir);
@@ -165,50 +187,62 @@ public class FileBoxController {
         for (MultipartFile f : files) {
             logger.info("Processing file uploaded by user {}: Original name: {}, Size: {} bytes", username, f.getOriginalFilename(), f.getSize());
 
-            // Check storage space limit
-            if (!storageService.hasEnoughSpace(storageSpaceName, f.getSize())) {
-                logger.warn("Upload failed for user {}: Storage space {} is full", username, storageSpaceName);
-                return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
-            }
-
-            // 文件名:合规→原样保留,不合规→最小清理;返回 null 表示无法采用
-            // Filename: keep original when compliant, otherwise minimal cleanup; null = unusable.
+            // 每个文件独立记账:进行中登记,完成/被拒在 finally 落库 / per-file bookkeeping, finished in finally
             String original = f.getOriginalFilename();
-            String filename = FileUtils.prepareUploadFilename(
-                    (original != null && !original.isEmpty())
-                            ? original
-                            : AppConstants.FileUpload.PASTED_FILE_PREFIX + timestamp + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION);
-            if (filename == null) {
-                logger.warn("Upload rejected for user {}: non-compliant filename '{}'", username, original);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("文件名不合规，请重命名后上传");
-            }
-            Path savePath = uploadDir.resolve(filename);
-            int counter = 1;
-            int dotIndex = filename.lastIndexOf('.');
-            String baseName = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
-            String extension = dotIndex > 0 ? filename.substring(dotIndex) : "";
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, storageSpaceName, original, ip);
+            boolean ok = false;
+            try {
+                // Check storage space limit
+                if (!storageService.hasEnoughSpace(storageSpaceName, f.getSize())) {
+                    logger.warn("Upload failed for user {}: Storage space {} is full", username, storageSpaceName);
+                    return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
+                }
 
-            while (Files.exists(savePath)) {
-                String newFilename = baseName + " (" + counter + ")" + extension;
-                savePath = uploadDir.resolve(newFilename);
-                counter++;
+                // 文件名:合规→原样保留,不合规→最小清理;返回 null 表示无法采用
+                // Filename: keep original when compliant, otherwise minimal cleanup; null = unusable.
+                String filename = FileUtils.prepareUploadFilename(
+                        (original != null && !original.isEmpty())
+                                ? original
+                                : AppConstants.FileUpload.PASTED_FILE_PREFIX + timestamp + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION);
+                if (filename == null) {
+                    logger.warn("Upload rejected for user {}: non-compliant filename '{}'", username, original);
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("文件名不合规，请重命名后上传");
+                }
+                Path savePath = uploadDir.resolve(filename);
+                int counter = 1;
+                int dotIndex = filename.lastIndexOf('.');
+                String baseName = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+                String extension = dotIndex > 0 ? filename.substring(dotIndex) : "";
+
+                while (Files.exists(savePath)) {
+                    String newFilename = baseName + " (" + counter + ")" + extension;
+                    savePath = uploadDir.resolve(newFilename);
+                    counter++;
+                }
+                // 用 transferTo(File) 走 Part.write → rename（同文件系统下原子移动，消除二次拷贝）
+                // transferTo(File) delegates to Part.write → atomic rename on the same filesystem.
+                // 注意 1：必须用 File 重载 —— transferTo(Path) 恒为流式拷贝。
+                // 注意 2：必须传【绝对路径】。Part.write 会把相对路径解析到 multipart 的 location
+                //         （Tomcat 工作目录下的临时目录），而非进程 CWD，导致找不到目标父目录。
+                // Note 1: use the File overload; transferTo(Path) always copies.
+                // Note 2: pass an ABSOLUTE path. Part.write resolves a relative path against the
+                //         multipart location (Tomcat work dir), not the process CWD.
+                f.transferTo(savePath.toAbsolutePath().normalize().toFile());
+                Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
+                logger.info("User {} uploaded file: {}", username, savePath.getFileName());
+                // 增量更新 stats 缓存：本次上传的字节数与文件数直接累加，避免下次读统计时全量遍历；
+                // 循环内即时更新，使后续文件的 hasEnoughSpace 能读到准确的剩余空间。
+                // Bump cached stats by this file so the next read avoids a full walk, and so the
+                // capacity check for the next file in this batch sees the up-to-date free space.
+                storageService.adjustUsedSize(storageSpaceName, f.getSize(), 1);
+                ok = true;
+            } finally {
+                if (ok) {
+                    handle.complete(f.getSize());
+                } else {
+                    handle.fail();
+                }
             }
-            // 用 transferTo(File) 走 Part.write → rename（同文件系统下原子移动，消除二次拷贝）
-            // transferTo(File) delegates to Part.write → atomic rename on the same filesystem.
-            // 注意 1：必须用 File 重载 —— transferTo(Path) 恒为流式拷贝。
-            // 注意 2：必须传【绝对路径】。Part.write 会把相对路径解析到 multipart 的 location
-            //         （Tomcat 工作目录下的临时目录），而非进程 CWD，导致找不到目标父目录。
-            // Note 1: use the File overload; transferTo(Path) always copies.
-            // Note 2: pass an ABSOLUTE path. Part.write resolves a relative path against the
-            //         multipart location (Tomcat work dir), not the process CWD.
-            f.transferTo(savePath.toAbsolutePath().normalize().toFile());
-            Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
-            logger.info("User {} uploaded file: {}", username, savePath.getFileName());
-            // 增量更新 stats 缓存：本次上传的字节数与文件数直接累加，避免下次读统计时全量遍历；
-            // 循环内即时更新，使后续文件的 hasEnoughSpace 能读到准确的剩余空间。
-            // Bump cached stats by this file so the next read avoids a full walk, and so the
-            // capacity check for the next file in this batch sees the up-to-date free space.
-            storageService.adjustUsedSize(storageSpaceName, f.getSize(), 1);
         }
 
         // 上传改变了文件集，作废该存储空间的遍历缓存 / uploads changed the file set; drop the cached walk
@@ -221,21 +255,26 @@ public class FileBoxController {
     public ResponseEntity<String> uploadText(HttpServletRequest request, @RequestBody Map<String, Object> body) throws IOException {
         LoginSession session = getSession(request);
         String username = session != null ? session.getUsername() : "unknown";
+        String ip = ClientIp.from(request);
         logger.info("User {} attempting to upload text", username);
 
-        if (body == null || !body.containsKey("text") || ((String) body.get("text")).trim().isEmpty()) {
+        String text = body == null ? null : (String) body.get("text");
+        if (text == null || text.trim().isEmpty()) {
             logger.warn("Text upload failed for user {}: Content is empty", username);
             return ResponseEntity.badRequest().body("无文本内容");
         }
+        byte[] content = text.getBytes(StandardCharsets.UTF_8);
 
         // 使用统一的存储空间验证方法
         StorageSpace storageSpace = validateAndGetStorageSpace(request, "Text upload");
+        String attemptedSpace = getCurrentStorageSpace(request);
         if (storageSpace == null) {
-            String storageSpaceName = getCurrentStorageSpace(request);
-            if (storageSpaceName == null) {
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, attemptedSpace, "(文本上传)", ip);
+            handle.fail();
+            if (attemptedSpace == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("未选择存储空间");
             }
-            if (storageService.getStorageSpace(storageSpaceName) == null) {
+            if (storageService.getStorageSpace(attemptedSpace) == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("存储空间未找到");
             }
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无上传权限");
@@ -243,35 +282,50 @@ public class FileBoxController {
 
         // 匿名用户上传需额外校验:全局开关 + 当前空间允许匿名上传 / extra gate for anonymous upload
         if (!isAnonymousUploadAllowed(session, storageSpace)) {
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, storageSpace.getName(), "(文本上传)", ip);
+            handle.fail();
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("匿名上传未启用或该空间不允许匿名上传");
         }
 
-        String storageDir = storageSpace.getPath();
         // 与文件上传一致：未指定目录时按当前年月归档。
         String targetFolder = body.get("targetFolder") != null ? body.get("targetFolder").toString() : null;
         targetFolder = resolveUploadTargetFolder(targetFolder, new Date());
         Path uploadDir = resolveWithinStorage(request, targetFolder);
         if (uploadDir == null) {
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, storageSpace.getName(), "(文本上传)", ip);
+            handle.fail();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的目标文件夹");
         }
         if (Files.exists(uploadDir) && !Files.isDirectory(uploadDir)) {
+            TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, storageSpace.getName(), "(文本上传)", ip);
+            handle.fail();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("目标文件夹不存在");
         }
         Files.createDirectories(uploadDir);
         String filename = AppConstants.FileUpload.PASTE_FILE_PREFIX + DateTimeFormatter.getCurrentTimestamp() + AppConstants.FileUpload.DEFAULT_FILE_EXTENSION;
-        Path savePath = uploadDir.resolve(filename);
-        byte[] content = ((String) body.get("text")).getBytes(StandardCharsets.UTF_8);
-        // 文本上传同样做容量判断，避免粘贴文本绕过存储空间配额
-        // Text uploads must respect the storage quota too (previously unchecked).
-        if (!storageService.hasEnoughSpace(storageSpace.getName(), content.length)) {
-            logger.warn("Text upload failed for user {}: Storage space {} is full", username, storageSpace.getName());
-            return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
+        TransferRecorder.Handle handle = transferRecorder.begin(TransferDirection.UPLOAD, username, storageSpace.getName(), filename, ip);
+        boolean ok = false;
+        try {
+            Path savePath = uploadDir.resolve(filename);
+            // 文本上传同样做容量判断，避免粘贴文本绕过存储空间配额
+            // Text uploads must respect the storage quota too (previously unchecked).
+            if (!storageService.hasEnoughSpace(storageSpace.getName(), content.length)) {
+                logger.warn("Text upload failed for user {}: Storage space {} is full", username, storageSpace.getName());
+                return ResponseEntity.status(HttpStatus.INSUFFICIENT_STORAGE).body("存储空间不足");
+            }
+            Files.write(savePath, content, StandardOpenOption.CREATE_NEW);
+            Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
+            logger.info("User {} uploaded text file: {}", username, filename);
+            // 增量更新 stats 缓存 / bump cached stats incrementally
+            storageService.adjustUsedSize(storageSpace.getName(), content.length, 1);
+            ok = true;
+        } finally {
+            if (ok) {
+                handle.complete(content.length);
+            } else {
+                handle.fail();
+            }
         }
-        Files.write(savePath, content, StandardOpenOption.CREATE_NEW);
-        Files.setLastModifiedTime(savePath, FileTime.fromMillis(System.currentTimeMillis()));
-        logger.info("User {} uploaded text file: {}", username, filename);
-        // 增量更新 stats 缓存 / bump cached stats incrementally
-        storageService.adjustUsedSize(storageSpace.getName(), content.length, 1);
 
         // 文本上传改变了文件集，作废该存储空间的遍历缓存 / drop the cached walk for this storage space
         fileCatalogService.invalidateScanCache(Paths.get(storageSpace.getPath()));
@@ -552,6 +606,22 @@ public class FileBoxController {
 
         long contentLength = end - start + 1;
 
+        // 只记"用户主动打开/下载"(顶层导航 Sec-Fetch-Dest=document);跳过列表里 <img>/<video> 等
+        // 渲染请求,否则一打开列表就刷屏。没有该头(老浏览器/非浏览器客户端)默认不记,避免重回噪音。
+        // Only log top-level opens/downloads (Sec-Fetch-Dest=document); skip inline <img>/<video>
+        // render fetches or opening the listing floods the log. Absent header -> don't log.
+        boolean shouldRecordDownload = "document".equals(request.getHeader("Sec-Fetch-Dest"));
+        LoginSession downloadSession = shouldRecordDownload ? getSession(request) : null;
+        TransferRecorder.Handle downloadHandle = shouldRecordDownload
+                ? transferRecorder.begin(
+                        TransferDirection.DOWNLOAD,
+                        downloadSession != null ? downloadSession.getUsername() : "unknown",
+                        getCurrentStorageSpace(request),
+                        filename,
+                        ClientIp.from(request))
+                : null;
+        boolean downloaded = false;
+
         // 打开文件通道后再设置状态/长度，这样通道打开失败时仍能返回干净的错误响应
         // Open the channel before committing status/length so a failure still
         // produces a clean error (not a redirect via CustomErrorController).
@@ -586,6 +656,7 @@ public class FileBoxController {
                 remaining -= read;
             }
             out.flush();
+            downloaded = true;
         } catch (IOException e) {
             logger.warn("Failed to stream file {}: {}", target, e.getMessage());
             // 响应未提交时返回干净错误；已提交则只能记录（客户端会收到截断的响应）
@@ -593,6 +664,14 @@ public class FileBoxController {
             if (!response.isCommitted()) {
                 response.reset();
                 writeError(response, HttpStatus.INTERNAL_SERVER_ERROR.value(), "读取文件失败");
+            }
+        } finally {
+            if (downloadHandle != null) {
+                if (downloaded) {
+                    downloadHandle.complete(contentLength);
+                } else {
+                    downloadHandle.fail();
+                }
             }
         }
     }

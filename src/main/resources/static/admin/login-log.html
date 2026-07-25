@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Box - 登录日志</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .audit-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:16px 0;padding:14px 16px;background:var(--bg-elevated,#fff);border:1px solid var(--border,#eee);border-radius:10px}
+        .audit-filters .f-item{display:flex;flex-direction:column;gap:4px}
+        .audit-filters label{font-size:11px;color:var(--text-secondary,#999)}
+        .audit-filters select,.audit-filters input{padding:6px 8px;border:1px solid var(--border,#ddd);border-radius:6px;background:var(--bg,#fff);color:var(--text-primary,#222);font-size:13px}
+        .audit-table{width:100%;border-collapse:collapse;font-size:13px}
+        .audit-table th{text-align:left;padding:10px 8px;border-bottom:2px solid var(--border,#eee);color:var(--text-secondary,#999);font-weight:600;white-space:nowrap}
+        .audit-table td{padding:9px 8px;border-bottom:1px solid var(--border,#f0f0f0)}
+        .row-failed{color:#ef4444}
+        .tag-ok{color:#22c55e}.tag-no{color:var(--text-secondary,#999)}
+        .load-more-wrap{text-align:center;padding:18px}
+    </style>
+</head>
+<body class="admin-layout">
+    <aside class="sidebar admin-sidebar">
+        <div class="admin-brand">
+            <h1 class="text-gradient">File Box</h1>
+            <p>管理后台</p>
+        </div>
+        <nav class="admin-nav">
+            <a href="/admin/dashboard.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-dashboard"/></svg><span>仪表盘</span></a>
+            <a href="/admin/storage.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-storage"/></svg><span>存储管理</span></a>
+            <a href="/admin/users.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-users"/></svg><span>用户管理</span></a>
+            <a href="/admin/settings.html" class="nav-item"><svg class="ico nav-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="/images/icons.svg#ico-settings"/></svg><span>系统设置</span></a>
+        </nav>
+        <div class="admin-sidebar-footer"></div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="page-header">
+            <div>
+                <h2 class="page-title">登录日志</h2>
+                <p class="page-subtitle">登录尝试记录（成功 + 失败）</p>
+            </div>
+        </div>
+
+        <div class="audit-filters">
+            <div class="f-item"><label>用户</label><input id="f_user" placeholder="用户名" style="width:140px"></div>
+            <div class="f-item"><label>结果</label><select id="f_success"><option value="">全部</option><option value="true">成功</option><option value="false">失败</option></select></div>
+            <div class="f-item"><label>开始</label><input type="date" id="f_from"></div>
+            <div class="f-item"><label>结束</label><input type="date" id="f_to"></div>
+            <button class="btn" onclick="applyFilters()">筛选</button>
+        </div>
+
+        <div class="table-container">
+            <table class="audit-table">
+                <thead><tr><th>时间</th><th>用户</th><th>IP</th><th>结果</th><th>原因</th><th>记住我</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+        <div class="load-more-wrap"><button class="btn" id="loadMoreBtn" onclick="loadMore()" style="display:none">加载更多</button></div>
+    </main>
+
+    <script src="/js/notification.js"></script>
+    <script src="/js/admin-common.js"></script>
+    <script>
+        var params = { username: '', success: '', from: '', to: '', offset: 0, limit: 50 };
+        var total = 0;
+
+        function buildQuery() {
+            var q = new URLSearchParams();
+            if (params.username) q.set('username', params.username);
+            if (params.success !== '') q.set('success', params.success);
+            if (params.from) q.set('from', new Date(params.from).getTime());
+            if (params.to) q.set('to', new Date(params.to).getTime() + 86400000 - 1);
+            q.set('offset', params.offset);
+            q.set('limit', params.limit);
+            return q.toString();
+        }
+
+        function fmtTime(ms) { var d = new Date(ms); function p(n) { return n < 10 ? '0' + n : n; } return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); }
+        function esc(s) { if (s == null) return ''; return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+        async function load(append) {
+            var r = await fetch('/api/admin/login-log?' + buildQuery(), { credentials: 'same-origin' });
+            if (!r.ok) { if (window.Notify) Notify.error('加载失败'); return; }
+            var d = await r.json();
+            total = d.total;
+            var html = d.records.map(rowHtml).join('');
+            var rows = document.getElementById('rows');
+            if (append) rows.insertAdjacentHTML('beforeend', html); else rows.innerHTML = html;
+            document.getElementById('loadMoreBtn').style.display = (params.offset + d.records.length < total) ? '' : 'none';
+        }
+
+        function rowHtml(r) {
+            var res = r.success ? '<span class="tag-ok">成功</span>' : '<span class="row-failed">失败</span>';
+            var rm = r.rememberMe ? '是' : '<span class="tag-no">否</span>';
+            return '<tr>' + tc(fmtTime(r.timeMillis)) + tc(esc(r.username)) + tc(esc(r.ip)) + tc(res) + tc(esc(r.reason)) + tc(rm) + '</tr>';
+        }
+        function tc(html) { return '<td>' + html + '</td>'; }
+
+        function applyFilters() {
+            params.username = document.getElementById('f_user').value.trim();
+            params.success = document.getElementById('f_success').value;
+            params.from = document.getElementById('f_from').value;
+            params.to = document.getElementById('f_to').value;
+            params.offset = 0;
+            load(false);
+        }
+        function loadMore() { params.offset += params.limit; load(true); }
+
+        load(false);
+    </script>
+</body>
+</html>
