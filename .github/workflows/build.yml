@@ -22,12 +22,8 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux
-            native_cmd: ./packaging/build-native.sh
-            native_shell: bash
           - os: windows-latest
             label: windows
-            native_cmd: '& ./packaging/build-native.ps1'
-            native_shell: pwsh
     runs-on: ${{ matrix.os }}
     steps:
       - name: 拉取代码 / Checkout
@@ -43,9 +39,15 @@ jobs:
       - name: 构建(含测试)/ Build with Maven
         run: mvn -B -V package
 
-      - name: 构建原生压缩包 / Build native archive
-        shell: ${{ matrix.native_shell }}
-        run: ${{ matrix.native_cmd }}
+      - name: 构建原生压缩包 (Linux) / Build native archive (Linux)
+        if: matrix.label == 'linux'
+        shell: bash
+        run: ./packaging/build-native.sh
+
+      - name: 构建原生压缩包 (Windows) / Build native archive (Windows)
+        if: matrix.label == 'windows'
+        shell: pwsh
+        run: ./packaging/build-native.ps1
 
       # 启动刚打好的包,curl 本地端口确认能起来;失败也照常上传 artifact 供人工排查
       # Boot the freshly built package and curl localhost to confirm it serves.
