@@ -1,45 +1,46 @@
 # 原生打包 / Native packaging
 
-把 File Box 打成**自带 JRE 的原生包**,用户无需预装 Java。
-Build File Box into **self-contained native packages** — no Java pre-install needed on the target machine.
+把 File Box 打成**自带 JRE 的「解压即用」压缩包**,用户无需预装 Java、无需安装(installer)。
+Build **self-contained, extract-and-run archives** — no Java pre-install, no installer.
+
+## 产物 / Artifacts
+
+| 平台 / Platform | 脚本 / Script | 产物 / Artifact | 运行 / Run |
+|---|---|---|---|
+| Linux | `build-native.sh` | `FileBox-<ver>-linux.tar.gz` | `FileBox/bin/FileBox` |
+| Windows | `build-native.ps1` | `FileBox-<ver>-windows.zip` | 双击 `FileBox\FileBox.exe` |
+
+解压后得到一个文件夹 `FileBox-<ver>-<platform>/`,内含:
+```
+FileBox-<ver>-<platform>/
+  FileBox/          ← app-image(launcher + 自带运行时 + fat jar)
+  README.txt        ← 运行说明
+  file-box-data/    ← 首次运行时生成:config / data / logs / runtime(与 FileBox/ 并排)
+```
 
 ## 构建 / Build
 
 ```bash
 mvn package                          # 先出 fat jar / produce the fat jar first
-./packaging/build-native.sh          # 在 Linux 上构建 / build on Linux
+./packaging/build-native.sh          # Linux(在 Linux 上跑)
+# 或 / or  Windows: 在 Windows 上跑 packaging/build-native.ps1
 ```
 
-产物在 `target/native/`:
-- `FileBox/` — 便携 **app-image**(解压即用,始终生成)
-- `filebox_<ver>_amd64.deb` — Debian 包(需 `dpkg-deb`)
-- `filebox-<ver>.x86_64.rpm` — RPM 包(需 `rpmbuild`)
+输出在 `target/native/`。依赖 JDK 17+(`jlink` / `jpackage` / `jmods`)。
 
-依赖 JDK 17+(`jlink` / `jpackage` / `jmods`)。Debian: `apt install openjdk-21-jdk-headless`。
-Requires JDK 17+ (`jlink` / `jpackage` / `jmods`).
+## 数据目录 / Data dir
 
-## 运行 / Run
-
-```bash
-# app-image(便携) / portable
-FileBox/bin/FileBox [--server.port=8888]   # 数据写到同级 file-box-data/
-```
-
-`-Dfilebox.data.dir=$ROOTDIR/../file-box-data`(由 launcher 注入)把 config/data/logs/runtime
-写到 app-image **同级**的 `file-box-data/` 目录 —— 升级时替换 `FileBox/`、保留 `file-box-data/` 即可。
-
-For the app-image, `filebox.data.dir` is injected by the launcher to a sibling `file-box-data/`
-folder — replace `FileBox/` to upgrade, keep `file-box-data/` for your data.
+launcher 注入 `-Dfilebox.data.dir=$ROOTDIR/../file-box-data`,把 config/data/logs/runtime 写到
+**app-image 同级**的 `file-box-data/` —— 即解压文件夹里、与 `FileBox/` 并排。整个文件夹可随身拷贝;
+升级时替换 `FileBox/`、保留 `file-box-data/` 即可。
 
 ## 模块裁剪 / Runtime trimming
 
-`jlink` 用一组保守模块裁出 ~57M 的精简 JRE(`build-native.sh` 里的 `MODULES`)。注意两个 jdeps 检测不到、
-但运行时必需的模块:`java.instrument`(Tomcat 类转换)、`jdk.crypto.ec`/`jdk.crypto.cryptoki`(TLS)。
+`jlink` 用一组保守模块裁出 ~57M 精简 JRE(脚本里的 `MODULES`)。两个 jdeps 检测不到、但运行时必需的:
+`java.instrument`(Tomcat 类转换)、`jdk.crypto.ec`/`jdk.crypto.cryptoki`(TLS)。
 
-## 已知待办 / Known follow-ups(后续阶段 / later phases)
+## 备注 / Notes
 
-- **安装包的系统集成**:deb/rpm 装到 `/opt/filebox`,数据默认去 `/opt/filebox-data`(需 root)。
-  生产级 deb/rpm 还需:专用服务用户、`/var/lib/filebox` 数据目录、systemd 单元、postinst 建目录设权限。
-  app-image(便携)无此问题,是当前推荐的部署形态。
-- **Windows `msi`**:`build-native.ps1` + CI 的 Windows runner。
-- **图标 / Icon**:暂用 Java 默认图标;需要品牌 icon(`.png`/`.ico`)后通过 `--icon` 注入。
+- **不要安装包**:Linux 不出 deb/rpm、Windows 不出 msi —— 就要这种便携压缩包,工作目录随文件夹一起带。
+- **Windows 脚本**(`build-native.ps1`)按 Linux 脚本类推;jpackage 不能交叉编译,Windows 包必须在 Windows 上构建。
+- **图标 / Icon**:暂用 Java 默认图标;需要品牌 icon 后通过 `--icon` 注入。

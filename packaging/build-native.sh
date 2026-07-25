@@ -1,17 +1,18 @@
 #!/bin/bash
 #
-# build-native.sh — 为 File Box 构建自带 JRE 的原生包(Linux)。
-# Build self-contained native packages for File Box (Linux).
+# build-native.sh — 为 File Box 构建自带 JRE 的【解压即用】原生包(Linux)。
+# Build a self-contained, extract-and-run native package for File Box (Linux).
 #
-# 产物 / Artifacts (输出到 target/native/):
-#   - FileBox/                    便携 app-image(解压即用,无需预装 Java)— 始终生成
-#   - file-box_<ver>-1_amd64.deb  Debian 安装包(需 dpkg-deb)
-#   - file-box-<ver>-1.x86_64.rpm RedHat 安装包(需 rpmbuild)
+# 产物 / Artifact (target/native/):
+#   FileBox-<ver>-linux.tar.gz   解压得到 FileBox-<ver>-linux/{FileBox/, README.txt}
+#
+# 运行方式 / Run (解压后):
+#   FileBox-<ver>-linux/FileBox/bin/FileBox [--server.port=8888]
 #
 # 数据目录 / Data dir:
-#   app-image 的 launcher 通过 -Dfilebox.data.dir=$ROOTDIR/../file-box-data 把
-#   config/data/logs/runtime 写到 app-image 同级目录(便携、升级不丢数据)。
-#   安装包(deb/rpm)的系统级数据目录、服务用户、systemd 单元属于后续集成工作。
+#   launcher 注入 -Dfilebox.data.dir=$ROOTDIR/../file-box-data —— config/data/logs/runtime
+#   写到 app-image 同级(file-box-data/),与 FileBox/ 一起放在解压目录里,整文件夹可随身携带;
+#   升级时替换 FileBox/、保留 file-box-data/。不要安装包(installer),就要这种便携包。
 #
 # 依赖 / Requires: JDK 17+(需 jlink/jpackage/jmods);先 `mvn package` 出 fat jar。
 set -euo pipefail
@@ -32,7 +33,7 @@ if [ -z "$JMODS" ]; then
   fi
 fi
 if [ ! -d "$JMODS" ]; then
-  echo "ERROR: jmods 未找到。请设置 JAVA_HOME(指向含 jmods 的 JDK)或 JMODS 环境变量。" >&2
+  echo "ERROR: jmods 未找到。设置 JAVA_HOME(含 jmods 的 JDK)或 JMODS 环境变量。" >&2
   echo "       (Debian: apt install openjdk-21-jdk-headless)" >&2
   exit 1
 fi
@@ -55,10 +56,12 @@ java.naming,java.scripting,java.security.jgss,java.sql,java.transaction.xa,java.
 jdk.crypto.cryptoki,jdk.crypto.ec,jdk.unsupported"
 
 NATIVE="target/native"
+DIST_NAME="FileBox-$VERSION-linux"
+DIST_DIR="$NATIVE/$DIST_NAME"          # 解压后的顶层目录 / top-level folder after extract
 STAGE="$NATIVE/input"
-DATA_DIR_OPT="-Dfilebox.data.dir=\$ROOTDIR/../file-box-data"
+# 数据目录:app-image($ROOTDIR)的同级 file-box-data/,即落在解压顶层目录里、与 FileBox/ 并排
+DATA_DIR_OPT='-Dfilebox.data.dir=$ROOTDIR/../file-box-data'
 JAVA_OPTS="-Xmx384m -Dspring.profiles.active=prod $DATA_DIR_OPT"
-# 通用 jpackage 参数 / common args reused across app-image + installers
 JP_COMMON=(--name FileBox --input "$STAGE" --main-jar "$(basename "$JAR")"
            --runtime-image "$NATIVE/runtime" --app-version "$VERSION"
            --vendor FileBox --description "File Box — self-hosted file sharing"
@@ -73,7 +76,7 @@ rm -rf "$NATIVE/runtime"
 # shellcheck disable=SC2086
 jlink --module-path "$JMODS" --add-modules "$MODULES" \
   --strip-debug --no-header-files --no-man-pages --compress=2 \
-  --output "$NATIVE/runtime" || {
+  --output "$NATIVE/runtime" 2>/dev/null || {
     # JDK 23+ 把 --compress=2 改成了 --compress=zip-9;失败则退回不压缩
     jlink --module-path "$JMODS" --add-modules "$MODULES" \
       --strip-debug --no-header-files --no-man-pages \
@@ -81,21 +84,31 @@ jlink --module-path "$JMODS" --add-modules "$MODULES" \
   }
 echo "    runtime size: $(du -sh "$NATIVE/runtime" | cut -f1)"
 
-echo "==> jpackage app-image (portable folder — always)"
-rm -rf "$NATIVE/FileBox"
-jpackage --type app-image --dest "$NATIVE" "${JP_COMMON[@]}"
+echo "==> jpackage app-image (放到分发目录里 / place into distributable folder)"
+rm -rf "$DIST_DIR"
+mkdir -p "$DIST_DIR"
+jpackage --type app-image --dest "$DIST_DIR" "${JP_COMMON[@]}"
 
-# ---- 安装包(按可用工具链) / installers, by available toolchain ----
-if command -v dpkg-deb >/dev/null 2>&1; then
-  echo "==> jpackage .deb"
-  jpackage --type deb --dest "$NATIVE" "${JP_COMMON[@]}" --license-file LICENSE
-fi
-if command -v rpmbuild >/dev/null 2>&1; then
-  echo "==> jpackage .rpm"
-  jpackage --type rpm --dest "$NATIVE" "${JP_COMMON[@]}" --license-file LICENSE
-fi
+echo "==> 写 README"
+cat > "$DIST_DIR/README.txt" <<EOF
+File Box $VERSION (Linux, 自带运行时 / self-contained — 无需预装 Java)
+
+运行 / Run:
+    ./FileBox/bin/FileBox [--server.port=8888] [--更多 Spring Boot 参数]
+
+首次启动会在本目录下生成 file-box-data/(config/data/logs/runtime),
+并把初始 admin 密码打印到 file-box-data/logs/filebox.log。浏览器打开
+http://localhost:8888 登录。
+
+整个文件夹(FileBox/ + file-box-data/)可一起拷贝、随身携带。
+升级:替换 FileBox/ 子目录,保留 file-box-data/。
+EOF
+
+echo "==> 打包 tar.gz"
+rm -f "$NATIVE/$DIST_NAME.tar.gz"
+tar czf "$NATIVE/$DIST_NAME.tar.gz" -C "$NATIVE" "$DIST_NAME"
 
 echo
-echo "==> 完成 / done. Artifacts in $NATIVE/:"
-( cd "$NATIVE" && ls -1 | grep -vE '^(input|runtime)$' )
-echo "app-image size: $(du -sh "$NATIVE/FileBox" | cut -f1)"
+echo "==> 完成 / done:"
+ls -lh "$NATIVE/$DIST_NAME.tar.gz"
+echo "解压后大小 / extracted size: $(du -sh "$DIST_DIR" | cut -f1)"
