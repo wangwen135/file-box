@@ -22,8 +22,10 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux
+            archive: FileBox-*.tar.gz
           - os: windows-latest
             label: windows
+            archive: FileBox-*.zip
     runs-on: ${{ matrix.os }}
     steps:
       - name: 拉取代码 / Checkout
@@ -106,4 +108,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.label }}
-          path: target/native/FileBox-*
+          path: target/native/${{ matrix.archive }}

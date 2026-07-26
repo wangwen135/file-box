@@ -27,12 +27,10 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux
-            native_cmd: ./packaging/build-native.sh
-            native_shell: bash
+            archive: FileBox-*.tar.gz
           - os: windows-latest
             label: windows
-            native_cmd: '& ./packaging/build-native.ps1'
-            native_shell: pwsh
+            archive: FileBox-*.zip
     runs-on: ${{ matrix.os }}
     steps:
       - name: 拉取代码 / Checkout
@@ -48,15 +46,21 @@ jobs:
       - name: 构建(含测试)/ Build with Maven
         run: mvn -B -V package
 
-      - name: 构建原生压缩包 / Build native archive
-        shell: ${{ matrix.native_shell }}
-        run: ${{ matrix.native_cmd }}
+      - name: 构建原生压缩包 (Linux) / Build native archive (Linux)
+        if: matrix.label == 'linux'
+        shell: bash
+        run: ./packaging/build-native.sh
+
+      - name: 构建原生压缩包 (Windows) / Build native archive (Windows)
+        if: matrix.label == 'windows'
+        shell: pwsh
+        run: ./packaging/build-native.ps1
 
       - name: 上传原生压缩包 / Upload native archive
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.label }}
-          path: target/native/FileBox-*
+          path: target/native/${{ matrix.archive }}
 
       - name: 上传 jar + release.tar.gz(仅 Linux)/ Upload jar + release tarball (linux only)
         if: matrix.label == 'linux'
