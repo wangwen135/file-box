@@ -1,4 +1,4 @@
-#
+﻿#
 # build-native.ps1 — 为 File Box 构建自带 JRE 的【解压即用】原生包(Windows)。
 # Build a self-contained, extract-and-run native package for File Box (Windows).
 #
@@ -89,7 +89,7 @@ jpackage --type app-image `
     --runtime-image $RuntimeDir `
     --app-version $Version `
     --vendor FileBox `
-    --description "File Box — self-hosted file sharing" `
+    --description "File Box - self-hosted file sharing" `
     --dest $DistDir `
     --java-options '-Xmx384m' `
     --java-options '-Dspring.profiles.active=prod' `
