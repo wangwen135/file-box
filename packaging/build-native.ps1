@@ -115,10 +115,15 @@ Set-Content -Encoding UTF8 (Join-Path $DistDir 'README.txt') $readme
 Write-Host "==> 打包 zip"
 $Zip = Join-Path $Native "$DistName.zip"
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
-# 从 native 目录压缩 DistName 目录本身(让 zip 顶层就是 FileBox-<ver>-windows/)
-Push-Location $Native
-Compress-Archive -Path $DistName -DestinationPath $Zip -Force
-Pop-Location
+# 用系统自带 tar.exe(Windows 10+ 自带 libarchive):按 .zip 后缀自动出 zip 格式,
+# 顶层保留 FileBox-<ver>-windows/,与 Linux 的 tar.gz 行为一致。
+# 绕开 Compress-Archive 的相对路径怪癖(上一版它把 -Path 解析成 target\native\target\native)。
+# Use the system tar.exe (libarchive, shipped with Windows 10+): auto-zip by .zip suffix,
+# preserves the top folder (matches the Linux tar.gz layout), and sidesteps Compress-Archive quirks.
+$src = Join-Path $Native $DistName
+Write-Host "zip src=$src  exists=$([bool](Test-Path $src))  zip=$Zip"
+if (-not (Test-Path $src)) { Write-Error "dist folder not found: $src"; exit 1 }
+& tar.exe -C $Native -a -cf $Zip $DistName
 
 Write-Host ""
 Write-Host "==> 完成 / done:"
