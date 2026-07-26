@@ -59,12 +59,12 @@ NATIVE="target/native"
 DIST_NAME="FileBox-$VERSION-linux"
 DIST_DIR="$NATIVE/$DIST_NAME"          # 解压后的顶层目录 / top-level folder after extract
 STAGE="$NATIVE/input"
-# 数据目录:app-image($ROOTDIR)的同级 file-box-data/,即落在解压顶层目录里、与 FileBox/ 并排
-DATA_DIR_OPT='-Dfilebox.data.dir=$ROOTDIR/../file-box-data'
+# 数据目录:app-image($ROOTDIR)内的 file-box-data/(启动器旁边),首启生成,在程序文件夹里
+DATA_DIR_OPT='-Dfilebox.data.dir=$ROOTDIR/file-box-data'
 JAVA_OPTS="-Xmx384m -Dspring.profiles.active=prod $DATA_DIR_OPT"
 JP_COMMON=(--name FileBox --input "$STAGE" --main-jar "$(basename "$JAR")"
            --runtime-image "$NATIVE/runtime" --app-version "$VERSION"
-           --vendor FileBox --description "File Box — self-hosted file sharing"
+           --vendor FileBox --description "File Box - self-hosted file sharing"
            --java-options "$JAVA_OPTS")
 
 echo "==> staging fat jar"
@@ -84,17 +84,23 @@ jlink --module-path "$JMODS" --add-modules "$MODULES" \
   }
 echo "    runtime size: $(du -sh "$NATIVE/runtime" | cut -f1)"
 
-echo "==> jpackage app-image (放到分发目录里 / place into distributable folder)"
+echo "==> jpackage app-image"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 jpackage --type app-image --dest "$DIST_DIR" "${JP_COMMON[@]}"
+
+echo "==> 拍平:去掉 jpackage 内层 FileBox/,让启动器直接落在分发根目录 / flatten inner layer"
+shopt -s dotglob
+mv "$DIST_DIR"/FileBox/* "$DIST_DIR"/
+rmdir "$DIST_DIR"/FileBox
+shopt -u dotglob
 
 echo "==> 写 README"
 cat > "$DIST_DIR/README.txt" <<EOF
 File Box $VERSION (Linux, 自带运行时 / self-contained — 无需预装 Java)
 
 运行 / Run:
-    ./FileBox/bin/FileBox [--server.port=8888] [--更多 Spring Boot 参数]
+    ./bin/FileBox [--server.port=8888] [--更多 Spring Boot 参数]
 
 首次启动会在本目录下生成 file-box-data/(config/data/logs/runtime),
 并把初始 admin 密码打印到 file-box-data/logs/filebox.log。浏览器打开

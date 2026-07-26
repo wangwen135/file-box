@@ -93,22 +93,26 @@ jpackage --type app-image `
     --dest $DistDir `
     --java-options '-Xmx384m' `
     --java-options '-Dspring.profiles.active=prod' `
-    --java-options '-Dfilebox.data.dir=$ROOTDIR/../file-box-data'
+    --java-options '-Dfilebox.data.dir=$ROOTDIR/file-box-data'
+
+Write-Host "==> 拍平:去掉 jpackage 内层 FileBox\,让 FileBox.exe 直接落在分发根目录 / flatten inner layer"
+Get-ChildItem -Path "$DistDir\FileBox" -Force | Move-Item -Destination $DistDir
+Remove-Item "$DistDir\FileBox"
 
 Write-Host "==> 写 README"
 $readme = @"
-File Box $Version (Windows, 自带运行时 / self-contained — 无需预装 Java)
+File Box $Version (Windows, 自带运行时 / self-contained - 无需预装 Java)
 
 运行 / Run:
-    双击 FileBox\FileBox.exe
-    (命令行:FileBox\FileBox.exe [--server.port=8888] [--更多 Spring Boot 参数])
+    双击 FileBox.exe
+    (命令行:.\FileBox.exe [--server.port=8888] [--更多 Spring Boot 参数])
 
 首次启动会在本目录下生成 file-box-data (config / data / logs / runtime),
 并把初始 admin 密码打印到 file-box-data\logs\filebox.log。浏览器打开
 http://localhost:8888 登录。
 
-整个文件夹(FileBox\ + file-box-data\)可一起拷贝、随身携带。
-升级:替换 FileBox\ 子目录,保留 file-box-data\。
+整个文件夹可一起拷贝、随身携带(FileBox.exe + file-box-data\ 都在这一层)。
+升级:把新版解压覆盖到同一文件夹,保留 file-box-data\。
 "@
 Set-Content -Encoding UTF8 (Join-Path $DistDir 'README.txt') $readme
 
