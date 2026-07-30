@@ -12,6 +12,14 @@ if [ -z "$JAR_NAME" ]; then
     exit 1
 fi
 
+# 选 Java:自带 JRE 优先,否则系统 java(与 start.sh 一致)
+# Pick Java: bundled JRE first, else system java (same as start.sh)
+if [ -x "$SCRIPT_DIR/jre/bin/java" ]; then
+    JAVA="$SCRIPT_DIR/jre/bin/java"
+else
+    JAVA="java"
+fi
+
 while true; do
     echo ""
     echo "File Box Management"
@@ -22,7 +30,7 @@ while true; do
 
     case "$choice" in
         1)
-            java -jar "$JAR_NAME" --filebox.maintenance=reset-admin-password "$@"
+            "$JAVA" -jar "$JAR_NAME" --filebox.maintenance=reset-admin-password "$@"
             ;;
         2)
             echo "$SCRIPT_DIR/config/filebox.yml"

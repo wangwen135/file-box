@@ -21,14 +21,14 @@ On first start, `ConfigValidationRunner` creates `./config`, `./data/default`, `
 
 There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortTest`, JUnit 5 + AssertJ).
 
-## Native packaging (jpackage)
+## Self-contained native packaging
 
-Besides the fat-jar / release-tarball (which needs Java pre-installed), File Box can be built into **self-contained, extract-and-run archives** that bundle a trimmed JRE via `jlink` — no Java needed on the target machine. Per the product decision, both platforms ship as **portable archives only** (no installers: no deb/rpm/msi).
+Besides the fat-jar / release-tarball (which needs Java pre-installed), File Box ships **self-contained, extract-and-run archives** that bundle a trimmed JRE via `jlink` — no Java needed on the target machine. Both platforms ship as **portable archives only** (no installers), but take different shapes:
 
-- `packaging/build-native.sh` (Linux) → `FileBox-<ver>-linux-jre.tar.gz`
-- `packaging/build-native.ps1` (Windows) → `FileBox-<ver>-windows-jre.zip`
+- **Linux** (`packaging/build-native.sh` → `FileBox-<ver>-linux-jre.tar.gz`) — **script-based, not jpackage**. Folder: `file-box-<ver>.jar` + `jre/` (jlinked JRE) + `start.sh` + `manage.sh` + `data/default/`. Run via `./start.sh`, which **auto-detects `jre/bin/java`** and falls back to system `java` if absent — so the *same* `start.sh`/`manage.sh` (in `src/assembly/`) serve both this package and the basic release-tarball. Data (config/data/logs/runtime) lands at the folder root, identical to the release-tarball layout. Chosen for server use: transparent, easy to wrap in systemd.
+- **Windows** (`packaging/build-native.ps1` → `FileBox-<ver>-windows-jre.zip`) — **jpackage app-image**. Folder: `FileBox.exe` (double-click) + `runtime/` + `app/`. Data lands in a sibling `file-box-data/` via the launcher option `-Dfilebox.data.dir=$ROOTDIR/file-box-data` (resolved by `FileBoxPaths`).
 
-Each archive extracts to one folder `FileBox-<ver>-<platform>/{FileBox/, README.txt}`. Running the launcher (`FileBox/bin/FileBox` on Linux, double-click `FileBox\FileBox.exe` on Windows) writes config/data/logs/runtime to a sibling `file-box-data/` *inside that folder* — set by the launcher option `-Dfilebox.data.dir=$ROOTDIR/../file-box-data` (resolved by `FileBoxPaths`). The whole folder is portable; upgrade by replacing `FileBox/` and keeping `file-box-data/`. Requires JDK 17+ (`jlink`/`jpackage`/`jmods`); jpackage **cannot cross-compile**, so each platform archive must be built on that OS. The release CI matrix does both. See `packaging/README.md`.
+Why the split: Linux server deployments prefer transparent scripts + reusable `start.sh`/`manage.sh`; Windows desktop users get the double-click-exe experience. Requires JDK 17+ (`jlink`/`jpackage`/`jmods`); jpackage **cannot cross-compile**, so each platform archive is built on its own OS in the release CI matrix. See `packaging/README.md`.
 
 Two `jlink` gotchas: `java.instrument` (Tomcat class transformation) and `jdk.crypto.ec`/`jdk.crypto.cryptoki` (TLS) are **not** detected by `jdeps` but are required at runtime — both are in the `MODULES` list in the build scripts.
 

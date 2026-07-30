@@ -60,9 +60,10 @@ jobs:
         run: |
           set -o pipefail
           DIR=$(ls -d target/native/FileBox-*-linux-jre | head -1)
-          echo "launching $DIR/bin/FileBox"
-          "$DIR/bin/FileBox" --server.port=8888 >/tmp/fbx-smoke.log 2>&1 &
-          PID=$!
+          echo "launching $DIR/start.sh"
+          "$DIR/start.sh" --server.port=8888 >/tmp/fbx-start.out 2>&1
+          PID=$(grep -oP 'PID: \K[0-9]+' /tmp/fbx-start.out | head -1)
+          echo "app PID: ${PID:-none}"
           root=""; admin=""
           for i in $(seq 1 45); do
             root=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8888/ || true)
@@ -70,11 +71,10 @@ jobs:
             sleep 1
           done
           admin=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8888/api/admin/users || true)
-          kill $PID 2>/dev/null || true
-          wait $PID 2>/dev/null || true
+          kill "$PID" 2>/dev/null || true
           echo "GET /                -> ${root:-none} (want 200)"
           echo "GET /api/admin/users -> ${admin:-none} (want 401)"
-          [ "$root" = "200" ] || { echo "SMOKE FAIL: app did not return 200"; tail -20 /tmp/fbx-smoke.log; exit 1; }
+          [ "$root" = "200" ] || { echo "SMOKE FAIL: app did not return 200"; tail -25 "$DIR/logs/filebox.log" 2>/dev/null; tail -15 "$DIR/logs/out.log" 2>/dev/null; exit 1; }
           [ "$admin" = "401" ] || { echo "SMOKE FAIL: admin API not gated"; exit 1; }
 
       - name: 启动冒烟 / Boot smoke (Windows)

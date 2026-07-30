@@ -1,20 +1,20 @@
 #!/bin/bash
 #
-# build-native.sh — 为 File Box 构建自带 JRE 的【解压即用】原生包(Linux)。
-# Build a self-contained, extract-and-run native package for File Box (Linux).
+# build-native.sh — 为 File Box 构建【自带 JRE 的解压即用】Linux 包(脚本式,非 jpackage)。
+# Build a self-contained, extract-and-run Linux package (script-based, NOT jpackage).
 #
 # 产物 / Artifact (target/native/):
-#   FileBox-<ver>-linux.tar.gz   解压得到 FileBox-<ver>-linux/{FileBox/, README.txt}
+#   FileBox-<ver>-linux-jre.tar.gz
+#     解压得 FileBox-<ver>-linux-jre/{file-box-<ver>.jar, jre/, start.sh, manage.sh, data/default/, README.txt}
 #
-# 运行方式 / Run (解压后):
-#   FileBox-<ver>-linux/FileBox/bin/FileBox [--server.port=8888]
+# 运行 / Run: ./start.sh  (后台启动 + 打印 PID + prod profile + logs/out.log;用自带 jre/bin/java)
 #
-# 数据目录 / Data dir:
-#   launcher 注入 -Dfilebox.data.dir=$ROOTDIR/../file-box-data —— config/data/logs/runtime
-#   写到 app-image 同级(file-box-data/),与 FileBox/ 一起放在解压目录里,整文件夹可随身携带;
-#   升级时替换 FileBox/、保留 file-box-data/。不要安装包(installer),就要这种便携包。
+# 为什么 Linux 不用 jpackage:服务端要透明、可改 java 命令、易接 systemd,且复用项目已有的
+# start.sh / manage.sh。Windows 仍走 jpackage(桌面双击体验好,见 build-native.ps1)。
+# Why not jpackage on Linux: server deployments want transparency (read/tweak the java command,
+# easy systemd integration) and reuse of the existing start.sh / manage.sh.
 #
-# 依赖 / Requires: JDK 17+(需 jlink/jpackage/jmods);先 `mvn package` 出 fat jar。
+# 依赖 / Requires: JDK 17+(需 jlink/jmods);先 `mvn package` 出 fat jar。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,12 +34,12 @@ if [ -z "$JMODS" ]; then
 fi
 if [ ! -d "$JMODS" ]; then
   echo "ERROR: jmods 未找到。设置 JAVA_HOME(含 jmods 的 JDK)或 JMODS 环境变量。" >&2
-  echo "       (Debian: apt install openjdk-21-jdk-headless)" >&2
+  echo "       (Debian: apt install openjdk-17-jdk-headless)" >&2
   exit 1
 fi
 echo "jmods:        $JMODS"
 
-# ---- locate the fat jar + version ----
+# ---- fat jar + version ----
 JAR="$(ls target/file-box-*.jar 2>/dev/null | grep -vE 'sources|javadoc' | head -n 1 || true)"
 if [ -z "$JAR" ]; then
   echo "ERROR: target/file-box-*.jar 未找到。请先运行 'mvn package'。" >&2
@@ -47,7 +47,6 @@ if [ -z "$JAR" ]; then
 fi
 VERSION="$(basename "$JAR" | sed -E 's/^file-box-//; s/\.jar$//')"
 echo "version:      $VERSION"
-echo "fat jar:      $JAR"
 
 # ---- jlink 精简运行时所需模块 ----
 # java.instrument:Tomcat 类转换必需(jdeps 检测不到)。jdk.crypto.ec/cryptoki:TLS 必需。
@@ -57,57 +56,48 @@ jdk.crypto.cryptoki,jdk.crypto.ec,jdk.unsupported"
 
 NATIVE="target/native"
 DIST_NAME="FileBox-$VERSION-linux-jre"
-DIST_DIR="$NATIVE/$DIST_NAME"          # 解压后的顶层目录 / top-level folder after extract
-STAGE="$NATIVE/input"
-# 数据目录:app-image($ROOTDIR)内的 file-box-data/(启动器旁边),首启生成,在程序文件夹里
-DATA_DIR_OPT='-Dfilebox.data.dir=$ROOTDIR/file-box-data'
-JAVA_OPTS="-Xmx384m -Dspring.profiles.active=prod $DATA_DIR_OPT"
-JP_COMMON=(--name FileBox --input "$STAGE" --main-jar "$(basename "$JAR")"
-           --runtime-image "$NATIVE/runtime" --app-version "$VERSION"
-           --vendor FileBox --description "File Box - self-hosted file sharing"
-           --java-options "$JAVA_OPTS")
+DIST_DIR="$NATIVE/$DIST_NAME"
 
-echo "==> staging fat jar"
-rm -rf "$STAGE"; mkdir -p "$STAGE"
-cp "$JAR" "$STAGE/"
+echo "==> 组装分发目录 / assemble dist folder (复用 release 包的脚本)"
+rm -rf "$DIST_DIR"
+mkdir -p "$DIST_DIR/data/default"
+cp "$JAR" "$DIST_DIR/"
+cp src/assembly/start.sh src/assembly/manage.sh "$DIST_DIR/"
+chmod +x "$DIST_DIR/start.sh" "$DIST_DIR/manage.sh"
+cp "src/assembly/data/default/操作说明.html" "$DIST_DIR/data/default/"
 
-echo "==> jlink custom runtime (~minimal JRE)"
-rm -rf "$NATIVE/runtime"
-# shellcheck disable=SC2086
+echo "==> jlink 自带 JRE → jre/  (~minimal)"
+# jre/ 而非 runtime/:避开应用运行时自己建的 runtime/multipart-tmp(数据目录)
+# jre/ not runtime/: avoid clashing with the app's own runtime/multipart-tmp data dir
 jlink --module-path "$JMODS" --add-modules "$MODULES" \
   --strip-debug --no-header-files --no-man-pages --compress=2 \
-  --output "$NATIVE/runtime" 2>/dev/null || {
+  --output "$DIST_DIR/jre" 2>/dev/null || {
     # JDK 23+ 把 --compress=2 改成了 --compress=zip-9;失败则退回不压缩
     jlink --module-path "$JMODS" --add-modules "$MODULES" \
       --strip-debug --no-header-files --no-man-pages \
-      --output "$NATIVE/runtime"
+      --output "$DIST_DIR/jre"
   }
-echo "    runtime size: $(du -sh "$NATIVE/runtime" | cut -f1)"
-
-echo "==> jpackage app-image"
-rm -rf "$DIST_DIR"
-mkdir -p "$DIST_DIR"
-jpackage --type app-image --dest "$DIST_DIR" "${JP_COMMON[@]}"
-
-echo "==> 拍平:去掉 jpackage 内层 FileBox/,让启动器直接落在分发根目录 / flatten inner layer"
-shopt -s dotglob
-mv "$DIST_DIR"/FileBox/* "$DIST_DIR"/
-rmdir "$DIST_DIR"/FileBox
-shopt -u dotglob
+echo "    jre size: $(du -sh "$DIST_DIR/jre" | cut -f1)"
 
 echo "==> 写 README"
 cat > "$DIST_DIR/README.txt" <<EOF
 File Box $VERSION (Linux, 自带运行时 / self-contained — 无需预装 Java)
 
 运行 / Run:
-    ./bin/FileBox [--server.port=8888] [--更多 Spring Boot 参数]
+    ./start.sh [--server.port=8888] [--更多 Spring Boot 参数]
+    (start.sh 后台启动、打印 PID、写 logs/out.log)
 
-首次启动会在本目录下生成 file-box-data/(config/data/logs/runtime),
-并把初始 admin 密码打印到 file-box-data/logs/filebox.log。浏览器打开
-http://localhost:8888 登录。
+管理 / Manage:
+    ./manage.sh    (交互菜单:重置 admin 密码等)
 
-整个文件夹(FileBox/ + file-box-data/)可一起拷贝、随身携带。
-升级:替换 FileBox/ 子目录,保留 file-box-data/。
+停止 / Stop:
+    kill <start.sh 打印的 PID>
+
+首次启动会在本目录下生成 config/ data/ logs/ runtime/,
+初始 admin 密码见 logs/filebox.log。浏览器打开 http://localhost:8888 登录。
+
+整个文件夹可一起拷贝、随身携带。
+升级:替换 file-box-$VERSION.jar 与 jre/,保留 config/ data/ logs/。
 EOF
 
 echo "==> 打包 tar.gz"

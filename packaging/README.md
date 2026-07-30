@@ -7,17 +7,23 @@ Build **self-contained, extract-and-run archives** — no Java pre-install, no i
 
 | 平台 / Platform | 脚本 / Script | 产物 / Artifact | 运行 / Run |
 |---|---|---|---|
-| Linux | `build-native.sh` | `FileBox-<ver>-linux-jre.tar.gz` | `./bin/FileBox` |
+| Linux | `build-native.sh` | `FileBox-<ver>-linux-jre.tar.gz` | `./start.sh` |
 | Windows | `build-native.ps1` | `FileBox-<ver>-windows-jre.zip` | 双击 `FileBox.exe` |
 
-解压后得到一个文件夹(Linux 例:`FileBox-<ver>-linux-jre/`),启动器直接在根目录、无多余层级:
+两平台结构不同 —— **Linux 服务端走脚本式(透明、可接 systemd),Windows 桌面走 jpackage(双击 exe)**:
 ```
-FileBox-<ver>-linux-jre/
-  bin/FileBox       ← 启动器(Windows 对应 FileBox.exe,直接在根目录)
-  lib/              ← 自带运行时(runtime)+ fat jar(app)
-  README.txt        ← 运行说明
-  file-box-data/    ← 首次运行时生成:config / data / logs / runtime(在启动器旁边)
+Linux: FileBox-<ver>-linux-jre/       Windows: FileBox-<ver>-windows-jre/
+         file-box-<ver>.jar                      FileBox.exe          ← 双击运行
+         jre/bin/java      ← 自带 JRE            runtime/             ← 自带 JRE
+         start.sh / manage.sh                   app/file-box-<ver>.jar
+         data/default/操作说明.html             README.txt
+         README.txt                             file-box-data/       ← 首启生成(配置/数据/日志)
+         # 首启在本目录生成 config/ data/ logs/ runtime/
 ```
+
+**Linux 的 `start.sh` / `manage.sh` 自动探测 `jre/bin/java`**(有则用自带 JRE、无则退回系统 `java`)—— 所以**和基础包 release.tar.gz 共用同一套脚本**(`src/assembly/start.sh`)。数据落在包根,跟基础包布局一致;整个文件夹可随身拷贝,升级时替换 `file-box-<ver>.jar` + `jre/`、保留 `config/ data/ logs/`。
+
+**Windows** 的数据由 launcher 的 `-Dfilebox.data.dir=$ROOTDIR/file-box-data` 写到 `file-box-data/`(程序文件夹内)。
 
 ## 构建 / Build
 
@@ -28,12 +34,6 @@ mvn package                          # 先出 fat jar / produce the fat jar firs
 ```
 
 输出在 `target/native/`。依赖 JDK 17+(`jlink` / `jpackage` / `jmods`)。
-
-## 数据目录 / Data dir
-
-launcher 注入 `-Dfilebox.data.dir=$ROOTDIR/file-box-data`,把 config/data/logs/runtime 写到
-**程序文件夹内**(启动器旁边)的 `file-box-data/`。整个文件夹可随身拷贝;
-升级时把新版解压覆盖到同一文件夹、保留 `file-box-data/` 即可。
 
 ## 模块裁剪 / Runtime trimming
 
