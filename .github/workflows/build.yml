@@ -22,10 +22,10 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux
-            archive: FileBox-*.tar.gz
+            archive: FileBox-*-jre.tar.gz
           - os: windows-latest
             label: windows
-            archive: FileBox-*.zip
+            archive: FileBox-*-jre.zip
     runs-on: ${{ matrix.os }}
     steps:
       - name: 拉取代码 / Checkout
@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          DIR=$(ls -d target/native/FileBox-*-linux | head -1)
+          DIR=$(ls -d target/native/FileBox-*-linux-jre | head -1)
           echo "launching $DIR/bin/FileBox"
           "$DIR/bin/FileBox" --server.port=8888 >/tmp/fbx-smoke.log 2>&1 &
           PID=$!
@@ -81,7 +81,7 @@ jobs:
         if: matrix.label == 'windows'
         shell: pwsh
         run: |
-          $dir = (Get-ChildItem -Directory 'target\native\FileBox-*-windows' | Select-Object -First 1).FullName
+          $dir = (Get-ChildItem -Directory 'target\native\FileBox-*-windows-jre' | Select-Object -First 1).FullName
           $exe = Join-Path $dir 'FileBox.exe'
           Write-Host "launching $exe"
           $p = Start-Process -FilePath $exe -ArgumentList '--server.port=8888' -PassThru -WindowStyle Hidden

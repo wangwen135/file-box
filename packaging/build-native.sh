@@ -56,7 +56,7 @@ java.naming,java.scripting,java.security.jgss,java.sql,java.transaction.xa,java.
 jdk.crypto.cryptoki,jdk.crypto.ec,jdk.unsupported"
 
 NATIVE="target/native"
-DIST_NAME="FileBox-$VERSION-linux"
+DIST_NAME="FileBox-$VERSION-linux-jre"
 DIST_DIR="$NATIVE/$DIST_NAME"          # 解压后的顶层目录 / top-level folder after extract
 STAGE="$NATIVE/input"
 # 数据目录:app-image($ROOTDIR)内的 file-box-data/(启动器旁边),首启生成,在程序文件夹里

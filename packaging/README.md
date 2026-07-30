@@ -7,15 +7,16 @@ Build **self-contained, extract-and-run archives** — no Java pre-install, no i
 
 | 平台 / Platform | 脚本 / Script | 产物 / Artifact | 运行 / Run |
 |---|---|---|---|
-| Linux | `build-native.sh` | `FileBox-<ver>-linux.tar.gz` | `FileBox/bin/FileBox` |
-| Windows | `build-native.ps1` | `FileBox-<ver>-windows.zip` | 双击 `FileBox\FileBox.exe` |
+| Linux | `build-native.sh` | `FileBox-<ver>-linux-jre.tar.gz` | `./bin/FileBox` |
+| Windows | `build-native.ps1` | `FileBox-<ver>-windows-jre.zip` | 双击 `FileBox.exe` |
 
-解压后得到一个文件夹 `FileBox-<ver>-<platform>/`,内含:
+解压后得到一个文件夹(Linux 例:`FileBox-<ver>-linux-jre/`),启动器直接在根目录、无多余层级:
 ```
-FileBox-<ver>-<platform>/
-  FileBox/          ← app-image(launcher + 自带运行时 + fat jar)
+FileBox-<ver>-linux-jre/
+  bin/FileBox       ← 启动器(Windows 对应 FileBox.exe,直接在根目录)
+  lib/              ← 自带运行时(runtime)+ fat jar(app)
   README.txt        ← 运行说明
-  file-box-data/    ← 首次运行时生成:config / data / logs / runtime(与 FileBox/ 并排)
+  file-box-data/    ← 首次运行时生成:config / data / logs / runtime(在启动器旁边)
 ```
 
 ## 构建 / Build
@@ -30,9 +31,9 @@ mvn package                          # 先出 fat jar / produce the fat jar firs
 
 ## 数据目录 / Data dir
 
-launcher 注入 `-Dfilebox.data.dir=$ROOTDIR/../file-box-data`,把 config/data/logs/runtime 写到
-**app-image 同级**的 `file-box-data/` —— 即解压文件夹里、与 `FileBox/` 并排。整个文件夹可随身拷贝;
-升级时替换 `FileBox/`、保留 `file-box-data/` 即可。
+launcher 注入 `-Dfilebox.data.dir=$ROOTDIR/file-box-data`,把 config/data/logs/runtime 写到
+**程序文件夹内**(启动器旁边)的 `file-box-data/`。整个文件夹可随身拷贝;
+升级时把新版解压覆盖到同一文件夹、保留 `file-box-data/` 即可。
 
 ## 模块裁剪 / Runtime trimming
 

@@ -25,8 +25,8 @@ There are two test classes (`FileCatalogServiceTest` and `FileBoxControllerSortT
 
 Besides the fat-jar / release-tarball (which needs Java pre-installed), File Box can be built into **self-contained, extract-and-run archives** that bundle a trimmed JRE via `jlink` — no Java needed on the target machine. Per the product decision, both platforms ship as **portable archives only** (no installers: no deb/rpm/msi).
 
-- `packaging/build-native.sh` (Linux) → `FileBox-<ver>-linux.tar.gz`
-- `packaging/build-native.ps1` (Windows) → `FileBox-<ver>-windows.zip`
+- `packaging/build-native.sh` (Linux) → `FileBox-<ver>-linux-jre.tar.gz`
+- `packaging/build-native.ps1` (Windows) → `FileBox-<ver>-windows-jre.zip`
 
 Each archive extracts to one folder `FileBox-<ver>-<platform>/{FileBox/, README.txt}`. Running the launcher (`FileBox/bin/FileBox` on Linux, double-click `FileBox\FileBox.exe` on Windows) writes config/data/logs/runtime to a sibling `file-box-data/` *inside that folder* — set by the launcher option `-Dfilebox.data.dir=$ROOTDIR/../file-box-data` (resolved by `FileBoxPaths`). The whole folder is portable; upgrade by replacing `FileBox/` and keeping `file-box-data/`. Requires JDK 17+ (`jlink`/`jpackage`/`jmods`); jpackage **cannot cross-compile**, so each platform archive must be built on that OS. The release CI matrix does both. See `packaging/README.md`.
 
@@ -53,7 +53,7 @@ Every release has three version sources that **must match**:
 - Git tag with an uppercase `V` prefix, for example `V2.1.0`.
 - Markdown release notes at `.github/release-notes/<tag>.md`, for example `.github/release-notes/V2.1.0.md`.
 
-The workflow validates the Maven version against the tag and requires the matching release-notes file to exist and be non-empty. It then builds on a **Linux + Windows matrix** (`mvn -B -V package` + the platform native script), creates a GitHub Release named `File Box v<version>`, uses the Markdown file as the Release body, and uploads the JAR, the release tarball, **and** the two self-contained native archives (`FileBox-<ver>-linux.tar.gz`, `FileBox-<ver>-windows.zip`). Release notes are maintained manually in the repository; they are not generated from commits or PRs.
+The workflow validates the Maven version against the tag and requires the matching release-notes file to exist and be non-empty. It then builds on a **Linux + Windows matrix** (`mvn -B -V package` + the platform native script), creates a GitHub Release named `File Box v<version>`, uses the Markdown file as the Release body, and uploads the JAR, the release tarball, **and** the two self-contained native archives (`FileBox-<ver>-linux-jre.tar.gz`, `FileBox-<ver>-windows-jre.zip`). Release notes are maintained manually in the repository; they are not generated from commits or PRs.
 
 Standard release preparation and publication:
 

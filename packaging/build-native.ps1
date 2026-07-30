@@ -60,7 +60,7 @@ Write-Host "fat jar:      $($Jar.FullName)"
 $Modules = "java.base,java.compiler,java.desktop,java.instrument,java.logging,java.management,java.naming,java.scripting,java.security.jgss,java.sql,java.transaction.xa,java.xml,jdk.crypto.cryptoki,jdk.crypto.ec,jdk.unsupported"
 
 $Native     = "target\native"
-$DistName   = "FileBox-$Version-windows"
+$DistName   = "FileBox-$Version-windows-jre"
 $DistDir    = Join-Path $Native $DistName
 $Stage      = Join-Path $Native 'input'
 $RuntimeDir = Join-Path $Native 'runtime'

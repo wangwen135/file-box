@@ -27,10 +27,10 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux
-            archive: FileBox-*.tar.gz
+            archive: FileBox-*-jre.tar.gz
           - os: windows-latest
             label: windows
-            archive: FileBox-*.zip
+            archive: FileBox-*-jre.zip
     runs-on: ${{ matrix.os }}
     steps:
       - name: 拉取代码 / Checkout
@@ -121,5 +121,5 @@ jobs:
           files: |
             staging/jar-release/file-box-*.jar
             staging/jar-release/file-box-*-release.tar.gz
-            staging/native-linux/FileBox-*-linux.tar.gz
-            staging/native-windows/FileBox-*-windows.zip
+            staging/native-linux/FileBox-*-linux-jre.tar.gz
+            staging/native-windows/FileBox-*-windows-jre.zip
