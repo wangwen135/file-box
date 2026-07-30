@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-File Box is a self-hosted file sharing/management web app: **Java 21 + Spring Boot 3.5** (`jakarta.*` namespace), single fat-jar (plus optional **self-contained native packages** via jpackage — see [Native packaging](#native-packaging-jpackage)), **no database**. Files live directly on the filesystem; users, storage spaces, and system settings live in a hand-rolled YAML config. Default port **8888**.
+File Box is a self-hosted file sharing/management web app: **Java 17 + Spring Boot 3.5** (`jakarta.*` namespace), single fat-jar (plus optional **self-contained native packages** via jpackage — see [Native packaging](#native-packaging-jpackage)), **no database**. Files live directly on the filesystem; users, storage spaces, and system settings live in a hand-rolled YAML config. Default port **8888**.
 
 ## Build, run, test
 
