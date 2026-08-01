@@ -835,3 +835,47 @@
         window.Notify = Notification;
     }
 })();
+
+// ============================================================
+// 会话失效自动回登录页 / auto-redirect to login on session invalidation
+// 被踢下线 / token 过期时,后端对已认证请求返回 401(角色不够是 403,不在此列;
+// 改密等校验失败是 400)。已登录页面里任何 401 都意味着会话没了。
+// 这里:① 全局包一层 fetch,见 401 即跳登录、并吞掉响应阻止调用方继续弹错误 toast;
+//      ② 每 60s 心跳一次,让空闲(不发请求)的页面也能感知。
+// 本文件不在 login.html 加载,故登录失败返回的 401 不会被误跳(无死循环)。
+// ============================================================
+(function() {
+    'use strict';
+    if (window.__fileboxAuthGuard) return;   // 防重复注入 / guard against double-init
+    window.__fileboxAuthGuard = true;
+
+    var redirecting = false;
+    function redirectToLogin() {
+        if (redirecting) return;
+        redirecting = true;
+        // 清掉已堆的错误 toast,避免跳转前闪一下 / clear stacked error toasts
+        if (window.Notify && typeof window.Notify.clear === 'function') window.Notify.clear();
+        window.location.href = '/login.html';
+    }
+
+    var origFetch = window.fetch;
+    window.fetch = function() {
+        return origFetch.apply(this, arguments).then(function(resp) {
+            if (resp.status === 401) {
+                redirectToLogin();
+                // 永不 resolve:阻止调用方继续走错误分支(否则又会弹一条错误 toast)
+                // never resolves so callers won't run their error-handling (and pop another toast)
+                return new Promise(function() {});
+            }
+            return resp;
+        });
+    };
+
+    // 心跳:空闲页面定期探活,401 → 跳登录 / heartbeat for idle pages
+    setInterval(function() {
+        origFetch('/api/auth/user', { credentials: 'same-origin' })
+            .then(function(r) { if (r.status === 401) redirectToLogin(); })
+            .catch(function() { /* 网络抖动忽略,下个心跳再试 */ });
+    }, 60000);
+})();
+
