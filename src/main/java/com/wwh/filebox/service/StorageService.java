@@ -57,6 +57,7 @@ public class StorageService {
                     StorageSpace space = new StorageSpace();
                     space.setName(spaceConfig.getName());
                     space.setPath(spaceConfig.getPath());
+                    space.setMaxSize(spaceConfig.getMaxSize());
                     space.setAllowAnonymousAccess(spaceConfig.isAllowAnonymousAccess());
                     space.setAllowAnonymousUpload(spaceConfig.isAllowAnonymousUpload());
                     return space;
