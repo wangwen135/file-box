@@ -42,6 +42,16 @@ public class StorageSpace {
         return maxSizeStr;
     }
 
+    /**
+     * 容量字符串(如 "10GB"),序列化为 JSON 的 {@code maxSize} 字段。
+     * 前端 storage.html 读的就是 space.maxSize,而非 maxSizeStr。
+     * / Capacity string (e.g. "10GB"), serialized as the JSON {@code maxSize} field,
+     * which is what the storage.html frontend reads (not maxSizeStr).
+     */
+    public String getMaxSize() {
+        return maxSizeStr;
+    }
+
     public void setMaxSizeStr(String maxSizeStr) {
         this.maxSizeStr = maxSizeStr;
         this.maxSize = parseSize(maxSizeStr);
